@@ -1,0 +1,64 @@
+{
+    // ストリクトモード（厳しい検査）の有効化。
+    "python.analysis.typeCheckingMode": "basic",
+    // 自作モジュールや型定義が含まれていない外部パッケージなどの型情報を
+    // VS Code に伝えるための「.pyi ファイル」を格納するディレクトリ。
+    // ここで指定したものはプロジェクト内で自動的に走査される。
+    "python.analysis.stubPath": "./typings",
+    // コーディング中にインテリジェンスされたモジュールのインポート文を自動挿入するか。
+    // 僕はこの手の自動的なものがあまり好きではないのと、
+    // 気づかぬうちにけっこう追加されていることが多かったので無効化しています。
+    "python.analysis.autoImportCompletions": false,
+    "python.analysis.diagnosticMode": "workspace",
+    // いわゆる Linter としての細かいカスタマイズ部分です。
+    "python.analysis.diagnosticSeverityOverrides": {
+        // 未使用のインポート文の扱い。
+        // デフォルトでもちゃんと薄暗いフォントに変わるので無効化でいいと判断。
+        "reportUnusedImport": "none",
+        // 未使用のクラス。同上。
+        "reportUnusedClass": "none",
+        // 未使用の関数。同上。
+        "reportUnusedFunction": "none",
+        // 条件分岐などでバウンドされていない可能性のある変数の扱い。
+        // デフォルトでは警告止まりですが、これはエラー扱いに変更。
+        "reportUnboundVariable": "error",
+        // 外部モジュールの実体が見つけられないときの扱い。
+        // ここを information にしていることについては後述します。
+        "reportMissingModuleSource": "information",
+        // 外部モジュールの型定義ファイルが見つけられないときの扱い。
+        // ちなみに TypeStubs が型定義ファイルのことです（.pyi）。
+        "reportMissingTypeStubs": "information",
+        // 正規表現パターン内などで raw 文字列を使わずにスラッシュを直書き
+        // しているときの扱い。デフォルトは警告されるが、個人的な趣味でレベル下げ。
+        "reportInvalidStringEscapeSequence": "information",
+        // total=False な TypedDict の変数にアクセスしようとしたときの扱い。
+        // デフォルトは忘れましたが警告を出させるようにしました。
+        // （パッケージによってはしんどいシーンがあるので調整をおすすめします）
+        "reportTypedDictNotRequiredAccess": "warning",
+    },
+    // Linter(flake8) settings
+    "flake8.args": [
+        "--ignore=E111, E114, E402, E501, W504"
+    ],
+    // Formatter(autopep8) settings
+    "[python]": {
+        "editor.defaultFormatter": "ms-python.autopep8",
+        "editor.tabSize": 4, // インデントレベルは4
+        "editor.formatOnSave": true, // 保存時に自動整形を行う
+        "editor.formatOnPaste": true, // ペースト時に自動整形を行う
+        "editor.formatOnType": true, // 入力後に自動整形を行う
+        "editor.codeActionsOnSave": {
+            "source.organizeImports": "explicit"
+        },
+    },
+    "python.venvPath": "${workspaceFolder}/venv",
+    "python.venvFolders": [
+        "${workspaceFolder}/venv"
+    ],
+    "python.autoComplete.extraPaths": [
+        "${workspaceFolder}/venv/lib/python3.11/site-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "${workspaceFolder}/venv/lib/python3.11/site-packages"
+    ]
+}
