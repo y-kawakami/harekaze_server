@@ -1,6 +1,5 @@
 import os
 from datetime import datetime, timedelta
-from typing import Optional
 
 from dotenv import load_dotenv
 from jose import JWTError, jwt
@@ -14,29 +13,38 @@ load_dotenv()
 # JWT設定
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")  # デフォルト値はローカル開発用
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1週間
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30日間
 
 
 class AuthService:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_access_token(self, user_id: str) -> str:
-        """JWTトークンを生成する"""
+    def create_session(self, user_id: str) -> str:
+        """
+        新しいJWTセッショントークンを作成して返す。
+        Args:
+            user_id: セッションに紐付けるユーザーID
+        """
         expires_delta = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
         expire = datetime.utcnow() + expires_delta
         to_encode = {
             "sub": user_id,
             "exp": expire
         }
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return encoded_jwt
+        return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-    def verify_token(self, token: str) -> Optional[str]:
-        """トークンを検証し、ユーザIDを返す"""
+    def verify_token(self, token: str | None) -> str | None:
+        """
+        JWTトークンを検証し、有効な場合はユーザーIDを返す。
+        無効な場合はNoneを返す。
+        """
+        if not token:
+            return None
+
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id: Optional[str] = payload.get("sub")
+            user_id = payload.get("sub")
             if user_id is None:
                 return None
             return user_id

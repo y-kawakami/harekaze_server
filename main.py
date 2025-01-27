@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.interfaces.api import tree
+from app.interfaces.api import auth, info, tree
 
 app = FastAPI(
-    title="桜の木管理API",
+    title="晴れ風API",
     description="""
     桜の木の情報を管理するためのAPI。
 
@@ -27,7 +27,21 @@ app = FastAPI(
     },
     license_info={
         "name": "MIT",
-    }
+    },
+    openapi_tags=[
+        {
+            "name": "auth",
+            "description": "認証に関するエンドポイント"
+        },
+        {
+            "name": "tree",
+            "description": "桜の木情報に関するエンドポイント"
+        },
+        {
+            "name": "info",
+            "description": "その他の情報取得に関するエンドポイント"
+        }
+    ]
 )
 
 # CORS設定
@@ -40,7 +54,9 @@ app.add_middleware(
 )
 
 # ルーターの登録
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(tree.router, prefix="/api", tags=["tree"])
+app.include_router(info.router, prefix="/api", tags=["info"])
 
 if __name__ == "__main__":
     import uvicorn

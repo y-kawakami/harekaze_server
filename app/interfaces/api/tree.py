@@ -8,8 +8,9 @@ from app.domain.services.auth_service import AuthService
 from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.tree_repository import TreeRepository
-from app.interfaces.schemas.tree import (TreeDetailResponse, TreeResponse,
-                                         TreeSearchRequest, TreeSearchResponse)
+from app.interfaces.schemas.tree import (TreeCountResponse, TreeDetailResponse,
+                                         TreeResponse, TreeSearchRequest,
+                                         TreeSearchResponse, TreeStatsResponse)
 
 router = APIRouter()
 image_service = ImageService()  # 本番環境では環境変数から取得
@@ -385,7 +386,7 @@ async def create_mushroom(
     return {"status": "success"}
 
 
-@router.get("/tree/count")
+@router.get("/tree/count", response_model=TreeCountResponse)
 async def get_tree_count(
     prefecture: str | None = Query(
         None,
@@ -455,7 +456,7 @@ async def get_tree_count(
     return {"count": count}
 
 
-@router.get("/tree/stats")
+@router.get("/tree/stats", response_model=TreeStatsResponse)
 async def get_tree_stats(
     prefecture: str | None = Query(
         None,
@@ -537,32 +538,4 @@ async def get_tree_stats(
             "50-59": stats["age_50_59"],
             "60+": stats["age_60_plus"]
         }
-    }
-
-
-@router.get("/info/flowering_date")
-async def get_flowering_date(
-    latitude: float = Query(
-        ...,
-        description="緯度"
-    ),
-    longitude: float = Query(
-        ...,
-        description="経度"
-    ),
-    db: Session = Depends(get_db)
-):
-    """
-    桜の開花日に関する情報を取得する。
-    """
-    repository = TreeRepository(db)
-    flowering_info = repository.get_flowering_info(
-        latitude=latitude,
-        longitude=longitude
-    )
-
-    return {
-        "address": flowering_info["address"],
-        "flowering_date": flowering_info["flowering_date"],
-        "full_bloom_date": flowering_info["full_bloom_date"]
     }
