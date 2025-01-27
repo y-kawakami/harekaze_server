@@ -76,7 +76,8 @@ async def create_tree(
         longitude=longitude,
         image_obj_key=image_key,
         thumb_obj_key=thumb_key,
-        vitality=vitality
+        vitality=vitality,
+        position=f'POINT({longitude} {latitude})'
     )
 
     return TreeResponse(

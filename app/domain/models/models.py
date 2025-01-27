@@ -25,19 +25,21 @@ class Tree(Base):
 
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'))
-    tree_number = Column(Integer, autoincrement=True)
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tree_number = Column(Integer, nullable=False)
     contributor = Column(String(100))
-    latitude = Column(Float)
-    longitude = Column(Float)
-    position = Column(Geometry('POINT'))
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    position = Column(Geometry('POINT'), nullable=False)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
     decorated_image_obj_key = Column(String(255))
     vitality = Column(Float)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.now(
+        timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc))
+                        onupdate=datetime.now(timezone.utc),
+                        nullable=False)
 
     user = relationship("User")
     stem = relationship("Stem", back_populates="tree", uselist=False)
@@ -51,18 +53,20 @@ class Stem(Base):
 
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'))
-    tree_id = Column(String(36), ForeignKey('trees.id'))
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
     latitude = Column(Float)
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    can_detected = Column(Boolean, default=False)
+    can_detected = Column(Boolean, default=False, nullable=False)
     circumference = Column(Numeric(10, 2))
-    texture = Column(Integer)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    texture = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.now(
+        timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc))
+                        onupdate=datetime.now(timezone.utc),
+                        nullable=False)
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="stem")
@@ -73,15 +77,17 @@ class StemHole(Base):
 
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'))
-    tree_id = Column(String(36), ForeignKey('trees.id'))
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
     latitude = Column(Float)
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.now(
+        timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc))
+                        onupdate=datetime.now(timezone.utc),
+                        nullable=False)
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="stem_holes")
@@ -92,15 +98,17 @@ class Tengus(Base):
 
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'))
-    tree_id = Column(String(36), ForeignKey('trees.id'))
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
     latitude = Column(Float)
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.now(
+        timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc))
+                        onupdate=datetime.now(timezone.utc),
+                        nullable=False)
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="tengus")
@@ -111,15 +119,17 @@ class Mushroom(Base):
 
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'))
-    tree_id = Column(String(36), ForeignKey('trees.id'))
+    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
+    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
     latitude = Column(Float)
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=datetime.now(
+        timezone.utc), nullable=False)
     updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc))
+                        onupdate=datetime.now(timezone.utc),
+                        nullable=False)
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="mushrooms")
