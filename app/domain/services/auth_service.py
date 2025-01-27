@@ -1,13 +1,18 @@
+import os
 from datetime import datetime, timedelta
 from typing import Optional
 
+from dotenv import load_dotenv
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
 from app.domain.models.models import User
 
+# .envファイルを読み込む
+load_dotenv()
+
 # JWT設定
-SECRET_KEY = "your-secret-key"  # 本番環境では環境変数から取得すること
+SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")  # デフォルト値はローカル開発用
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 1週間
 
@@ -31,7 +36,7 @@ class AuthService:
         """トークンを検証し、ユーザIDを返す"""
         try:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id: str = payload.get("sub")
+            user_id: Optional[str] = payload.get("sub")
             if user_id is None:
                 return None
             return user_id

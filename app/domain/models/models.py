@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
                         Numeric, String)
@@ -15,9 +15,9 @@ class User(Base):
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
     ip_addr = Column(String(45))  # IPv6アドレスも考慮して45文字
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
+                        onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Tree(Base):
@@ -34,9 +34,9 @@ class Tree(Base):
     thumb_obj_key = Column(String(255))
     decorated_image_obj_key = Column(String(255))
     vitality = Column(Float)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
+                        onupdate=datetime.now(timezone.utc))
 
     user = relationship("User")
     stem = relationship("Stem", back_populates="tree", uselist=False)
@@ -59,9 +59,9 @@ class Stem(Base):
     can_detected = Column(Boolean, default=False)
     circumference = Column(Numeric(10, 2))
     texture = Column(Integer)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
+                        onupdate=datetime.now(timezone.utc))
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="stem")
@@ -78,9 +78,9 @@ class StemHole(Base):
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
+                        onupdate=datetime.now(timezone.utc))
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="stem_holes")
@@ -97,9 +97,9 @@ class Tengus(Base):
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
+                        onupdate=datetime.now(timezone.utc))
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="tengus")
@@ -116,9 +116,9 @@ class Mushroom(Base):
     longitude = Column(Float)
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow,
-                        onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc))
+    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
+                        onupdate=datetime.now(timezone.utc))
 
     user = relationship("User")
     tree = relationship("Tree", back_populates="mushrooms")
