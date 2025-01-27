@@ -1,6 +1,7 @@
 import uuid
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import (APIRouter, Depends, File, Form, HTTPException, Path,
+                     Query, UploadFile)
 from sqlalchemy.orm import Session
 
 from app.domain.services.auth_service import AuthService
@@ -27,10 +28,22 @@ def get_current_user_id(
 
 @router.post("/tree/entire", response_model=TreeResponse)
 async def create_tree(
-    contributor: str = Form(...),
-    latitude: float = Form(...),
-    longitude: float = Form(...),
-    image: UploadFile = File(...),
+    contributor: str = Form(
+        ...,
+        description="投稿者の名前"
+    ),
+    latitude: float = Form(
+        ...,
+        description="撮影場所の緯度"
+    ),
+    longitude: float = Form(
+        ...,
+        description="撮影場所の経度"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="桜の木全体の写真（推奨サイズ: 1080x1920）"
+    ),
     db: Session = Depends(get_db),
     current_user_id: str = Depends(get_current_user_id)
 ):
@@ -97,8 +110,14 @@ async def create_tree(
 
 @router.post("/tree/{tree_id}/decorated")
 async def update_tree_decorated_image(
-    tree_id: str,
-    image: UploadFile = File(...),
+    tree_id: str = Path(
+        ...,
+        description="POST /api/tree/entire で返された tree id"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="診断結果と情報を付与した装飾済みの写真"
+    ),
     db: Session = Depends(get_db),
     current_user_id: str = Depends(get_current_user_id)
 ):
@@ -129,7 +148,7 @@ async def update_tree_decorated_image(
 
 @router.get("/tree/search", response_model=TreeSearchResponse)
 async def search_trees(
-    request: TreeSearchRequest,
+    request: TreeSearchRequest = Depends(),
     db: Session = Depends(get_db)
 ):
     """
@@ -188,7 +207,10 @@ async def search_trees(
 
 @router.get("/tree/{tree_id}", response_model=TreeDetailResponse)
 async def get_tree_detail(
-    tree_id: str,
+    tree_id: str = Path(
+        ...,
+        description="取得したい桜の木のID"
+    ),
     db: Session = Depends(get_db)
 ):
     """
@@ -244,3 +266,440 @@ async def get_tree_detail(
             tree.mushrooms[0].image_obj_key)
 
     return response
+
+
+@router.post("/tree/{tree_id}/hole")
+async def create_stem_hole(
+    tree_id: str = Path(
+        ...,
+        description="POST /api/tree/entire で返された tree id"
+    ),
+    latitude: float = Form(
+        ...,
+        description="撮影場所の緯度"
+    ),
+    longitude: float = Form(
+        ...,
+        description="撮影場所の経度"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="幹の穴の写真"
+    ),
+    db: Session = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """
+    幹の穴の写真を登録する。
+
+    Args:
+        tree_id: POST /api/tree/entire で返された tree id
+        latitude: 緯度
+        longitude: 経度
+        image: 幹の穴の写真
+
+    Returns:
+        ステータスコードのみ
+
+    Raises:
+        HTTPException(400): 指定された木が見つからない場合
+        HTTPException(500): 画像のアップロードに失敗した場合
+    """
+    # 画像をアップロード
+    image_data = await image.read()
+
+    # サムネイル作成
+    thumb_data = image_service.create_thumbnail(image_data)
+
+    # 画像をアップロード
+    image_key = f"holes/{uuid.uuid4()}.jpg"
+    thumb_key = f"thumbnails/holes/{uuid.uuid4()}.jpg"
+    if not (image_service.upload_image(image_data, image_key) and
+            image_service.upload_image(thumb_data, thumb_key)):
+        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
+
+    # DBに登録
+    repository = TreeRepository(db)
+    if not repository.create_stem_hole(
+        user_id=current_user_id,
+        tree_id=tree_id,
+        latitude=latitude,
+        longitude=longitude,
+        image_obj_key=image_key,
+        thumb_obj_key=thumb_key
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": 100,
+                "message": "指定された木が見つかりません"
+            }
+        )
+
+    return {"status": "success"}
+
+
+@router.post("/tree/{tree_id}/tengusu")
+async def create_tengusu(
+    tree_id: str = Path(
+        ...,
+        description="POST /api/tree/entire で返された tree id"
+    ),
+    latitude: float = Form(
+        ...,
+        description="撮影場所の緯度"
+    ),
+    longitude: float = Form(
+        ...,
+        description="撮影場所の経度"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="テングス病の写真"
+    ),
+    db: Session = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """
+    テングス病の写真を登録する。
+
+    Args:
+        tree_id: POST /api/tree/entire で返された tree id
+        latitude: 緯度
+        longitude: 経度
+        image: テングス病の写真
+
+    Returns:
+        ステータスコードのみ
+
+    Raises:
+        HTTPException(400): 指定された木が見つからない場合
+        HTTPException(500): 画像のアップロードに失敗した場合
+    """
+    # 画像をアップロード
+    image_data = await image.read()
+
+    # サムネイル作成
+    thumb_data = image_service.create_thumbnail(image_data)
+
+    # 画像をアップロード
+    image_key = f"tengusu/{uuid.uuid4()}.jpg"
+    thumb_key = f"thumbnails/tengusu/{uuid.uuid4()}.jpg"
+    if not (image_service.upload_image(image_data, image_key) and
+            image_service.upload_image(thumb_data, thumb_key)):
+        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
+
+    # DBに登録
+    repository = TreeRepository(db)
+    if not repository.create_tengus(
+        user_id=current_user_id,
+        tree_id=tree_id,
+        latitude=latitude,
+        longitude=longitude,
+        image_obj_key=image_key,
+        thumb_obj_key=thumb_key
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": 100,
+                "message": "指定された木が見つかりません"
+            }
+        )
+
+    return {"status": "success"}
+
+
+@router.post("/tree/{tree_id}/mushroom")
+async def create_mushroom(
+    tree_id: str = Path(
+        ...,
+        description="POST /api/tree/entire で返された tree id"
+    ),
+    latitude: float = Form(
+        ...,
+        description="撮影場所の緯度"
+    ),
+    longitude: float = Form(
+        ...,
+        description="撮影場所の経度"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="キノコの写真"
+    ),
+    db: Session = Depends(get_db),
+    current_user_id: str = Depends(get_current_user_id)
+):
+    """
+    キノコの写真を登録する。
+
+    Args:
+        tree_id: POST /api/tree/entire で返された tree id
+        latitude: 緯度
+        longitude: 経度
+        image: キノコの写真
+
+    Returns:
+        ステータスコードのみ
+
+    Raises:
+        HTTPException(400): 指定された木が見つからない場合
+        HTTPException(500): 画像のアップロードに失敗した場合
+    """
+    # 画像をアップロード
+    image_data = await image.read()
+
+    # サムネイル作成
+    thumb_data = image_service.create_thumbnail(image_data)
+
+    # 画像をアップロード
+    image_key = f"mushrooms/{uuid.uuid4()}.jpg"
+    thumb_key = f"thumbnails/mushrooms/{uuid.uuid4()}.jpg"
+    if not (image_service.upload_image(image_data, image_key) and
+            image_service.upload_image(thumb_data, thumb_key)):
+        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
+
+    # DBに登録
+    repository = TreeRepository(db)
+    if not repository.create_mushroom(
+        user_id=current_user_id,
+        tree_id=tree_id,
+        latitude=latitude,
+        longitude=longitude,
+        image_obj_key=image_key,
+        thumb_obj_key=thumb_key
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": 100,
+                "message": "指定された木が見つかりません"
+            }
+        )
+
+    return {"status": "success"}
+
+
+@router.get("/tree/count")
+async def get_tree_count(
+    prefecture: str | None = Query(
+        None,
+        description="都道府県名"
+    ),
+    city: str | None = Query(
+        None,
+        description="市区町村名"
+    ),
+    vitality_min: int | None = Query(
+        None,
+        description="元気度の最小値（1-5）",
+        ge=1,
+        le=5
+    ),
+    vitality_max: int | None = Query(
+        None,
+        description="元気度の最大値（1-5）",
+        ge=1,
+        le=5
+    ),
+    age_min: int | None = Query(
+        None,
+        description="樹齢の最小値（年）",
+        ge=0
+    ),
+    age_max: int | None = Query(
+        None,
+        description="樹齢の最大値（年）",
+        ge=0
+    ),
+    has_hole: bool | None = Query(
+        None,
+        description="幹の穴の有無"
+    ),
+    has_tengusu: bool | None = Query(
+        None,
+        description="テングス病の有無"
+    ),
+    has_mushroom: bool | None = Query(
+        None,
+        description="キノコの有無"
+    ),
+    db: Session = Depends(get_db)
+):
+    """
+    ユーザから投稿された桜の本数を取得する。
+
+    Args:
+        prefecture: 都道府県名
+        city: 市区町村名（都道府県もしくは市区町村のいずれかは必須）
+        vitality_min: 元気度の最小値（1-5）
+        vitality_max: 元気度の最大値（1-5）
+        age_min: 樹齢の最小値
+        age_max: 樹齢の最大値
+        has_hole: 幹の穴の有無
+        has_tengusu: テングス病の有無
+        has_mushroom: キノコの有無
+
+    Returns:
+        桜の本数
+
+    Raises:
+        HTTPException(400): 都道府県名も市区町村名も指定されていない場合
+    """
+    if not prefecture and not city:
+        raise HTTPException(
+            status_code=400,
+            detail="都道府県名もしくは市区町村名のいずれかを指定してください"
+        )
+
+    repository = TreeRepository(db)
+    count = repository.count_trees(
+        prefecture=prefecture,
+        city=city,
+        vitality_range=(
+            vitality_min, vitality_max) if vitality_min or vitality_max else None,
+        age_range=(age_min, age_max) if age_min or age_max else None,
+        has_hole=has_hole,
+        has_tengusu=has_tengusu,
+        has_mushroom=has_mushroom
+    )
+
+    return {"count": count}
+
+
+@router.get("/tree/stats")
+async def get_tree_stats(
+    prefecture: str | None = Query(
+        None,
+        description="都道府県名"
+    ),
+    city: str | None = Query(
+        None,
+        description="市区町村名"
+    ),
+    vitality_min: int | None = Query(
+        None,
+        description="元気度の最小値（1-5）",
+        ge=1,
+        le=5
+    ),
+    vitality_max: int | None = Query(
+        None,
+        description="元気度の最大値（1-5）",
+        ge=1,
+        le=5
+    ),
+    age_min: int | None = Query(
+        None,
+        description="樹齢の最小値（年）",
+        ge=0
+    ),
+    age_max: int | None = Query(
+        None,
+        description="樹齢の最大値（年）",
+        ge=0
+    ),
+    has_hole: bool | None = Query(
+        None,
+        description="幹の穴の有無"
+    ),
+    has_tengusu: bool | None = Query(
+        None,
+        description="テングス病の有無"
+    ),
+    has_mushroom: bool | None = Query(
+        None,
+        description="キノコの有無"
+    ),
+    db: Session = Depends(get_db)
+):
+    """
+    ユーザから投稿された桜の集計情報を取得する。
+
+    Args:
+        prefecture: 都道府県名
+        city: 市区町村名（都道府県もしくは市区町村のいずれかは必須）
+        vitality_min: 元気度の最小値（1-5）
+        vitality_max: 元気度の最大値（1-5）
+        age_min: 樹齢の最小値
+        age_max: 樹齢の最大値
+        has_hole: 幹の穴の有無
+        has_tengusu: テングス病の有無
+        has_mushroom: キノコの有無
+
+    Returns:
+        各元気度の分布と樹齢の分布
+
+    Raises:
+        HTTPException(400): 都道府県名も市区町村名も指定されていない場合
+    """
+    if not prefecture and not city:
+        raise HTTPException(
+            status_code=400,
+            detail="都道府県名もしくは市区町村名のいずれかを指定してください"
+        )
+
+    repository = TreeRepository(db)
+    stats = repository.get_tree_stats(
+        prefecture=prefecture,
+        city=city,
+        vitality_range=(
+            vitality_min, vitality_max) if vitality_min or vitality_max else None,
+        age_range=(age_min, age_max) if age_min or age_max else None,
+        has_hole=has_hole,
+        has_tengusu=has_tengusu,
+        has_mushroom=has_mushroom
+    )
+
+    return {
+        "vitality_distribution": {
+            "1": stats["vitality_1"],
+            "2": stats["vitality_2"],
+            "3": stats["vitality_3"],
+            "4": stats["vitality_4"],
+            "5": stats["vitality_5"]
+        },
+        "age_distribution": {
+            "0-20": stats["age_0_20"],
+            "30-39": stats["age_30_39"],
+            "40-49": stats["age_40_49"],
+            "50-59": stats["age_50_59"],
+            "60+": stats["age_60_plus"]
+        }
+    }
+
+
+@router.get("/info/flowering_date")
+async def get_flowering_date(
+    latitude: float = Query(
+        ...,
+        description="緯度"
+    ),
+    longitude: float = Query(
+        ...,
+        description="経度"
+    ),
+    db: Session = Depends(get_db)
+):
+    """
+    桜の開花日に関する情報を取得する。
+
+    Args:
+        latitude: 緯度
+        longitude: 経度
+
+    Returns:
+        住所、開花予想日、満開予想日の情報
+    """
+    repository = TreeRepository(db)
+    flowering_info = repository.get_flowering_info(
+        latitude=latitude,
+        longitude=longitude
+    )
+
+    return {
+        "address": flowering_info["address"],
+        "flowering_date": flowering_info["flowering_date"],
+        "full_bloom_date": flowering_info["full_bloom_date"]
+    }

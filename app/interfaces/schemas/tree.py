@@ -16,6 +16,7 @@ class TreeCreate(TreeBase):
 class TreeResponse(TreeBase):
     id: str = Field(..., description="Tree ID")
     tree_number: str = Field(..., description="表示用の番号")
+    contributor: str = Field(..., description="投稿者名")
     vitality: int = Field(..., description="元気度（1-5の整数値）")
     location: str = Field(..., description="撮影場所")
     created_at: datetime = Field(..., description="撮影日時")
@@ -40,22 +41,63 @@ class StemResponse(BaseModel):
 
 
 class TreeSearchFilter(BaseModel):
-    vitality_min: Optional[int] = Field(None, description="元気度の下限")
-    vitality_max: Optional[int] = Field(None, description="元気度の上限")
+    vitality_min: Optional[int] = Field(
+        None,
+        description="元気度の最小値（1-5）",
+        ge=1,
+        le=5
+    )
+    vitality_max: Optional[int] = Field(
+        None,
+        description="元気度の最大値（1-5）",
+        ge=1,
+        le=5
+    )
     age_min: Optional[int] = Field(None, description="樹齢の下限")
     age_max: Optional[int] = Field(None, description="樹齢の上限")
-    has_hole: Optional[bool] = Field(None, description="幹の穴の有無")
-    has_tengusu: Optional[bool] = Field(None, description="テングス病の有無")
-    has_mushroom: Optional[bool] = Field(None, description="キノコの有無")
+    has_hole: Optional[bool] = Field(
+        None,
+        description="幹に穴があるかどうか"
+    )
+    has_tengusu: Optional[bool] = Field(
+        None,
+        description="テングス病の有無"
+    )
+    has_mushroom: Optional[bool] = Field(
+        None,
+        description="キノコの有無"
+    )
 
 
 class TreeSearchRequest(BaseModel):
-    latitude: float = Field(..., description="中心点の緯度")
-    longitude: float = Field(..., description="中心点の経度")
-    radius: float = Field(..., description="検索半径（メートル）")
-    filter: Optional[TreeSearchFilter] = Field(None, description="フィルタ条件")
-    page: int = Field(1, description="ページ番号")
-    per_page: int = Field(20, description="1ページあたりの件数")
+    latitude: float = Field(
+        ...,
+        description="検索の中心となる緯度"
+    )
+    longitude: float = Field(
+        ...,
+        description="検索の中心となる経度"
+    )
+    radius: float = Field(
+        ...,
+        description="検索半径（メートル）",
+        gt=0
+    )
+    filter: Optional[TreeSearchFilter] = Field(
+        None,
+        description="検索フィルター条件"
+    )
+    page: int = Field(
+        1,
+        description="ページ番号",
+        ge=1
+    )
+    per_page: int = Field(
+        20,
+        description="1ページあたりの表示件数",
+        ge=1,
+        le=100
+    )
 
 
 class TreeSearchResult(BaseModel):
