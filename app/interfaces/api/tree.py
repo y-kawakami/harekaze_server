@@ -124,7 +124,18 @@ async def update_tree_decorated_image(
 
 @router.get("/tree/search", response_model=TreeSearchResponse)
 async def search_trees(
-    request: TreeSearchRequest = Depends(),
+    latitude: float = Query(..., description="検索の中心となる緯度"),
+    longitude: float = Query(..., description="検索の中心となる経度"),
+    radius: float = Query(..., description="検索範囲（メートル）"),
+    page: int = Query(1, description="ページ番号", ge=1),
+    per_page: int = Query(10, description="1ページあたりの件数", ge=1, le=100),
+    vitality_min: int | None = Query(
+        None, description="元気度の最小値（1-5）", ge=1, le=5),
+    vitality_max: int | None = Query(
+        None, description="元気度の最大値（1-5）", ge=1, le=5),
+    has_hole: bool | None = Query(None, description="幹の穴の有無"),
+    has_tengusu: bool | None = Query(None, description="テングス病の有無"),
+    has_mushroom: bool | None = Query(None, description="キノコの有無"),
     db: Session = Depends(get_db)
 ):
     """
@@ -132,23 +143,22 @@ async def search_trees(
     """
     repository = TreeRepository(db)
     vitality_range = None
-    if request.filter and (request.filter.vitality_min is not None or
-                           request.filter.vitality_max is not None):
+    if vitality_min is not None or vitality_max is not None:
         vitality_range = (
-            request.filter.vitality_min or 1,
-            request.filter.vitality_max or 5
+            vitality_min or 1,
+            vitality_max or 5
         )
 
     trees, total = repository.search_trees(
-        latitude=request.latitude,
-        longitude=request.longitude,
-        radius=request.radius,
+        latitude=latitude,
+        longitude=longitude,
+        radius=radius,
         vitality_range=vitality_range,
-        has_hole=request.filter.has_hole if request.filter else None,
-        has_tengusu=request.filter.has_tengusu if request.filter else None,
-        has_mushroom=request.filter.has_mushroom if request.filter else None,
-        offset=(request.page - 1) * request.per_page,
-        limit=request.per_page
+        has_hole=has_hole,
+        has_tengusu=has_tengusu,
+        has_mushroom=has_mushroom,
+        offset=(page - 1) * per_page,
+        limit=per_page
     )
 
     return TreeSearchResponse(
