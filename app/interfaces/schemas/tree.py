@@ -74,7 +74,7 @@ class TreeSearchResponse(BaseModel):
 
 
 class TreeDetailResponse(TreeResponse):
-    contributor_name: str
+    contributor: str
     image_url: str
     stem: Optional[StemResponse] = None
     stem_hole_image_url: Optional[str] = None

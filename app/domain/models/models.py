@@ -1,9 +1,9 @@
 import uuid
 from datetime import datetime, timezone
 
+from geoalchemy2.types import Geometry
 from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
                         Numeric, String)
-from sqlalchemy.dialects.mysql import GEOMETRY
 from sqlalchemy.orm import relationship
 
 from app.infrastructure.database.database import Base
@@ -26,10 +26,11 @@ class Tree(Base):
     id = Column(String(36), primary_key=True,
                 default=lambda: str(uuid.uuid4()))
     user_id = Column(String(36), ForeignKey('users.id'))
-    tree_number = Column(String(10))
+    tree_number = Column(Integer, autoincrement=True)
+    contributor = Column(String(100))
     latitude = Column(Float)
     longitude = Column(Float)
-    position = Column(GEOMETRY)
+    position = Column(Geometry('POINT'))
     image_obj_key = Column(String(255))
     thumb_obj_key = Column(String(255))
     decorated_image_obj_key = Column(String(255))

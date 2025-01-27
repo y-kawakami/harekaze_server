@@ -16,4 +16,5 @@ dependencies = [
     "boto3==1.36.6",
     "pydantic==2.6.1",
     "python-dotenv==1.0.1",
+    "GeoAlchemy2==0.17.0",
 ]

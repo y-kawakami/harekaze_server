@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
@@ -8,9 +7,8 @@ from app.domain.services.auth_service import AuthService
 from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.tree_repository import TreeRepository
-from app.interfaces.schemas.tree import (TreeCreate, TreeDetailResponse,
-                                         TreeResponse, TreeSearchRequest,
-                                         TreeSearchResponse)
+from app.interfaces.schemas.tree import (TreeDetailResponse, TreeResponse,
+                                         TreeSearchRequest, TreeSearchResponse)
 
 router = APIRouter()
 image_service = ImageService("your-bucket-name")  # 本番環境では環境変数から取得
@@ -29,7 +27,7 @@ def get_current_user_id(
 
 @router.post("/tree/entire", response_model=TreeResponse)
 async def create_tree(
-    contributor_name: str = Form(...),
+    contributor: str = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
     image: UploadFile = File(...),
@@ -40,7 +38,7 @@ async def create_tree(
     桜の木全体の写真を登録する。
 
     Args:
-        contributor_name: 投稿者名
+        contributor: 投稿者名
         latitude: 緯度
         longitude: 経度
         image: 桜の木全体の写真（1080x1920）
@@ -77,6 +75,7 @@ async def create_tree(
     repository = TreeRepository(db)
     tree = repository.create_tree(
         user_id=current_user_id,
+        contributor=contributor,
         latitude=latitude,
         longitude=longitude,
         image_obj_key=image_key,
@@ -87,6 +86,7 @@ async def create_tree(
     return TreeResponse(
         id=tree.id,
         tree_number=tree.tree_number,
+        contributor=tree.contributor,
         latitude=tree.latitude,
         longitude=tree.longitude,
         vitality=round(tree.vitality),
@@ -180,7 +180,7 @@ async def search_trees(
         trees=[{
             "id": tree.id,
             "tree_number": tree.tree_number,
-            "contributor_name": "TODO",  # TODO: 実装
+            "contributor": tree.contributor,
             "thumb_url": image_service.get_image_url(tree.thumb_obj_key)
         } for tree in trees]
     )
@@ -214,12 +214,12 @@ async def get_tree_detail(
     response = TreeDetailResponse(
         id=tree.id,
         tree_number=tree.tree_number,
+        contributor=tree.contributor,
         latitude=tree.latitude,
         longitude=tree.longitude,
         vitality=round(tree.vitality),
         location="TODO: 逆ジオコーディング",  # TODO: 実装
         created_at=tree.created_at,
-        contributor_name="TODO",  # TODO: 実装
         image_url=image_service.get_image_url(tree.image_obj_key)
     )
 

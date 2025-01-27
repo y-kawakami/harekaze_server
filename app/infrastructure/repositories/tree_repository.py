@@ -1,4 +1,3 @@
-from datetime import datetime
 from typing import List, Optional
 
 from sqlalchemy import func
@@ -11,11 +10,12 @@ class TreeRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_tree(self, user_id: str, latitude: float, longitude: float,
+    def create_tree(self, user_id: str, contributor: str, latitude: float, longitude: float,
                     image_obj_key: str, thumb_obj_key: str,
                     vitality: float) -> Tree:
         tree = Tree(
             user_id=user_id,
+            contributor=contributor,
             tree_number=self._generate_tree_number(),
             latitude=latitude,
             longitude=longitude,
@@ -161,5 +161,5 @@ class TreeRepository:
             Tree.created_at.desc()).first()
         if not last_tree:
             return "00001"
-        last_number = int(last_tree.tree_number)
+        last_number = last_tree.tree_number
         return f"{last_number + 1:05d}"
