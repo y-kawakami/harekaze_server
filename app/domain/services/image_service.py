@@ -1,15 +1,23 @@
 import io
+import os
 from typing import Tuple
 
 import boto3
 from botocore.exceptions import ClientError
+from dotenv import load_dotenv
 from PIL import Image
+
+# .envファイルを読み込む
+load_dotenv()
 
 
 class ImageService:
-    def __init__(self, bucket_name: str):
+    def __init__(self):
         self.s3 = boto3.client('s3')
-        self.bucket_name = bucket_name
+        self.bucket_name = os.getenv("S3_ASSETS_BUCKET")
+        if not self.bucket_name:
+            raise ValueError(
+                "S3_ASSETS_BUCKET environment variable is not set")
 
     def create_thumbnail(self, image_data: bytes) -> bytes:
         """画像データからサムネイルを作成する"""

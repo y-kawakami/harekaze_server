@@ -12,7 +12,7 @@ from app.interfaces.schemas.tree import (TreeDetailResponse, TreeResponse,
                                          TreeSearchRequest, TreeSearchResponse)
 
 router = APIRouter()
-image_service = ImageService("your-bucket-name")  # 本番環境では環境変数から取得
+image_service = ImageService()  # 本番環境では環境変数から取得
 
 
 def get_current_user_id(
@@ -49,24 +49,6 @@ async def create_tree(
 ):
     """
     桜の木全体の写真を登録する。
-
-    Args:
-        contributor: 投稿者名
-        latitude: 緯度
-        longitude: 経度
-        image: 桜の木全体の写真（1080x1920）
-
-    Returns:
-        TreeResponse: 登録された桜の情報
-            - tree_id: 登録した桜に付与されるID
-            - tree_number: 表示用の番号（例: #23493）
-            - vitality: 元気度（1-5の整数値）
-            - location: 撮影場所
-            - created_at: 撮影日時（ISO8601形式）
-
-    Raises:
-        HTTPException(400): 木が映っていない場合
-        HTTPException(500): 画像のアップロードに失敗した場合
     """
     # 画像を解析
     image_data = await image.read()
@@ -123,14 +105,6 @@ async def update_tree_decorated_image(
 ):
     """
     桜の木全体の写真に、診断結果（元気度）に基づき情報を付与して装飾した写真を送信する。
-
-    Args:
-        tree_id: POST /api/tree/entire で返された tree id
-        image: 情報を付与した写真
-
-    Raises:
-        HTTPException(404): 指定された木が見つからない場合
-        HTTPException(500): 画像のアップロードに失敗した場合
     """
     # 画像をアップロード
     image_data = await image.read()
@@ -153,25 +127,6 @@ async def search_trees(
 ):
     """
     全ユーザから投稿された桜の情報の検索を行う。
-
-    Args:
-        request: 検索条件
-            - latitude: 中心点の緯度
-            - longitude: 中心点の経度
-            - radius: 検索半径（メートル）
-            - filter: フィルタ条件
-                - vitality_range: 元気度の範囲（1-5）
-                - age_range: 樹齢の範囲
-                - has_hole: 幹の穴の有無
-                - has_tengusu: テングス病の有無
-                - has_mushroom: キノコの有無
-            - page: ページ番号
-            - per_page: 1ページあたりの件数
-
-    Returns:
-        TreeSearchResponse:
-            - total: 総ヒット件数
-            - trees: 検索結果の桜の情報のリスト
     """
     repository = TreeRepository(db)
     vitality_range = None
@@ -215,18 +170,6 @@ async def get_tree_detail(
 ):
     """
     各木の詳細情報を取得する。
-
-    Args:
-        tree_id: POST /api/tree/entire で返された tree id
-
-    Returns:
-        TreeDetailResponse: 桜の詳細情報
-            - 基本情報（ID、番号、位置情報など）
-            - 幹の情報（存在する場合）
-            - 各種写真のURL
-
-    Raises:
-        HTTPException(404): 指定された木が見つからない場合
     """
     repository = TreeRepository(db)
     tree = repository.get_tree(tree_id)
@@ -291,19 +234,6 @@ async def create_stem_hole(
 ):
     """
     幹の穴の写真を登録する。
-
-    Args:
-        tree_id: POST /api/tree/entire で返された tree id
-        latitude: 緯度
-        longitude: 経度
-        image: 幹の穴の写真
-
-    Returns:
-        ステータスコードのみ
-
-    Raises:
-        HTTPException(400): 指定された木が見つからない場合
-        HTTPException(500): 画像のアップロードに失敗した場合
     """
     # 画像をアップロード
     image_data = await image.read()
@@ -362,19 +292,6 @@ async def create_tengusu(
 ):
     """
     テングス病の写真を登録する。
-
-    Args:
-        tree_id: POST /api/tree/entire で返された tree id
-        latitude: 緯度
-        longitude: 経度
-        image: テングス病の写真
-
-    Returns:
-        ステータスコードのみ
-
-    Raises:
-        HTTPException(400): 指定された木が見つからない場合
-        HTTPException(500): 画像のアップロードに失敗した場合
     """
     # 画像をアップロード
     image_data = await image.read()
@@ -433,19 +350,6 @@ async def create_mushroom(
 ):
     """
     キノコの写真を登録する。
-
-    Args:
-        tree_id: POST /api/tree/entire で返された tree id
-        latitude: 緯度
-        longitude: 経度
-        image: キノコの写真
-
-    Returns:
-        ステータスコードのみ
-
-    Raises:
-        HTTPException(400): 指定された木が見つからない場合
-        HTTPException(500): 画像のアップロードに失敗した場合
     """
     # 画像をアップロード
     image_data = await image.read()
@@ -485,11 +389,11 @@ async def create_mushroom(
 async def get_tree_count(
     prefecture: str | None = Query(
         None,
-        description="都道府県名"
+        description="都道府県名（都道府県名もしくは市区町村名のいずれかは必須）"
     ),
     city: str | None = Query(
         None,
-        description="市区町村名"
+        description="市区町村名（都道府県名もしくは市区町村名のいずれかは必須）"
     ),
     vitality_min: int | None = Query(
         None,
@@ -529,23 +433,6 @@ async def get_tree_count(
 ):
     """
     ユーザから投稿された桜の本数を取得する。
-
-    Args:
-        prefecture: 都道府県名
-        city: 市区町村名（都道府県もしくは市区町村のいずれかは必須）
-        vitality_min: 元気度の最小値（1-5）
-        vitality_max: 元気度の最大値（1-5）
-        age_min: 樹齢の最小値
-        age_max: 樹齢の最大値
-        has_hole: 幹の穴の有無
-        has_tengusu: テングス病の有無
-        has_mushroom: キノコの有無
-
-    Returns:
-        桜の本数
-
-    Raises:
-        HTTPException(400): 都道府県名も市区町村名も指定されていない場合
     """
     if not prefecture and not city:
         raise HTTPException(
@@ -572,11 +459,11 @@ async def get_tree_count(
 async def get_tree_stats(
     prefecture: str | None = Query(
         None,
-        description="都道府県名"
+        description="都道府県名（都道府県名もしくは市区町村名のいずれかは必須）"
     ),
     city: str | None = Query(
         None,
-        description="市区町村名"
+        description="市区町村名（都道府県名もしくは市区町村名のいずれかは必須）"
     ),
     vitality_min: int | None = Query(
         None,
@@ -616,23 +503,6 @@ async def get_tree_stats(
 ):
     """
     ユーザから投稿された桜の集計情報を取得する。
-
-    Args:
-        prefecture: 都道府県名
-        city: 市区町村名（都道府県もしくは市区町村のいずれかは必須）
-        vitality_min: 元気度の最小値（1-5）
-        vitality_max: 元気度の最大値（1-5）
-        age_min: 樹齢の最小値
-        age_max: 樹齢の最大値
-        has_hole: 幹の穴の有無
-        has_tengusu: テングス病の有無
-        has_mushroom: キノコの有無
-
-    Returns:
-        各元気度の分布と樹齢の分布
-
-    Raises:
-        HTTPException(400): 都道府県名も市区町村名も指定されていない場合
     """
     if not prefecture and not city:
         raise HTTPException(
@@ -684,13 +554,6 @@ async def get_flowering_date(
 ):
     """
     桜の開花日に関する情報を取得する。
-
-    Args:
-        latitude: 緯度
-        longitude: 経度
-
-    Returns:
-        住所、開花予想日、満開予想日の情報
     """
     repository = TreeRepository(db)
     flowering_info = repository.get_flowering_info(

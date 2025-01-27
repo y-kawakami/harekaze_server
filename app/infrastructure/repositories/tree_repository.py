@@ -176,8 +176,8 @@ class TreeRepository:
         self,
         prefecture: str | None,
         city: str | None,
-        vitality_range: tuple[int, int] | None,
-        age_range: tuple[int, int] | None,
+        vitality_range: tuple[int | None, int | None] | None,
+        age_range: tuple[int | None, int | None] | None,
         has_hole: bool | None,
         has_tengusu: bool | None,
         has_mushroom: bool | None
@@ -192,15 +192,18 @@ class TreeRepository:
 
         # 元気度による絞り込み
         if vitality_range:
-            query = query.filter(
-                Tree.vitality >= vitality_range[0],
-                Tree.vitality <= vitality_range[1]
-            )
+            if vitality_range[0] is not None:
+                query = query.filter(Tree.vitality >= vitality_range[0])
+            if vitality_range[1] is not None:
+                query = query.filter(Tree.vitality <= vitality_range[1])
 
         # 樹齢による絞り込み（幹周りから推定）
         if age_range:
             # TODO: 幹周りから樹齢を推定する計算式を実装
-            pass
+            if age_range[0] is not None:
+                pass  # TODO: 最小樹齢の条件を適用
+            if age_range[1] is not None:
+                pass  # TODO: 最大樹齢の条件を適用
 
         # 状態による絞り込み
         if has_hole is not None:
@@ -230,8 +233,8 @@ class TreeRepository:
         self,
         prefecture: str | None,
         city: str | None,
-        vitality_range: tuple[int, int] | None,
-        age_range: tuple[int, int] | None,
+        vitality_range: tuple[int | None, int | None] | None,
+        age_range: tuple[int | None, int | None] | None,
         has_hole: bool | None,
         has_tengusu: bool | None,
         has_mushroom: bool | None
@@ -247,15 +250,18 @@ class TreeRepository:
 
         # 元気度による絞り込み
         if vitality_range:
-            query = query.filter(
-                Tree.vitality >= vitality_range[0],
-                Tree.vitality <= vitality_range[1]
-            )
+            if vitality_range[0] is not None:
+                query = query.filter(Tree.vitality >= vitality_range[0])
+            if vitality_range[1] is not None:
+                query = query.filter(Tree.vitality <= vitality_range[1])
 
         # 樹齢による絞り込み（幹周りから推定）
         if age_range:
             # TODO: 幹周りから樹齢を推定する計算式を実装
-            pass
+            if age_range[0] is not None:
+                pass  # TODO: 最小樹齢の条件を適用
+            if age_range[1] is not None:
+                pass  # TODO: 最大樹齢の条件を適用
 
         # 状態による絞り込み
         if has_hole is not None:
