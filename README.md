@@ -59,6 +59,18 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install mysql-client
 uv init -p 3.12
 ```
 
+### Ubuntu
+
+```bash
+sudo apt update
+sudo apt-get install clang
+sudo apt install mysql-server-8.0 mysql-client
+sudo service mysql start
+sudo apt-get install pkg-config libmysqlclient-dev
+
+uv sync
+```
+
 ## DB操作
 
 ### DBリセット、マイグレーション再作成＆実行
