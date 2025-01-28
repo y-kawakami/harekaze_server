@@ -59,7 +59,9 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install mysql-client
 uv init -p 3.12
 ```
 
-## DBリセット、マイグレーション再作成＆実行
+## DB操作
+
+### DBリセット、マイグレーション再作成＆実行
 
 ```bash
 rm -rf migrations/*
@@ -67,4 +69,16 @@ rm -rf migrations/*
 # alembic init migrations
 alembic revision --autogenerate -m "initial"
 alembic upgrade head
+```
+
+### 一つ前のマイグレーションに戻す
+
+```bash
+alembic downgrade -1
+```
+
+### 最初の状態に戻す
+
+```bash
+alembic downgrade base
 ```

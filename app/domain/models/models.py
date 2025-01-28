@@ -32,20 +32,22 @@ class Tree(Base):
     uid: Mapped[str] = mapped_column(
         String(36), unique=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
-    contributor: Mapped[str] = mapped_column(String(100), nullable=True)
+    contributor: Mapped[Optional[str]] = mapped_column(String(100))
+    vitality: Mapped[Optional[int]] = mapped_column(Integer)
+    vitality_real: Mapped[Optional[float]] = mapped_column(Float)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
+    location: Mapped[Optional[str]] = mapped_column(String(100))  # 自治体名
+    prefecture_code: Mapped[Optional[str]] = mapped_column(
+        String(2), index=True)  # 都道府県コード（JIS X 0401）
+    municipality_code: Mapped[Optional[str]] = mapped_column(
+        String(8), index=True)  # 自治体コード（JIS X 0402）
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
-    decorated_image_obj_key: Mapped[str] = mapped_column(
-        String(255), nullable=True)
-    vitality: Mapped[float] = mapped_column(Float)
-    municipality: Mapped[str] = mapped_column(String(100))  # 自治体名
-    prefecture_code: Mapped[str] = mapped_column(
-        String(2))  # 都道府県コード（JIS X 0401）
-    municipality_code: Mapped[str] = mapped_column(
-        String(5))  # 自治体コード（JIS X 0402）
+    decorated_image_obj_key: Mapped[Optional[str]] = mapped_column(
+        String(255))
+    ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now)
     updated_at: Mapped[datetime] = mapped_column(
@@ -70,17 +72,18 @@ class Stem(Base):
     uid: Mapped[str] = mapped_column(
         String(36), unique=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('users.id'), nullable=False)
+        Integer, ForeignKey('users.id'))
     tree_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey('trees.id'), nullable=False)
+        Integer, ForeignKey('trees.id'))
+    can_detected: Mapped[bool] = mapped_column(
+        Boolean, default=False)
+    circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    texture_real: Mapped[Optional[float]] = mapped_column(Float)
+    texture: Mapped[Optional[int]] = mapped_column(Integer)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
-    can_detected: Mapped[bool] = mapped_column(
-        Boolean, default=False, nullable=False)
-    circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-    texture: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),

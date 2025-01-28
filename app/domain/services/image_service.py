@@ -43,6 +43,21 @@ class ImageService:
 
     def get_image_url(self, object_key: str) -> str:
         """画像のURLを取得する"""
+        if not object_key:
+            return ""
+        return f"https://{self.bucket_name}.s3.ap-northeast-1.amazonaws.com/{object_key}"
+
+    def get_presigned_url(self, object_key: str, expires_in: int = 3600) -> str:
+        """
+        署名付きURLを取得する
+        Args:
+            object_key: S3のオブジェクトキー
+            expires_in: 有効期限（秒）。デフォルトは1時間
+        Returns:
+            署名付きURL
+        """
+        if not object_key:
+            return ""
         try:
             url = self.s3.generate_presigned_url(
                 'get_object',
@@ -50,7 +65,7 @@ class ImageService:
                     'Bucket': self.bucket_name,
                     'Key': object_key
                 },
-                ExpiresIn=3600  # 1時間有効
+                ExpiresIn=expires_in
             )
             return url
         except ClientError:

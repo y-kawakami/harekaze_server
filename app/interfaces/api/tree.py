@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, Path,
                      Query, UploadFile)
@@ -9,10 +10,12 @@ from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.api.auth import get_current_user
-from app.interfaces.schemas.stem import StemResponse as StemResponseSchema
-from app.interfaces.schemas.tree import (TreeCountResponse, TreeDetailResponse,
-                                         TreeResponse, TreeSearchResponse,
-                                         TreeSearchResult, TreeStatsResponse)
+from app.interfaces.schemas.tree import (MushroomInfo, StemHoleInfo, StemInfo,
+                                         TengusuInfo, TreeCountResponse,
+                                         TreeDecoratedResponse,
+                                         TreeDetailResponse, TreeResponse,
+                                         TreeSearchResponse, TreeSearchResult,
+                                         TreeStatsResponse)
 
 router = APIRouter()
 image_service = ImageService()  # 本番環境では環境変数から取得
@@ -80,13 +83,15 @@ async def create_tree(
         tree_number=f"#{tree.id}",
         latitude=tree.latitude,
         longitude=tree.longitude,
-        vitality=round(tree.vitality),
-        location="TODO: 逆ジオコーディング",  # TODO: 実装
+        location=tree.location,
+        prefecture_code=tree.prefecture_code,
+        municipality_code=tree.municipality_code,
+        vitality=tree.vitality,
         created_at=tree.created_at
     )
 
 
-@router.post("/tree/{tree_uid}/decorated")
+@router.post("/tree/{tree_uid}/decorated", response_model=TreeDecoratedResponse)
 async def update_tree_decorated_image(
     tree_uid: str = Path(
         ...,
@@ -100,6 +105,10 @@ async def update_tree_decorated_image(
         ...,
         description="診断結果と情報を付与した装飾済みの写真"
     ),
+    ogp_image: UploadFile = File(
+        ...,
+        description="OGP用の画像"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -111,19 +120,29 @@ async def update_tree_decorated_image(
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
-    # 画像をアップロード
+    # 装飾画像をアップロード
     image_data = await image.read()
     random_suffix = str(uuid.uuid4())
     image_key = f"trees/{tree.id}/decorated_{random_suffix}.jpg"
     if not image_service.upload_image(image_data, image_key):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
 
+    # OGP画像をアップロード
+    ogp_image_data = await ogp_image.read()
+    ogp_image_key = f"trees/{tree.id}/ogp_{random_suffix}.jpg"
+    if not image_service.upload_image(ogp_image_data, ogp_image_key):
+        raise HTTPException(status_code=500, detail="OGP画像のアップロードに失敗しました")
+
     # DBを更新
     tree.decorated_image_obj_key = image_key
+    tree.ogp_image_obj_key = ogp_image_key
     tree.contributor = contributor
     repository.update_tree(tree)
 
-    return {"status": "success"}
+    return TreeDecoratedResponse(
+        decorated_image_url=image_service.get_image_url(image_key),
+        ogp_image_url=image_service.get_image_url(ogp_image_key)
+    )
 
 
 @router.get("/tree/search", response_model=TreeSearchResponse)
@@ -172,10 +191,14 @@ async def search_trees(
             id=tree.uid,
             tree_number=f"#{tree.id}",
             contributor=tree.contributor,
-            thumb_url=image_service.get_image_url(tree.thumb_obj_key),
-            municipality=tree.municipality or None,
+            vitality=tree.vitality,
+            image_thumb_url=image_service.get_image_url(tree.thumb_obj_key),
+            latitude=tree.latitude,
+            longitude=tree.longitude,
+            location=tree.location,
             prefecture_code=tree.prefecture_code or None,
-            municipality_code=tree.municipality_code or None
+            municipality_code=tree.municipality_code or None,
+            created_at=tree.created_at,
         ) for tree in trees]
     )
 
@@ -203,43 +226,63 @@ async def get_tree_detail(
         contributor=tree.contributor,
         latitude=tree.latitude,
         longitude=tree.longitude,
-        vitality=round(tree.vitality),
-        location="TODO: 逆ジオコーディング",  # TODO: 実装
-        created_at=tree.created_at,
-        image_url=image_service.get_image_url(str(tree.image_obj_key)),
-        municipality=tree.municipality or None,
+        location=tree.location,
+        vitality=tree.vitality,
         prefecture_code=tree.prefecture_code or None,
         municipality_code=tree.municipality_code or None,
+        image_url=image_service.get_image_url(str(tree.image_obj_key)),
+        image_thumb_url=image_service.get_image_url(str(tree.thumb_obj_key)),
         stem=None,
-        stem_hole_image_url=None,
-        tengusu_image_url=None,
-        mushroom_image_url=None
+        stem_hole=None,
+        tengusu=None,
+        mushroom=None,
+        created_at=tree.created_at,
     )
 
     if tree.stem:
-        response.stem = StemResponseSchema(
+        response.stem = StemInfo(
+            image_url=image_service.get_image_url(
+                str(tree.stem.image_obj_key)),
+            image_thumb_url=image_service.get_image_url(
+                str(tree.stem.thumb_obj_key)),
             texture=tree.stem.texture,
             can_detected=tree.stem.can_detected,
             circumference=tree.stem.circumference,
-            age=45  # TODO: 実装
+            age=tree.stem.age,
+            created_at=tree.stem.created_at,
         )
 
     if tree.stem_holes:
-        response.stem_hole_image_url = image_service.get_image_url(
-            tree.stem_holes[0].image_obj_key)
+        response.stem_hole = StemHoleInfo(
+            image_url=image_service.get_image_url(
+                str(tree.stem_holes[0].image_obj_key)),
+            image_thumb_url=image_service.get_image_url(
+                str(tree.stem_holes[0].thumb_obj_key)),
+            created_at=tree.stem_holes[0].created_at,
+        )
 
     if tree.tengus:
-        response.tengusu_image_url = image_service.get_image_url(
-            str(tree.tengus[0].image_obj_key))
+        response.tengusu = TengusuInfo(
+            image_url=image_service.get_image_url(
+                str(tree.tengus[0].image_obj_key)),
+            image_thumb_url=image_service.get_image_url(
+                str(tree.tengus[0].thumb_obj_key)),
+            created_at=tree.tengus[0].created_at,
+        )
 
     if tree.mushrooms:
-        response.mushroom_image_url = image_service.get_image_url(
-            str(tree.mushrooms[0].image_obj_key))
+        response.mushroom = MushroomInfo(
+            image_url=image_service.get_image_url(
+                str(tree.mushrooms[0].image_obj_key)),
+            image_thumb_url=image_service.get_image_url(
+                str(tree.mushrooms[0].thumb_obj_key)),
+            created_at=tree.mushrooms[0].created_at,
+        )
 
     return response
 
 
-@router.post("/{tree_uid}/stem", response_model=StemResponseSchema)
+@router.post("/{tree_uid}/stem", response_model=StemInfo)
 async def create_stem(
     tree_uid: str = Path(
         ...,
@@ -306,15 +349,18 @@ async def create_stem(
             "reason": "tree_id が存在しません"
         })
 
-    return StemResponseSchema(
+    return StemInfo(
         texture=texture,
         can_detected=can_detected,
         circumference=circumference,
         age=age,
+        image_url=image_service.get_image_url(image_key),
+        image_thumb_url=image_service.get_image_url(thumb_key),
+        created_at=datetime.now(timezone.utc)
     )
 
 
-@router.post("/tree/{tree_uid}/hole")
+@router.post("/tree/{tree_uid}/hole", response_model=StemHoleInfo)
 async def create_stem_hole(
     tree_uid: str = Path(
         ...,
@@ -375,10 +421,14 @@ async def create_stem_hole(
             }
         )
 
-    return {"status": "success"}
+    return StemHoleInfo(
+        image_url=image_service.get_image_url(image_key),
+        image_thumb_url=image_service.get_image_url(thumb_key),
+        created_at=datetime.now(timezone.utc)
+    )
 
 
-@router.post("/tree/{tree_uid}/tengusu")
+@router.post("/tree/{tree_uid}/tengusu", response_model=TengusuInfo)
 async def create_tengusu(
     tree_uid: str = Path(
         ...,
@@ -439,10 +489,14 @@ async def create_tengusu(
             }
         )
 
-    return {"status": "success"}
+    return TengusuInfo(
+        image_url=image_service.get_image_url(image_key),
+        image_thumb_url=image_service.get_image_url(thumb_key),
+        created_at=datetime.now(timezone.utc)
+    )
 
 
-@router.post("/tree/{tree_uid}/mushroom")
+@router.post("/tree/{tree_uid}/mushroom", response_model=MushroomInfo)
 async def create_mushroom(
     tree_uid: str = Path(
         ...,
@@ -503,7 +557,11 @@ async def create_mushroom(
             }
         )
 
-    return {"status": "success"}
+    return MushroomInfo(
+        image_url=image_service.get_image_url(image_key),
+        image_thumb_url=image_service.get_image_url(thumb_key),
+        created_at=datetime.now(timezone.utc)
+    )
 
 
 @router.get("/tree/count", response_model=TreeCountResponse)
