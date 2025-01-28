@@ -181,6 +181,24 @@ class TreeCountResponse(BaseModel):
     count: int = Field(..., description="条件に合致する桜の本数")
 
 
+class AreaCountItem(BaseModel):
+    """エリア（都道府県または市区町村）ごとの集計情報"""
+    prefecture_code: Optional[str] = Field(
+        None, description="都道府県コード（JIS X 0401に準拠）")
+    municipality_code: Optional[str] = Field(
+        None, description="市区町村コード（JIS X 0402に準拠）")
+    location: str = Field(..., description="都道府県名または市区町村名")
+    count: int = Field(..., description="桜の本数")
+    latitude: float = Field(..., description="エリアの中心緯度")
+    longitude: float = Field(..., description="エリアの中心経度")
+
+
+class AreaCountResponse(BaseModel):
+    """エリアごとの桜の本数レスポンス"""
+    total: int = Field(..., description="総本数")
+    areas: List[AreaCountItem] = Field(..., description="エリアごとの集計結果")
+
+
 class TreeStatsResponse(BaseModel):
     vitality_distribution: dict[int,
                                 int] = Field(..., description="元気度の分布（キー: 1-5の元気度、値: 本数）")

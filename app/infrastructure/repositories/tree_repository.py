@@ -1,11 +1,12 @@
-from typing import List, Optional
+from typing import List, Optional, Tuple
 
-from sqlalchemy import func, select
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.domain.models.models import (MunicipalityStats, Mushroom,
                                       PrefectureStats, Stem, StemHole, Tengus,
                                       Tree)
+from app.interfaces.schemas.tree import AreaCountItem
 
 
 class TreeRepository:
@@ -386,3 +387,72 @@ class TreeRepository:
         return self.db.query(MunicipalityStats).filter(
             MunicipalityStats.municipality_code == municipality_code
         ).first()
+
+    def get_area_counts(
+        self,
+        area_type: str,
+        latitude: float,
+        longitude: float,
+        radius: float,
+        vitality_range: Optional[Tuple[int, int]] = None,
+        age_range: Optional[Tuple[int, int]] = None,
+        has_hole: Optional[bool] = None,
+        has_tengusu: Optional[bool] = None,
+        has_mushroom: Optional[bool] = None
+    ) -> List[AreaCountItem]:
+        """エリアごとの桜の本数を取得する"""
+        query = self.db.query(
+            Tree.prefecture_code,
+            Tree.municipality_code,
+            Tree.location,
+            func.avg(Tree.latitude).label('latitude'),
+            func.avg(Tree.longitude).label('longitude'),
+            func.count(Tree.id).label('count')
+        ).filter(
+            func.ST_Distance_Sphere(
+                Tree.position,
+                func.ST_GeomFromText(f'POINT({longitude} {latitude})')
+            ) <= radius
+        )
+
+        # フィルタ条件を適用
+        if vitality_range:
+            query = query.filter(
+                Tree.vitality.between(vitality_range[0], vitality_range[1]))
+        if age_range:
+            query = query.join(Stem).filter(
+                Stem.age.between(age_range[0], age_range[1]))
+        if has_hole is not None:
+            if has_hole:
+                query = query.join(StemHole)
+            else:
+                query = query.outerjoin(StemHole).filter(StemHole.id.is_(None))
+        if has_tengusu is not None:
+            if has_tengusu:
+                query = query.join(Tengus)
+            else:
+                query = query.outerjoin(Tengus).filter(Tengus.id.is_(None))
+        if has_mushroom is not None:
+            if has_mushroom:
+                query = query.join(Mushroom)
+            else:
+                query = query.outerjoin(Mushroom).filter(Mushroom.id.is_(None))
+
+        # グループ化
+        if area_type == 'prefecture':
+            query = query.group_by(Tree.prefecture_code)
+        else:  # municipality
+            query = query.group_by(Tree.municipality_code)
+
+        results = query.all()
+        return [
+            AreaCountItem(
+                prefecture_code=r.prefecture_code if area_type == 'prefecture' else None,
+                municipality_code=r.municipality_code if area_type == 'municipality' else None,
+                location=r.location,
+                count=r[5] or 0,  # count is the 6th column
+                latitude=r[3] or 0,  # latitude is the 4th column
+                longitude=r[4] or 0  # longitude is the 5th column
+            )
+            for r in results
+        ]

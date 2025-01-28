@@ -10,9 +10,9 @@ from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.api.auth import get_current_user
-from app.interfaces.schemas.tree import (AreaStatsResponse, MushroomInfo,
-                                         StemHoleInfo, StemInfo, TengusuInfo,
-                                         TreeCountResponse,
+from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
+                                         MushroomInfo, StemHoleInfo, StemInfo,
+                                         TengusuInfo, TreeCountResponse,
                                          TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
                                          TreeSearchResponse, TreeSearchResult)
@@ -91,9 +91,9 @@ async def create_tree(
     )
 
 
-@router.post("/tree/{tree_uid}/decorated", response_model=TreeDecoratedResponse)
+@router.post("/tree/{tree_id}/decorated", response_model=TreeDecoratedResponse)
 async def update_tree_decorated_image(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="装飾する木のUID"
     ),
@@ -116,7 +116,7 @@ async def update_tree_decorated_image(
     桜の木全体の写真に、診断結果（元気度）に基づき情報を付与して装飾した写真を送信する。
     """
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -203,9 +203,9 @@ async def search_trees(
     )
 
 
-@router.get("/tree/{tree_uid}", response_model=TreeDetailResponse)
+@router.get("/tree/{tree_id}", response_model=TreeDetailResponse)
 async def get_tree_detail(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="取得したい桜の木のUID"
     ),
@@ -216,7 +216,7 @@ async def get_tree_detail(
     各木の詳細情報を取得する。
     """
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -282,9 +282,9 @@ async def get_tree_detail(
     return response
 
 
-@router.post("/{tree_uid}/stem", response_model=StemInfo)
+@router.post("/{tree_id}/stem", response_model=StemInfo)
 async def create_stem(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="幹の写真を登録する木のUID"
     ),
@@ -306,7 +306,7 @@ async def create_stem(
     """幹の写真を登録する"""
     # 木の取得
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -360,9 +360,9 @@ async def create_stem(
     )
 
 
-@router.post("/tree/{tree_uid}/hole", response_model=StemHoleInfo)
+@router.post("/tree/{tree_id}/hole", response_model=StemHoleInfo)
 async def create_stem_hole(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="幹の穴の写真を登録する木のUID"
     ),
@@ -386,7 +386,7 @@ async def create_stem_hole(
     """
     # 木の取得
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -428,9 +428,9 @@ async def create_stem_hole(
     )
 
 
-@router.post("/tree/{tree_uid}/tengusu", response_model=TengusuInfo)
+@router.post("/tree/{tree_id}/tengusu", response_model=TengusuInfo)
 async def create_tengusu(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="テングス病の写真を登録する木のUID"
     ),
@@ -454,7 +454,7 @@ async def create_tengusu(
     """
     # 木の取得
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -496,9 +496,9 @@ async def create_tengusu(
     )
 
 
-@router.post("/tree/{tree_uid}/mushroom", response_model=MushroomInfo)
+@router.post("/tree/{tree_id}/mushroom", response_model=MushroomInfo)
 async def create_mushroom(
-    tree_uid: str = Path(
+    tree_id: str = Path(
         ...,
         description="キノコの写真を登録する木のUID"
     ),
@@ -522,7 +522,7 @@ async def create_mushroom(
     """
     # 木の取得
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
+    tree = repository.get_tree(tree_id)
     if not tree:
         raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
@@ -564,86 +564,23 @@ async def create_mushroom(
     )
 
 
-@router.get("/tree/count", response_model=TreeCountResponse)
-async def get_tree_count(
-    prefecture: str | None = Query(
-        None,
-        description="都道府県名（都道府県名もしくは市区町村名のいずれかは必須）"
+@router.get("/tree/area_count", response_model=AreaCountResponse)
+async def get_area_count(
+    area_type: str = Query(
+        ...,
+        description="集計レベル（'prefecture'または'municipality'）"
     ),
-    city: str | None = Query(
-        None,
-        description="市区町村名（都道府県名もしくは市区町村名のいずれかは必須）"
+    latitude: float = Query(
+        ...,
+        description="検索の中心となる緯度"
     ),
-    vitality_min: int | None = Query(
-        None,
-        description="元気度の最小値（1-5）",
-        ge=1,
-        le=5
+    longitude: float = Query(
+        ...,
+        description="検索の中心となる経度"
     ),
-    vitality_max: int | None = Query(
-        None,
-        description="元気度の最大値（1-5）",
-        ge=1,
-        le=5
-    ),
-    age_min: int | None = Query(
-        None,
-        description="樹齢の最小値（年）",
-        ge=0
-    ),
-    age_max: int | None = Query(
-        None,
-        description="樹齢の最大値（年）",
-        ge=0
-    ),
-    has_hole: bool | None = Query(
-        None,
-        description="幹の穴の有無"
-    ),
-    has_tengusu: bool | None = Query(
-        None,
-        description="テングス病の有無"
-    ),
-    has_mushroom: bool | None = Query(
-        None,
-        description="キノコの有無"
-    ),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    ユーザから投稿された桜の本数を取得する。
-    """
-    if not prefecture and not city:
-        raise HTTPException(
-            status_code=400,
-            detail="都道府県名もしくは市区町村名のいずれかを指定してください"
-        )
-
-    repository = TreeRepository(db)
-    count = repository.count_trees(
-        prefecture=prefecture,
-        city=city,
-        vitality_range=(
-            vitality_min, vitality_max) if vitality_min or vitality_max else None,
-        age_range=(age_min, age_max) if age_min or age_max else None,
-        has_hole=has_hole,
-        has_tengusu=has_tengusu,
-        has_mushroom=has_mushroom
-    )
-
-    return {"count": count}
-
-'''
-@router.get("/tree/stats", response_model=TreeStatsResponse)
-async def get_tree_stats(
-    prefecture: str | None = Query(
-        None,
-        description="都道府県名（都道府県名もしくは市区町村名のいずれかは必須）"
-    ),
-    city: str | None = Query(
-        None,
-        description="市区町村名（都道府県名もしくは市区町村名のいずれかは必須）"
+    radius: float = Query(
+        ...,
+        description="検索範囲（メートル）"
     ),
     vitality_min: int | None = Query(
         None,
@@ -683,43 +620,33 @@ async def get_tree_stats(
     current_user: User = Depends(get_current_user)
 ):
     """
-    ユーザから投稿された桜の集計情報を取得する。
+    エリア（都道府県または市区町村）ごとの桜の本数を取得する。
+    area_typeで'prefecture'または'municipality'を指定し、
+    指定された範囲内の桜を集計する。
     """
-    if not prefecture and not city:
+    if area_type not in ['prefecture', 'municipality']:
         raise HTTPException(
             status_code=400,
-            detail="都道府県名もしくは市区町村名のいずれかを指定してください"
+            detail="area_typeは'prefecture'または'municipality'を指定してください"
         )
 
     repository = TreeRepository(db)
-    stats = repository.get_tree_stats(
-        prefecture=prefecture,
-        city=city,
-        vitality_range=(
-            vitality_min, vitality_max) if vitality_min or vitality_max else None,
-        age_range=(age_min, age_max) if age_min or age_max else None,
+    area_counts = repository.get_area_counts(
+        area_type=area_type,
+        latitude=latitude,
+        longitude=longitude,
+        radius=radius,
+        vitality_range=(vitality_min, vitality_max)
+        if vitality_min is not None and vitality_max is not None else None,
+        age_range=(age_min, age_max)
+        if age_min is not None and age_max is not None else None,
         has_hole=has_hole,
         has_tengusu=has_tengusu,
         has_mushroom=has_mushroom
     )
 
-    return {
-        "vitality_distribution": {
-            "1": stats["vitality_1"],
-            "2": stats["vitality_2"],
-            "3": stats["vitality_3"],
-            "4": stats["vitality_4"],
-            "5": stats["vitality_5"]
-        },
-        "age_distribution": {
-            "0-20": stats["age_0_20"],
-            "30-39": stats["age_30_39"],
-            "40-49": stats["age_40_49"],
-            "50-59": stats["age_50_59"],
-            "60+": stats["age_60_plus"]
-        }
-    }
-'''
+    total = sum(area.count for area in area_counts)
+    return AreaCountResponse(total=total, areas=area_counts)
 
 
 @router.get("/tree/area_stats", response_model=AreaStatsResponse)
@@ -736,34 +663,32 @@ async def get_area_stats(
     current_user: User = Depends(get_current_user)
 ):
     """
-    指定された地域（都道府県または市区町村）の統計情報を取得する。
+    指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
     都道府県コードまたは市区町村コードのいずれかは必須。
     """
-    if not prefecture_code and not municipality_code:
-        raise HTTPException(
-            status_code=400,
-            detail="都道府県コードまたは市区町村コードのいずれかを指定してください"
-        )
-
-    repository = TreeRepository(db)
-    stats = None
-
     if municipality_code:
         # 市区町村の統計情報を取得
+        repository = TreeRepository(db)
         stats = repository.get_municipality_stats(municipality_code)
         if not stats:
             raise HTTPException(
                 status_code=404,
                 detail="指定された市区町村の統計情報が見つかりません"
             )
-    else:
+    elif prefecture_code:
         # 都道府県の統計情報を取得
+        repository = TreeRepository(db)
         stats = repository.get_prefecture_stats(prefecture_code)
         if not stats:
             raise HTTPException(
                 status_code=404,
                 detail="指定された都道府県の統計情報が見つかりません"
             )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="都道府県コードまたは市区町村コードのいずれかを指定してください"
+        )
 
     return AreaStatsResponse(
         total_trees=stats.total_trees,
