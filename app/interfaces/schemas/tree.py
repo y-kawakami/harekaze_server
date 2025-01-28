@@ -188,6 +188,31 @@ class TreeStatsResponse(BaseModel):
         ..., description="樹齢の分布（キー: 0-20/30-39/40-49/50-59/60+、値: 本数）")
 
 
+class AreaStatsResponse(BaseModel):
+    """地域の統計情報レスポンス"""
+    total_trees: int = Field(..., description="桜の総本数")
+    location: str = Field(..., description="地域名（都道府県名または市区町村名）")
+    # 元気度の分布
+    vitality1_count: int = Field(..., description="元気度1の木の本数")
+    vitality2_count: int = Field(..., description="元気度2の木の本数")
+    vitality3_count: int = Field(..., description="元気度3の木の本数")
+    vitality4_count: int = Field(..., description="元気度4の木の本数")
+    vitality5_count: int = Field(..., description="元気度5の木の本数")
+    # 樹齢の分布
+    age20_count: int = Field(..., description="樹齢0-20年の木の本数")
+    age30_count: int = Field(..., description="樹齢30-39年の木の本数")
+    age40_count: int = Field(..., description="樹齢40-49年の木の本数")
+    age50_count: int = Field(..., description="樹齢50-59年の木の本数")
+    age60_count: int = Field(..., description="樹齢60年以上の木の本数")
+    # 問題の分布
+    hole_count: int = Field(..., description="幹の穴がある木の本数")
+    tengusu_count: int = Field(..., description="テングス病の木の本数")
+    mushroom_count: int = Field(..., description="キノコが生えている木の本数")
+    # 位置情報
+    latitude: float = Field(..., description="地域の中心緯度")
+    longitude: float = Field(..., description="地域の中心経度")
+
+
 class TreeDecoratedResponse(BaseModel):
     decorated_image_url: str = Field(..., description="装飾済み画像のURL")
     ogp_image_url: str = Field(..., description="OGP画像のURL")

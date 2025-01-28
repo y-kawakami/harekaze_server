@@ -1,9 +1,11 @@
 from typing import List, Optional
 
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.domain.models.models import Mushroom, Stem, StemHole, Tengus, Tree
+from app.domain.models.models import (MunicipalityStats, Mushroom,
+                                      PrefectureStats, Stem, StemHole, Tengus,
+                                      Tree)
 
 
 class TreeRepository:
@@ -372,3 +374,15 @@ class TreeRepository:
             "flowering_date": flowering_date,
             "full_bloom_date": full_bloom_date
         }
+
+    def get_prefecture_stats(self, prefecture_code: str) -> PrefectureStats | None:
+        """都道府県の統計情報を取得する"""
+        return self.db.query(PrefectureStats).filter(
+            PrefectureStats.prefecture_code == prefecture_code
+        ).first()
+
+    def get_municipality_stats(self, municipality_code: str) -> MunicipalityStats | None:
+        """市区町村の統計情報を取得する"""
+        return self.db.query(MunicipalityStats).filter(
+            MunicipalityStats.municipality_code == municipality_code
+        ).first()

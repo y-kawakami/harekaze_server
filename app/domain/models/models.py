@@ -192,6 +192,7 @@ class PrefectureStats(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
+    location: Mapped[str] = mapped_column(String(100))
     total_trees: Mapped[int] = mapped_column(Integer)
     vitality1_count: Mapped[int] = mapped_column(Integer)
     vitality2_count: Mapped[int] = mapped_column(Integer)
@@ -222,6 +223,7 @@ class MunicipalityStats(Base):
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
+    location: Mapped[str] = mapped_column(String(100))  # 自治体名
     total_trees: Mapped[int] = mapped_column(Integer)
     vitality1_count: Mapped[int] = mapped_column(Integer)
     vitality2_count: Mapped[int] = mapped_column(Integer)
