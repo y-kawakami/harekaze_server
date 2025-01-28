@@ -1,5 +1,6 @@
 import uuid
 from datetime import datetime, timezone
+from enum import IntEnum
 from typing import List, Optional
 
 from geoalchemy2.types import Geometry
@@ -8,6 +9,13 @@ from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, Numeric,
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
+
+
+class CensorshipStatus(IntEnum):
+    """検閲ステータス"""
+    UNCENSORED = 0  # 未検閲
+    APPROVED = 1    # 検閲OK
+    REJECTED = 2    # 検閲NG
 
 
 class User(Base):
@@ -48,8 +56,10 @@ class Tree(Base):
     decorated_image_obj_key: Mapped[Optional[str]] = mapped_column(
         String(255))
     ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
-        DateTime, default=datetime.now)
+        DateTime, default=datetime.now, index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -171,3 +181,62 @@ class Mushroom(Base):
 
     user: Mapped["User"] = relationship("User")
     tree: Mapped["Tree"] = relationship("Tree", back_populates="mushrooms")
+
+
+class PrefectureStats(Base):
+    __tablename__ = "prefecture_stats"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    prefecture_code: Mapped[str] = mapped_column(String(2), unique=True)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    position: Mapped[str] = mapped_column(Geometry('POINT'))
+    total_trees: Mapped[int] = mapped_column(Integer)
+    vitality1_count: Mapped[int] = mapped_column(Integer)
+    vitality2_count: Mapped[int] = mapped_column(Integer)
+    vitality3_count: Mapped[int] = mapped_column(Integer)
+    vitality4_count: Mapped[int] = mapped_column(Integer)
+    vitality5_count: Mapped[int] = mapped_column(Integer)
+    age20_count: Mapped[int] = mapped_column(Integer)
+    age30_count: Mapped[int] = mapped_column(Integer)
+    age40_count: Mapped[int] = mapped_column(Integer)
+    age50_count: Mapped[int] = mapped_column(Integer)
+    age60_count: Mapped[int] = mapped_column(Integer)
+    hole_count: Mapped[int] = mapped_column(Integer)
+    tengus_count: Mapped[int] = mapped_column(Integer)
+    mushroom_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),
+                                                 onupdate=lambda: datetime.now(timezone.utc))
+
+
+class MunicipalityStats(Base):
+    __tablename__ = "municipality_stats"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    municipality_code: Mapped[Optional[str]] = mapped_column(
+        String(8), index=True)  # 自治体コード（JIS X 0402）
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    position: Mapped[str] = mapped_column(Geometry('POINT'))
+    total_trees: Mapped[int] = mapped_column(Integer)
+    vitality1_count: Mapped[int] = mapped_column(Integer)
+    vitality2_count: Mapped[int] = mapped_column(Integer)
+    vitality3_count: Mapped[int] = mapped_column(Integer)
+    vitality4_count: Mapped[int] = mapped_column(Integer)
+    vitality5_count: Mapped[int] = mapped_column(Integer)
+    age20_count: Mapped[int] = mapped_column(Integer)
+    age30_count: Mapped[int] = mapped_column(Integer)
+    age40_count: Mapped[int] = mapped_column(Integer)
+    age50_count: Mapped[int] = mapped_column(Integer)
+    age60_count: Mapped[int] = mapped_column(Integer)
+    hole_count: Mapped[int] = mapped_column(Integer)
+    tengus_count: Mapped[int] = mapped_column(Integer)
+    mushroom_count: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),
+                                                 onupdate=lambda: datetime.now(timezone.utc))
