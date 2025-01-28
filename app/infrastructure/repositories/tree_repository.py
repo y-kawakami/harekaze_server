@@ -13,6 +13,7 @@ class TreeRepository:
     def create_tree(
         self,
         user_id: int,
+        uid: str,
         latitude: float,
         longitude: float,
         image_obj_key: str,
@@ -25,6 +26,7 @@ class TreeRepository:
     ) -> Tree:
         tree = Tree(
             user_id=user_id,
+            uid=uid,
             tree_number=self._generate_tree_number(),
             latitude=latitude,
             longitude=longitude,

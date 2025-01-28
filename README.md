@@ -58,3 +58,13 @@ HOMEBREW_NO_AUTO_UPDATE=1 brew install pkg-config
 HOMEBREW_NO_AUTO_UPDATE=1 brew install mysql-client
 uv init -p 3.12
 ```
+
+## DBリセット、マイグレーション再作成＆実行
+
+```bash
+rm -rf migrations/*
+# DBリセットも行う
+# alembic init migrations
+alembic revision --autogenerate -m "initial"
+alembic upgrade head
+```

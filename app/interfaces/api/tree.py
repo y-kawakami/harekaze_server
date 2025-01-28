@@ -47,9 +47,14 @@ async def create_tree(
     # サムネイル作成
     thumb_data = image_service.create_thumbnail(image_data)
 
+    # UIDを生成
+    tree_uid = str(uuid.uuid4())
+
     # 画像をアップロード
-    image_key = f"trees/{uuid.uuid4()}.jpg"
-    thumb_key = f"thumbnails/trees/{uuid.uuid4()}.jpg"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree_uid}/entire_{random_suffix}.jpg"
+    thumb_key = f"trees/{tree_uid}/entire_thumb_{random_suffix}.jpg"
+
     if not (image_service.upload_image(image_data, image_key) and
             image_service.upload_image(thumb_data, thumb_key)):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
@@ -58,6 +63,7 @@ async def create_tree(
     repository = TreeRepository(db)
     tree = repository.create_tree(
         user_id=current_user.id,  # 認証済みユーザーのIDを使用
+        uid=tree_uid,
         latitude=latitude,
         longitude=longitude,
         image_obj_key=image_key,
@@ -107,7 +113,8 @@ async def update_tree_decorated_image(
 
     # 画像をアップロード
     image_data = await image.read()
-    image_key = f"decorated/{uuid.uuid4()}.jpg"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree.id}/decorated_{random_suffix}.jpg"
     if not image_service.upload_image(image_data, image_key):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
 
@@ -254,6 +261,12 @@ async def create_stem(
     current_user: User = Depends(get_current_user)
 ):
     """幹の写真を登録する"""
+    # 木の取得
+    repository = TreeRepository(db)
+    tree = repository.get_tree(tree_uid)
+    if not tree:
+        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
+
     # 画像データを読み込む
     image_data = await image.read()
 
@@ -265,17 +278,12 @@ async def create_stem(
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
-    image_key = f"stems/{tree_uid}/{image.filename}"
-    thumb_key = f"thumbnails/stems/{tree_uid}/thumb_{image.filename}"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree.id}/stem_{random_suffix}.jpg"
+    thumb_key = f"trees/{tree.id}/stem_thumb_{random_suffix}.jpg"
     if not (image_service.upload_image(image_data, image_key) and
             image_service.upload_image(thumb_data, thumb_key)):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_uid)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
 
     # DBに保存
     try:
@@ -343,8 +351,9 @@ async def create_stem_hole(
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
-    image_key = f"holes/{uuid.uuid4()}.jpg"
-    thumb_key = f"thumbnails/holes/{uuid.uuid4()}.jpg"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree.id}/hole_{random_suffix}.jpg"
+    thumb_key = f"trees/{tree.id}/hole_thumb_{random_suffix}.jpg"
     if not (image_service.upload_image(image_data, image_key) and
             image_service.upload_image(thumb_data, thumb_key)):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
@@ -406,8 +415,9 @@ async def create_tengusu(
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
-    image_key = f"tengusu/{uuid.uuid4()}.jpg"
-    thumb_key = f"thumbnails/tengusu/{uuid.uuid4()}.jpg"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree.id}/tengusu_{random_suffix}.jpg"
+    thumb_key = f"trees/{tree.id}/tengusu_thumb_{random_suffix}.jpg"
     if not (image_service.upload_image(image_data, image_key) and
             image_service.upload_image(thumb_data, thumb_key)):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
@@ -469,8 +479,9 @@ async def create_mushroom(
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
-    image_key = f"mushrooms/{uuid.uuid4()}.jpg"
-    thumb_key = f"thumbnails/mushrooms/{uuid.uuid4()}.jpg"
+    random_suffix = str(uuid.uuid4())
+    image_key = f"trees/{tree.id}/mushroom_{random_suffix}.jpg"
+    thumb_key = f"trees/{tree.id}/mushroom_thumb_{random_suffix}.jpg"
     if not (image_service.upload_image(image_data, image_key) and
             image_service.upload_image(thumb_data, thumb_key)):
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
