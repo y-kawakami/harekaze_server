@@ -31,15 +31,15 @@ app = FastAPI(
     openapi_tags=[
         {
             "name": "auth",
-            "description": "認証に関するエンドポイント"
+            "description": "認証に関するエンドポイント."
         },
         {
             "name": "tree",
-            "description": "桜の木情報に関するエンドポイント"
+            "description": "桜の木情報に関するエンドポイント."
         },
         {
             "name": "info",
-            "description": "その他の情報取得に関するエンドポイント"
+            "description": "その他の情報取得に関するエンドポイント."
         }
     ]
 )

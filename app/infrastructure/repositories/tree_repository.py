@@ -10,57 +10,82 @@ class TreeRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def create_tree(self, user_id: str, contributor: str, latitude: float, longitude: float,
-                    image_obj_key: str, thumb_obj_key: str,
-                    vitality: float, position: str) -> Tree:
+    def create_tree(
+        self,
+        user_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str,
+        vitality: float,
+        position: str,
+        municipality: str,
+        prefecture_code: str,
+        municipality_code: str
+    ) -> Tree:
         tree = Tree(
             user_id=user_id,
-            contributor=contributor,
             tree_number=self._generate_tree_number(),
             latitude=latitude,
             longitude=longitude,
             position=func.ST_GeomFromText(position),
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
-            vitality=vitality
+            vitality=vitality,
+            municipality=municipality,
+            prefecture_code=prefecture_code,
+            municipality_code=municipality_code
         )
         self.db.add(tree)
         self.db.commit()
         self.db.refresh(tree)
         return tree
 
-    def update_tree_decorated_image(self, tree_id: str,
-                                    decorated_image_obj_key: str) -> bool:
-        tree = self.db.query(Tree).filter(Tree.id == tree_id).first()
-        if not tree:
-            return False
-        tree.decorated_image_obj_key = decorated_image_obj_key
+    def update_tree(self, tree: Tree) -> bool:
         self.db.commit()
         return True
 
-    def create_stem(self, user_id: str, tree_id: str, latitude: float,
-                    longitude: float, image_obj_key: str, thumb_obj_key: str,
-                    can_detected: bool, circumference: Optional[float],
-                    texture: int) -> Stem:
+    def create_stem(
+        self,
+        db: Session,
+        tree_id: int,
+        user_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str,
+        texture: int,
+        can_detected: bool,
+        circumference: Optional[float],
+        age: int,
+    ) -> Stem:
+        """幹の情報を保存する"""
         stem = Stem(
-            user_id=user_id,
             tree_id=tree_id,
+            user_id=user_id,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
+            texture=texture,
             can_detected=can_detected,
             circumference=circumference,
-            texture=texture
+            age=age,
         )
-        self.db.add(stem)
-        self.db.commit()
-        self.db.refresh(stem)
+        db.add(stem)
+        db.commit()
+        db.refresh(stem)
         return stem
 
-    def create_stem_hole(self, user_id: str, tree_id: str, latitude: float,
-                         longitude: float, image_obj_key: str,
-                         thumb_obj_key: str) -> bool:
+    def create_stem_hole(
+        self,
+        user_id: int,
+        tree_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str
+    ) -> bool:
         """幹の穴の写真を登録する"""
         tree = self.db.query(Tree).filter(Tree.id == tree_id).first()
         if not tree:
@@ -78,9 +103,15 @@ class TreeRepository:
         self.db.commit()
         return True
 
-    def create_tengus(self, user_id: str, tree_id: str, latitude: float,
-                      longitude: float, image_obj_key: str,
-                      thumb_obj_key: str) -> Tengus:
+    def create_tengus(
+        self,
+        user_id: int,
+        tree_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str
+    ) -> Tengus:
         tengus = Tengus(
             user_id=user_id,
             tree_id=tree_id,
@@ -94,9 +125,15 @@ class TreeRepository:
         self.db.refresh(tengus)
         return tengus
 
-    def create_mushroom(self, user_id: str, tree_id: str, latitude: float,
-                        longitude: float, image_obj_key: str,
-                        thumb_obj_key: str) -> bool:
+    def create_mushroom(
+        self,
+        user_id: int,
+        tree_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str
+    ) -> bool:
         """キノコの写真を登録する"""
         tree = self.db.query(Tree).filter(Tree.id == tree_id).first()
         if not tree:
@@ -114,16 +151,27 @@ class TreeRepository:
         self.db.commit()
         return True
 
-    def get_tree(self, tree_id: str) -> Optional[Tree]:
+    def get_tree(self, tree_uid: str) -> Optional[Tree]:
+        """UIDを使用してツリーを取得する"""
+        return self.db.query(Tree).filter(Tree.uid == tree_uid).first()
+
+    def get_tree_by_id(self, tree_id: int) -> Optional[Tree]:
+        """内部IDを使用してツリーを取得する（内部処理用）"""
         return self.db.query(Tree).filter(Tree.id == tree_id).first()
 
-    def search_trees(self, latitude: float, longitude: float, radius: float,
-                     vitality_range: Optional[tuple[int, int]] = None,
-                     age_range: Optional[tuple[int, int]] = None,
-                     has_hole: Optional[bool] = None,
-                     has_tengusu: Optional[bool] = None,
-                     has_mushroom: Optional[bool] = None,
-                     offset: int = 0, limit: int = 20) -> tuple[List[Tree], int]:
+    def search_trees(
+        self,
+        latitude: float,
+        longitude: float,
+        radius: float,
+        vitality_range: Optional[tuple[int, int]] = None,
+        age_range: Optional[tuple[int, int]] = None,
+        has_hole: Optional[bool] = None,
+        has_tengusu: Optional[bool] = None,
+        has_mushroom: Optional[bool] = None,
+        offset: int = 0,
+        limit: int = 20
+    ) -> tuple[List[Tree], int]:
         query = self.db.query(Tree).filter(
             func.ST_Distance_Sphere(
                 Tree.position,

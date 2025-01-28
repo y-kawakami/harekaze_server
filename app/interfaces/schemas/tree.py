@@ -3,6 +3,8 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
+from app.interfaces.schemas.stem import StemResponse as StemResponseSchema
+
 
 class TreeBase(BaseModel):
     latitude: float = Field(..., description="緯度")
@@ -10,13 +12,12 @@ class TreeBase(BaseModel):
 
 
 class TreeCreate(TreeBase):
-    contributor_name: str = Field(..., description="投稿者名")
+    contributor: str = Field(..., description="投稿者名")
 
 
 class TreeResponse(TreeBase):
     id: str = Field(..., description="登録した桜に付与されるID")
     tree_number: str = Field(..., description="表示用の番号（例: #23493）")
-    contributor: str = Field(..., description="投稿者名")
     vitality: int = Field(..., description="元気度（1-5の整数値）", ge=1, le=5)
     location: str = Field(..., description="撮影場所（例: 東京都千代田区）")
     created_at: datetime = Field(..., description="撮影日時（ISO8601形式）")
@@ -103,8 +104,13 @@ class TreeSearchRequest(BaseModel):
 class TreeSearchResult(BaseModel):
     id: str = Field(..., description="桜のID")
     tree_number: str = Field(..., description="表示用の番号（例: #23493）")
-    contributor_name: str = Field(..., description="投稿者名")
+    contributor: Optional[str] = Field(None, description="投稿者名")
     thumb_url: str = Field(..., description="サムネイル画像のURL")
+    municipality: Optional[str] = Field(None, description="自治体名（例: 千代田区）")
+    prefecture_code: Optional[str] = Field(
+        None, description="都道府県コード（JIS X 0401に準拠）")
+    municipality_code: Optional[str] = Field(
+        None, description="自治体コード（JIS X 0402に準拠）")
 
     class Config:
         from_attributes = True
@@ -116,9 +122,15 @@ class TreeSearchResponse(BaseModel):
 
 
 class TreeDetailResponse(TreeResponse):
-    contributor: str = Field(..., description="投稿者名")
+    contributor: Optional[str] = Field(None, description="投稿者名")
     image_url: str = Field(..., description="桜の木全体の写真のURL")
-    stem: Optional[StemResponse] = Field(None, description="幹の情報（存在する場合のみ）")
+    municipality: Optional[str] = Field(None, description="自治体名（例: 千代田区）")
+    prefecture_code: Optional[str] = Field(
+        None, description="都道府県コード（JIS X 0401に準拠）")
+    municipality_code: Optional[str] = Field(
+        None, description="自治体コード（JIS X 0402に準拠）")
+    stem: Optional[StemResponseSchema] = Field(
+        None, description="幹の情報（存在する場合のみ）")
     stem_hole_image_url: Optional[str] = Field(
         None, description="幹の穴の写真のURL（存在する場合のみ）")
     tengusu_image_url: Optional[str] = Field(

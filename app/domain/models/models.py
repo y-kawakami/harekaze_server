@@ -1,10 +1,11 @@
 import uuid
 from datetime import datetime, timezone
+from typing import List, Optional
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import (Boolean, Column, DateTime, Float, ForeignKey, Integer,
-                        Numeric, String)
-from sqlalchemy.orm import relationship
+from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, Numeric,
+                        String)
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
 
@@ -12,124 +13,158 @@ from app.infrastructure.database.database import Base
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    ip_addr = Column(String(45))  # IPv6アドレスも考慮して45文字
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
-    updated_at = Column(DateTime, default=lambda: datetime.now(timezone.utc),
-                        onupdate=lambda: datetime.now(timezone.utc))
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    ip_addr: Mapped[str] = mapped_column(String(45))  # IPv6アドレスも考慮して45文字
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),
+                                                 onupdate=lambda: datetime.now(timezone.utc))
 
 
 class Tree(Base):
     __tablename__ = "trees"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    tree_number = Column(Integer, nullable=False)
-    contributor = Column(String(100))
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
-    position = Column(Geometry('POINT'), nullable=False)
-    image_obj_key = Column(String(255))
-    thumb_obj_key = Column(String(255))
-    decorated_image_obj_key = Column(String(255))
-    vitality = Column(Float)
-    created_at = Column(DateTime, default=datetime.now(
-        timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc),
-                        nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
+    contributor: Mapped[str] = mapped_column(String(100), nullable=True)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    position: Mapped[str] = mapped_column(Geometry('POINT'))
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    decorated_image_obj_key: Mapped[str] = mapped_column(
+        String(255), nullable=True)
+    vitality: Mapped[float] = mapped_column(Float)
+    municipality: Mapped[str] = mapped_column(String(100))  # 自治体名
+    prefecture_code: Mapped[str] = mapped_column(
+        String(2))  # 都道府県コード（JIS X 0401）
+    municipality_code: Mapped[str] = mapped_column(
+        String(5))  # 自治体コード（JIS X 0402）
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now, onupdate=datetime.now)
 
-    user = relationship("User")
-    stem = relationship("Stem", back_populates="tree", uselist=False)
-    stem_holes = relationship("StemHole", back_populates="tree")
-    tengus = relationship("Tengus", back_populates="tree")
-    mushrooms = relationship("Mushroom", back_populates="tree")
+    # リレーションシップ
+    stem: Mapped[Optional["Stem"]] = relationship(
+        "Stem", uselist=False, back_populates="tree")
+    stem_holes: Mapped[List["StemHole"]] = relationship(
+        "StemHole", back_populates="tree")
+    tengus: Mapped[List["Tengus"]] = relationship(
+        "Tengus", back_populates="tree")
+    mushrooms: Mapped[List["Mushroom"]] = relationship(
+        "Mushroom", back_populates="tree")
 
 
 class Stem(Base):
     __tablename__ = "stems"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    image_obj_key = Column(String(255))
-    thumb_obj_key = Column(String(255))
-    can_detected = Column(Boolean, default=False, nullable=False)
-    circumference = Column(Numeric(10, 2))
-    texture = Column(Integer, nullable=False)
-    created_at = Column(DateTime, default=datetime.now(
-        timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc),
-                        nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'), nullable=False)
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    can_detected: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False)
+    circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
+    texture: Mapped[int] = mapped_column(Integer, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
 
-    user = relationship("User")
-    tree = relationship("Tree", back_populates="stem")
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="stem")
 
 
 class StemHole(Base):
     __tablename__ = "stem_holes"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    image_obj_key = Column(String(255))
-    thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(
-        timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc),
-                        nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'), nullable=False)
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
 
-    user = relationship("User")
-    tree = relationship("Tree", back_populates="stem_holes")
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="stem_holes")
 
 
 class Tengus(Base):
     __tablename__ = "tengus"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    image_obj_key = Column(String(255))
-    thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(
-        timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc),
-                        nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'), nullable=False)
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
 
-    user = relationship("User")
-    tree = relationship("Tree", back_populates="tengus")
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="tengus")
 
 
 class Mushroom(Base):
     __tablename__ = "mushrooms"
 
-    id = Column(String(36), primary_key=True,
-                default=lambda: str(uuid.uuid4()))
-    user_id = Column(String(36), ForeignKey('users.id'), nullable=False)
-    tree_id = Column(String(36), ForeignKey('trees.id'), nullable=False)
-    latitude = Column(Float)
-    longitude = Column(Float)
-    image_obj_key = Column(String(255))
-    thumb_obj_key = Column(String(255))
-    created_at = Column(DateTime, default=datetime.now(
-        timezone.utc), nullable=False)
-    updated_at = Column(DateTime, default=datetime.now(timezone.utc),
-                        onupdate=datetime.now(timezone.utc),
-                        nullable=False)
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'), nullable=False)
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
 
-    user = relationship("User")
-    tree = relationship("Tree", back_populates="mushrooms")
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="mushrooms")

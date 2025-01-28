@@ -1,6 +1,6 @@
 import io
 import os
-from typing import Tuple
+from typing import Optional, Tuple
 
 import boto3
 from botocore.exceptions import ClientError
@@ -78,3 +78,16 @@ class ImageService:
         """
         # TODO: 実際の画像解析モデルを実装
         return True, 3, True, 45.0
+
+    def analyze_stem_image(self, image_data: bytes) -> Tuple[int, bool, Optional[float], int]:
+        """
+        幹の写真を解析し、幹の模様、缶の検出有無、幹周、樹齢を返す
+        現時点ではモック実装
+        """
+        # モック実装: 実際にはここで画像解析を行う
+        texture = 3  # 1:滑らか~5:ガサガサ
+        can_detected = True
+        circumference = 150.0  # cm
+        age = 45  # 年
+
+        return texture, can_detected, circumference, age

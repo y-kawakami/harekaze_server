@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import (APIRouter, Cookie, Depends, HTTPException, Request,
+                     Response)
 from sqlalchemy.orm import Session
 
+from app.domain.models.models import User
 from app.domain.services.auth_service import AuthService
 from app.infrastructure.database.database import get_db
 
@@ -36,3 +38,45 @@ async def create_session(
     )
 
     return {"status": "success"}
+
+
+async def get_current_user(
+    session: str | None = Cookie(None, alias="session"),
+    db: Session = Depends(get_db)
+) -> User:
+    """
+    Cookieのセッショントークンからユーザーを取得する。
+    有効なセッションが存在しない場合は401エラーを返す。
+
+    Args:
+        session: Cookieから取得したセッショントークン
+        db: データベースセッション
+
+    Returns:
+        User: 認証されたユーザー
+
+    Raises:
+        HTTPException: 認証に失敗した場合
+    """
+    if not session:
+        raise HTTPException(
+            status_code=401,
+            detail="認証が必要です"
+        )
+
+    auth_service = AuthService(db)
+    uid = auth_service.verify_token(session)
+    if not uid:
+        raise HTTPException(
+            status_code=401,
+            detail="セッションが無効です"
+        )
+
+    user = db.query(User).filter(User.uid == uid).first()
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="ユーザーが見つかりません"
+        )
+
+    return user
