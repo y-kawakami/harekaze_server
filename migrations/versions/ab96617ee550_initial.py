@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: eeef175f542a
+Revision ID: ab96617ee550
 Revises: 
-Create Date: 2025-02-03 11:15:00.960290
+Create Date: 2025-02-03 11:56:56.734398
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from geoalchemy2 import Geometry
 
 # revision identifiers, used by Alembic.
-revision: str = 'eeef175f542a'
+revision: str = 'ab96617ee550'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -97,8 +97,8 @@ def upgrade() -> None:
     sa.Column('tree_id', sa.Integer(), nullable=False),
     sa.Column('can_detected', sa.Boolean(), nullable=False),
     sa.Column('circumference', sa.Numeric(precision=10, scale=2), nullable=True),
-    sa.Column('texture_real', sa.Float(), nullable=True),
     sa.Column('texture', sa.Integer(), nullable=True),
+    sa.Column('age', sa.Integer(), nullable=True),
     sa.Column('latitude', sa.Float(), nullable=False),
     sa.Column('longitude', sa.Float(), nullable=False),
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),

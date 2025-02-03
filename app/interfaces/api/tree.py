@@ -222,6 +222,198 @@ async def search_trees(
     )
 
 
+@router.get("/tree/area_count", response_model=AreaCountResponse)
+async def get_area_count(
+    area_type: str = Query(
+        ...,
+        description="集計レベル（'prefecture'または'municipality'）"
+    ),
+    latitude: float = Query(
+        ...,
+        description="検索の中心となる緯度"
+    ),
+    longitude: float = Query(
+        ...,
+        description="検索の中心となる経度"
+    ),
+    radius: float = Query(
+        ...,
+        description="検索範囲（メートル）"
+    ),
+    vitality_min: int | None = Query(
+        None,
+        description="元気度の最小値（1-5）",
+        ge=1,
+        le=5
+    ),
+    vitality_max: int | None = Query(
+        None,
+        description="元気度の最大値（1-5）",
+        ge=1,
+        le=5
+    ),
+    age_min: int | None = Query(
+        None,
+        description="樹齢の最小値（年）",
+        ge=0
+    ),
+    age_max: int | None = Query(
+        None,
+        description="樹齢の最大値（年）",
+        ge=0
+    ),
+    has_hole: bool | None = Query(
+        None,
+        description="幹の穴の有無"
+    ),
+    has_tengusu: bool | None = Query(
+        None,
+        description="テングス病の有無"
+    ),
+    has_mushroom: bool | None = Query(
+        None,
+        description="キノコの有無"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    エリア（都道府県または市区町村）ごとの桜の本数を取得する。
+    area_typeで'prefecture'または'municipality'を指定し、
+    指定された範囲内の桜を集計する。
+    """
+    logger.info(f"エリアごとの桜の本数取得開始: area_type={area_type}, lat={
+                latitude}, lon={longitude}, radius={radius}m")
+
+    try:
+        # area_typeのバリデーション
+        if area_type not in ['prefecture', 'municipality']:
+            logger.error(f"不正なarea_type: {area_type}")
+            raise HTTPException(
+                status_code=400,
+                detail="area_typeは'prefecture'または'municipality'を指定してください"
+            )
+
+        # パラメータのログ出力
+        logger.debug(f"検索条件: vitality_min={vitality_min}, vitality_max={vitality_max}, "
+                     f"age_min={age_min}, age_max={age_max}, "
+                     f"has_hole={has_hole}, has_tengusu={has_tengusu}, has_mushroom={has_mushroom}")
+
+        repository = TreeRepository(db)
+
+        # レンジパラメータの構築
+        vitality_range = None
+        if vitality_min is not None or vitality_max is not None:
+            vitality_range = (
+                vitality_min or 1,
+                vitality_max or 5
+            )
+            logger.debug(f"元気度範囲を設定: {vitality_range}")
+
+        age_range = None
+        if age_min is not None or age_max is not None:
+            age_range = (
+                age_min or 0,
+                age_max or 1000
+            )
+            logger.debug(f"樹齢範囲を設定: {age_range}")
+
+        # エリアごとの集計を取得
+        area_counts = repository.get_area_counts(
+            area_type=area_type,
+            latitude=latitude,
+            longitude=longitude,
+            radius=radius,
+            vitality_range=vitality_range,
+            age_range=age_range,
+            has_hole=has_hole,
+            has_tengusu=has_tengusu,
+            has_mushroom=has_mushroom
+        )
+
+        if not area_counts:
+            logger.info("指定された条件に一致する桜は見つかりませんでした")
+            return AreaCountResponse(total=0, areas=[])
+
+        # 合計を計算
+        total = sum(area.count for area in area_counts)
+        logger.info(f"集計完了: 合計{total}件のデータを取得")
+
+        return AreaCountResponse(total=total, areas=area_counts)
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception(f"エリアごとの桜の本数取得中に予期せぬエラーが発生: {str(e)}")
+        raise HTTPException(status_code=500, detail="内部サーバーエラーが発生しました")
+
+
+@router.get("/tree/area_stats", response_model=AreaStatsResponse)
+async def get_area_stats(
+    prefecture_code: str | None = Query(
+        None,
+        description="都道府県コード（JIS X 0401に準拠）"
+    ),
+    municipality_code: str | None = Query(
+        None,
+        description="市区町村コード（JIS X 0402に準拠）"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
+    都道府県コードまたは市区町村コードのいずれかは必須。
+    """
+    if municipality_code:
+        # 市区町村の統計情報を取得
+        repository = TreeRepository(db)
+        stats = repository.get_municipality_stats(municipality_code)
+        if not stats:
+            raise HTTPException(
+                status_code=404,
+                detail="指定された市区町村の統計情報が見つかりません"
+            )
+    elif prefecture_code:
+        # 都道府県の統計情報を取得
+        repository = TreeRepository(db)
+        stats = repository.get_prefecture_stats(prefecture_code)
+        if not stats:
+            raise HTTPException(
+                status_code=404,
+                detail="指定された都道府県の統計情報が見つかりません"
+            )
+    else:
+        raise HTTPException(
+            status_code=400,
+            detail="都道府県コードまたは市区町村コードのいずれかを指定してください"
+        )
+
+    return AreaStatsResponse(
+        total_trees=stats.total_trees,
+        location=stats.location,
+        # 元気度の分布
+        vitality1_count=stats.vitality1_count,
+        vitality2_count=stats.vitality2_count,
+        vitality3_count=stats.vitality3_count,
+        vitality4_count=stats.vitality4_count,
+        vitality5_count=stats.vitality5_count,
+        # 樹齢の分布
+        age20_count=stats.age20_count,
+        age30_count=stats.age30_count,
+        age40_count=stats.age40_count,
+        age50_count=stats.age50_count,
+        age60_count=stats.age60_count,
+        # 問題の分布
+        hole_count=stats.hole_count,
+        tengusu_count=stats.tengus_count,
+        mushroom_count=stats.mushroom_count,
+        # 位置情報
+        latitude=stats.latitude,
+        longitude=stats.longitude,
+    )
+
+
 @router.get("/tree/{tree_id}", response_model=TreeDetailResponse)
 async def get_tree_detail(
     tree_id: str = Path(
@@ -305,7 +497,7 @@ async def get_tree_detail(
     return response
 
 
-@router.post("/{tree_id}/stem", response_model=StemInfo)
+@router.post("/tree/{tree_id}/stem", response_model=StemInfo)
 async def create_stem(
     tree_id: str = Path(
         ...,
@@ -366,7 +558,8 @@ async def create_stem(
             circumference=circumference,
             age=age,
         )
-    except Exception:
+    except Exception as e:
+        logger.exception(e)
         raise HTTPException(status_code=400, detail={
             "error": 100,
             "reason": "tree_id が存在しません"
@@ -584,155 +777,4 @@ async def create_mushroom(
         image_url=image_service.get_image_url(image_key),
         image_thumb_url=image_service.get_image_url(thumb_key),
         created_at=datetime.now(timezone.utc)
-    )
-
-
-@router.get("/tree/area_count", response_model=AreaCountResponse)
-async def get_area_count(
-    area_type: str = Query(
-        ...,
-        description="集計レベル（'prefecture'または'municipality'）"
-    ),
-    latitude: float = Query(
-        ...,
-        description="検索の中心となる緯度"
-    ),
-    longitude: float = Query(
-        ...,
-        description="検索の中心となる経度"
-    ),
-    radius: float = Query(
-        ...,
-        description="検索範囲（メートル）"
-    ),
-    vitality_min: int | None = Query(
-        None,
-        description="元気度の最小値（1-5）",
-        ge=1,
-        le=5
-    ),
-    vitality_max: int | None = Query(
-        None,
-        description="元気度の最大値（1-5）",
-        ge=1,
-        le=5
-    ),
-    age_min: int | None = Query(
-        None,
-        description="樹齢の最小値（年）",
-        ge=0
-    ),
-    age_max: int | None = Query(
-        None,
-        description="樹齢の最大値（年）",
-        ge=0
-    ),
-    has_hole: bool | None = Query(
-        None,
-        description="幹の穴の有無"
-    ),
-    has_tengusu: bool | None = Query(
-        None,
-        description="テングス病の有無"
-    ),
-    has_mushroom: bool | None = Query(
-        None,
-        description="キノコの有無"
-    ),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    エリア（都道府県または市区町村）ごとの桜の本数を取得する。
-    area_typeで'prefecture'または'municipality'を指定し、
-    指定された範囲内の桜を集計する。
-    """
-    if area_type not in ['prefecture', 'municipality']:
-        raise HTTPException(
-            status_code=400,
-            detail="area_typeは'prefecture'または'municipality'を指定してください"
-        )
-
-    repository = TreeRepository(db)
-    area_counts = repository.get_area_counts(
-        area_type=area_type,
-        latitude=latitude,
-        longitude=longitude,
-        radius=radius,
-        vitality_range=(vitality_min, vitality_max)
-        if vitality_min is not None and vitality_max is not None else None,
-        age_range=(age_min, age_max)
-        if age_min is not None and age_max is not None else None,
-        has_hole=has_hole,
-        has_tengusu=has_tengusu,
-        has_mushroom=has_mushroom
-    )
-
-    total = sum(area.count for area in area_counts)
-    return AreaCountResponse(total=total, areas=area_counts)
-
-
-@router.get("/tree/area_stats", response_model=AreaStatsResponse)
-async def get_area_stats(
-    prefecture_code: str | None = Query(
-        None,
-        description="都道府県コード（JIS X 0401に準拠）"
-    ),
-    municipality_code: str | None = Query(
-        None,
-        description="市区町村コード（JIS X 0402に準拠）"
-    ),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    """
-    指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
-    都道府県コードまたは市区町村コードのいずれかは必須。
-    """
-    if municipality_code:
-        # 市区町村の統計情報を取得
-        repository = TreeRepository(db)
-        stats = repository.get_municipality_stats(municipality_code)
-        if not stats:
-            raise HTTPException(
-                status_code=404,
-                detail="指定された市区町村の統計情報が見つかりません"
-            )
-    elif prefecture_code:
-        # 都道府県の統計情報を取得
-        repository = TreeRepository(db)
-        stats = repository.get_prefecture_stats(prefecture_code)
-        if not stats:
-            raise HTTPException(
-                status_code=404,
-                detail="指定された都道府県の統計情報が見つかりません"
-            )
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="都道府県コードまたは市区町村コードのいずれかを指定してください"
-        )
-
-    return AreaStatsResponse(
-        total_trees=stats.total_trees,
-        location=stats.location,
-        # 元気度の分布
-        vitality1_count=stats.vitality1_count,
-        vitality2_count=stats.vitality2_count,
-        vitality3_count=stats.vitality3_count,
-        vitality4_count=stats.vitality4_count,
-        vitality5_count=stats.vitality5_count,
-        # 樹齢の分布
-        age20_count=stats.age20_count,
-        age30_count=stats.age30_count,
-        age40_count=stats.age40_count,
-        age50_count=stats.age50_count,
-        age60_count=stats.age60_count,
-        # 問題の分布
-        hole_count=stats.hole_count,
-        tengusu_count=stats.tengus_count,
-        mushroom_count=stats.mushroom_count,
-        # 位置情報
-        latitude=stats.latitude,
-        longitude=stats.longitude,
     )

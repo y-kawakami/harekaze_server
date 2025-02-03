@@ -1,5 +1,6 @@
 from typing import List, Optional, Tuple
 
+from loguru import logger
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -392,58 +393,90 @@ class TreeRepository:
         has_mushroom: Optional[bool] = None
     ) -> List[AreaCountItem]:
         """エリアごとの桜の本数を取得する"""
-        query = self.db.query(
-            Tree.prefecture_code,
-            Tree.municipality_code,
-            Tree.location,
-            func.avg(Tree.latitude).label('latitude'),
-            func.avg(Tree.longitude).label('longitude'),
-            func.count(Tree.id).label('count')
-        ).filter(
-            func.ST_Distance_Sphere(
-                Tree.position,
-                func.ST_GeomFromText(f'POINT({longitude} {latitude})')
-            ) <= radius
-        )
+        logger.info(f"エリアごとの桜の本数を取得開始: area_type={area_type}, lat={
+                    latitude}, lon={longitude}, radius={radius}m")
+        try:
+            # area_typeに応じてSELECT句を変更
+            if area_type == 'prefecture':
+                query = self.db.query(
+                    Tree.prefecture_code,
+                    func.avg(Tree.latitude).label('latitude'),
+                    func.avg(Tree.longitude).label('longitude'),
+                    func.count(Tree.id).label('count')
+                )
+            else:  # municipality
+                query = self.db.query(
+                    Tree.municipality_code,
+                    func.avg(Tree.latitude).label('latitude'),
+                    func.avg(Tree.longitude).label('longitude'),
+                    func.count(Tree.id).label('count')
+                )
 
-        # フィルタ条件を適用
-        if vitality_range:
             query = query.filter(
-                Tree.vitality.between(vitality_range[0], vitality_range[1]))
-        if age_range:
-            query = query.join(Stem).filter(
-                Stem.age.between(age_range[0], age_range[1]))
-        if has_hole is not None:
-            if has_hole:
-                query = query.join(StemHole)
-            else:
-                query = query.outerjoin(StemHole).filter(StemHole.id.is_(None))
-        if has_tengusu is not None:
-            if has_tengusu:
-                query = query.join(Tengus)
-            else:
-                query = query.outerjoin(Tengus).filter(Tengus.id.is_(None))
-        if has_mushroom is not None:
-            if has_mushroom:
-                query = query.join(Mushroom)
-            else:
-                query = query.outerjoin(Mushroom).filter(Mushroom.id.is_(None))
-
-        # グループ化
-        if area_type == 'prefecture':
-            query = query.group_by(Tree.prefecture_code)
-        else:  # municipality
-            query = query.group_by(Tree.municipality_code)
-
-        results = query.all()
-        return [
-            AreaCountItem(
-                prefecture_code=r.prefecture_code if area_type == 'prefecture' else None,
-                municipality_code=r.municipality_code if area_type == 'municipality' else None,
-                location=r.location,
-                count=r[5] or 0,  # count is the 6th column
-                latitude=r[3] or 0,  # latitude is the 4th column
-                longitude=r[4] or 0  # longitude is the 5th column
+                func.ST_Distance_Sphere(
+                    Tree.position,
+                    func.ST_GeomFromText(f'POINT({longitude} {latitude})')
+                ) <= radius
             )
-            for r in results
-        ]
+
+            # フィルタ条件を適用
+            if vitality_range:
+                logger.debug(f"元気度フィルタを適用: min={vitality_range[0]}, max={
+                             vitality_range[1]}")
+                query = query.filter(
+                    Tree.vitality.between(vitality_range[0], vitality_range[1]))
+            if age_range:
+                logger.debug(f"樹齢フィルタを適用: min={
+                             age_range[0]}, max={age_range[1]}")
+                query = query.join(Stem).filter(
+                    Stem.age.between(age_range[0], age_range[1]))
+            if has_hole is not None:
+                logger.debug(f"幹の穴フィルタを適用: has_hole={has_hole}")
+                if has_hole:
+                    query = query.join(StemHole)
+                else:
+                    query = query.outerjoin(StemHole).filter(
+                        StemHole.id.is_(None))
+            if has_tengusu is not None:
+                logger.debug(f"テングス病フィルタを適用: has_tengusu={has_tengusu}")
+                if has_tengusu:
+                    query = query.join(Tengus)
+                else:
+                    query = query.outerjoin(Tengus).filter(Tengus.id.is_(None))
+            if has_mushroom is not None:
+                logger.debug(f"キノコフィルタを適用: has_mushroom={has_mushroom}")
+                if has_mushroom:
+                    query = query.join(Mushroom)
+                else:
+                    query = query.outerjoin(Mushroom).filter(
+                        Mushroom.id.is_(None))
+
+            # グループ化
+            if area_type == 'prefecture':
+                logger.debug("都道府県単位でグループ化")
+                query = query.group_by(Tree.prefecture_code)
+            else:  # municipality
+                logger.debug("市区町村単位でグループ化")
+                query = query.group_by(Tree.municipality_code)
+
+            logger.debug("クエリ実行開始")
+            results = query.all()
+            logger.info(f"クエリ実行完了: {len(results)}件の結果を取得")
+
+            area_counts = [
+                AreaCountItem(
+                    prefecture_code=r[0] if area_type == 'prefecture' else None,
+                    municipality_code=r[0] if area_type == 'municipality' else None,
+                    location='TODO: 東京都',  # locationは集計時には不要
+                    count=r[3] or 0,  # countは4番目のカラム
+                    latitude=r[1] or 0,  # latitudeは2番目のカラム
+                    longitude=r[2] or 0  # longitudeは3番目のカラム
+                )
+                for r in results
+            ]
+            logger.debug("レスポンスの整形完了")
+            return area_counts
+
+        except Exception as e:
+            logger.exception(f"エリアごとの桜の本数取得中にエラー発生: {str(e)}")
+            raise

@@ -88,8 +88,8 @@ class Stem(Base):
     can_detected: Mapped[bool] = mapped_column(
         Boolean, default=False)
     circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
-    texture_real: Mapped[Optional[float]] = mapped_column(Float)
     texture: Mapped[Optional[int]] = mapped_column(Integer)
+    age: Mapped[Optional[int]] = mapped_column(Integer)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))

@@ -46,7 +46,7 @@ class StemInfo(TreeImageInfo):
         None, description="幹の模様（1:滑らか~5:ガサガサ）", ge=1, le=5)
     can_detected: bool = Field(..., description="350ml缶の検出有無（樹齢推定に使用）")
     circumference: Optional[float] = Field(None, description="幹周（cm）（樹齢推定に使用）")
-    age: int = Field(..., description="推定樹齢（年）")
+    age: Optional[int] = Field(None, description="推定樹齢（年）")
     created_at: datetime = Field(..., description="投稿日時")
 
 
