@@ -23,21 +23,20 @@ class TreeRepository:
         thumb_obj_key: str,
         vitality: float,
         position: str,
-        municipality: str,
+        location: str,
         prefecture_code: str,
         municipality_code: str
     ) -> Tree:
         tree = Tree(
             user_id=user_id,
             uid=uid,
-            tree_number=self._generate_tree_number(),
             latitude=latitude,
             longitude=longitude,
             position=func.ST_GeomFromText(position),
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
             vitality=vitality,
-            municipality=municipality,
+            location=location,
             prefecture_code=prefecture_code,
             municipality_code=municipality_code
         )
@@ -214,14 +213,6 @@ class TreeRepository:
         total = query.count()
         trees = query.offset(offset).limit(limit).all()
         return trees, total
-
-    def _generate_tree_number(self) -> int:
-        """次の tree_number を生成する"""
-        last_tree = self.db.query(Tree).order_by(
-            Tree.tree_number.desc()).first()
-        if not last_tree:
-            return 1
-        return last_tree.tree_number + 1
 
     def count_trees(
         self,

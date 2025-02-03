@@ -20,3 +20,11 @@ htmlcov/
 # IDEs
 .idea/
 .vscode/
+weights/
+
+app/stem_smoothness/
+app/tree_vitality_noleaf/
+app/trunk_segmentation/
+app/branch_segmentation/
+
+logs/

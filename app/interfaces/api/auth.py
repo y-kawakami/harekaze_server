@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import (APIRouter, Cookie, Depends, HTTPException, Request,
                      Response)
 from sqlalchemy.orm import Session
@@ -22,10 +24,11 @@ async def create_session(
     auth_service = AuthService(db)
     client_ip = request.headers.get(
         "X-Forwarded-For") or getattr(request.client, "host", "unknown")
-    user = auth_service.get_or_create_user(client_ip)
+    user_uid = str(uuid.uuid4())
+    user = auth_service.get_or_create_user(str(user_uid), client_ip)
 
     # JWTトークンを生成
-    jwt_token = auth_service.create_session(str(user.id))
+    jwt_token = auth_service.create_session(user.uid)
 
     # Cookieを設定
     response.set_cookie(
@@ -41,7 +44,7 @@ async def create_session(
 
 
 async def get_current_user(
-    session: str | None = Cookie(None, alias="session"),
+    session: str | None = Cookie(None, alias="session_token"),
     db: Session = Depends(get_db)
 ) -> User:
     """

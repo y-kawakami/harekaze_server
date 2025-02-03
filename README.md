@@ -76,7 +76,7 @@ uv sync
 ### DBリセット、マイグレーション再作成＆実行
 
 ```bash
-rm -rf migrations/*
+rm -rf migrations/versions/*
 # DBリセットも行う
 # alembic init migrations
 alembic revision --autogenerate -m "initial"
@@ -93,4 +93,16 @@ alembic downgrade -1
 
 ```bash
 alembic downgrade base
+```
+
+
+## Server 公開
+
+
+https://harekaze-kkcraft.jp.ngrok.io/docs
+ID: harekaze
+PASS: harekaze2025
+
+```bash
+ngrok http --region=ap --basic-auth "harekaze:harekaze2025"--domain=harekaze-kkcraft.jp.ngrok.io 8000
 ```

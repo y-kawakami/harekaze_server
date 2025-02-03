@@ -5,10 +5,14 @@ from typing import Optional, Tuple
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+from loguru import logger
 from PIL import Image
 
 # .envファイルを読み込む
 load_dotenv()
+
+
+TREE_IMAGE_PREFIX = "trees"
 
 
 class ImageService:
@@ -33,19 +37,22 @@ class ImageService:
         try:
             self.s3.put_object(
                 Bucket=self.bucket_name,
-                Key=object_key,
+                Key=f'{TREE_IMAGE_PREFIX}/{object_key}',
                 Body=image_data,
-                ContentType='image/jpeg'
+                ContentType='image/jpeg',
+                ACL='public-read'
             )
             return True
-        except ClientError:
+        except ClientError as e:
+            logger.error(f"Upload Image Client Error: {e}")
+            logger.exception(e)
             return False
 
     def get_image_url(self, object_key: str) -> str:
         """画像のURLを取得する"""
         if not object_key:
             return ""
-        return f"https://{self.bucket_name}.s3.ap-northeast-1.amazonaws.com/{object_key}"
+        return f"https://{self.bucket_name}.s3.ap-northeast-1.amazonaws.com/{TREE_IMAGE_PREFIX}/{object_key}"
 
     def get_presigned_url(self, object_key: str, expires_in: int = 3600) -> str:
         """
@@ -63,7 +70,7 @@ class ImageService:
                 'get_object',
                 Params={
                     'Bucket': self.bucket_name,
-                    'Key': object_key
+                    'Key': f'{TREE_IMAGE_PREFIX}/{object_key}'
                 },
                 ExpiresIn=expires_in
             )

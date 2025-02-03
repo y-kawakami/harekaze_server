@@ -1,8 +1,10 @@
 import os
+import uuid
 from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from jose import JWTError, jwt
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.domain.models.models import User
@@ -14,6 +16,17 @@ load_dotenv()
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key")  # デフォルト値はローカル開発用
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30日間
+
+# loguruの設定
+logger.add(
+    "logs/app.log",  # ログファイルのパス
+    rotation="500 MB",  # ログローテーション
+    retention="10 days",  # ログの保持期間
+    level="INFO",  # ログレベル
+    # ログフォーマット
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
+    serialize=True  # JSON形式で出力
+)
 
 
 class AuthService:
@@ -61,7 +74,7 @@ class AuthService:
         except JWTError:
             return None
 
-    def get_or_create_user(self, ip_addr: str) -> User:
+    def get_or_create_user(self, uid: str, ip_addr: str) -> User:
         """
         IPアドレスからユーザを取得または作成する。
         新規作成時はUUIDが自動的に生成される。
@@ -71,11 +84,11 @@ class AuthService:
         Returns:
             User: 取得または作成されたユーザーオブジェクト
         """
-        user = self.db.query(User).filter(User.ip_addr == ip_addr).first()
+        user = self.db.query(User).filter(User.uid == uid).first()
         if user:
             return user
 
-        user = User(ip_addr=ip_addr)  # UIDは自動生成される
+        user = User(uid=uid, ip_addr=ip_addr)  # UIDは自動生成される
         self.db.add(user)
         self.db.commit()
         self.db.refresh(user)

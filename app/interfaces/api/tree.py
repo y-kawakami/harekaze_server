@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 from fastapi import (APIRouter, Depends, File, Form, HTTPException, Path,
                      Query, UploadFile)
+from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.domain.models.models import User
@@ -41,42 +42,60 @@ async def create_tree(
     """
     桜の木全体の写真を登録する。
     """
+    logger.info(f"新しい木の登録を開始: ユーザーID={current_user.id}, 位置={
+                latitude},{longitude}")
+
     # 画像を解析
     image_data = await image.read()
+    logger.debug("画像解析を開始")
     vitality, tree_detected = image_service.analyze_tree_vitality(image_data)
     if not tree_detected:
+        logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
         raise HTTPException(status_code=400, detail="木が検出できません")
 
     # サムネイル作成
+    logger.debug("サムネイル作成を開始")
     thumb_data = image_service.create_thumbnail(image_data)
 
     # UIDを生成
     tree_uid = str(uuid.uuid4())
+    logger.debug(f"生成されたツリーUID: {tree_uid}")
 
     # 画像をアップロード
     random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree_uid}/entire_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree_uid}/entire_thumb_{random_suffix}.jpg"
+    image_key = f"{tree_uid}/entire_{random_suffix}.jpg"
+    thumb_key = f"{tree_uid}/entire_thumb_{random_suffix}.jpg"
 
-    if not (image_service.upload_image(image_data, image_key) and
-            image_service.upload_image(thumb_data, thumb_key)):
+    try:
+        if not (image_service.upload_image(image_data, image_key) and
+                image_service.upload_image(thumb_data, thumb_key)):
+            logger.error(f"画像アップロード失敗: ツリーUID={tree_uid}")
+            raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
+        logger.debug(f"画像アップロード成功: image_key={image_key}")
+    except Exception as e:
+        logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
 
     # DBに登録
-    repository = TreeRepository(db)
-    tree = repository.create_tree(
-        user_id=current_user.id,  # 認証済みユーザーのIDを使用
-        uid=tree_uid,
-        latitude=latitude,
-        longitude=longitude,
-        image_obj_key=image_key,
-        thumb_obj_key=thumb_key,
-        vitality=vitality,
-        position=f'POINT({longitude} {latitude})',
-        municipality="TODO",  # TODO: 逆ジオコーディングAPIから取得
-        prefecture_code="13",  # TODO: 逆ジオコーディングAPIから取得
-        municipality_code="13101"  # TODO: 逆ジオコーディングAPIから取得
-    )
+    try:
+        repository = TreeRepository(db)
+        tree = repository.create_tree(
+            user_id=current_user.id,
+            uid=tree_uid,
+            latitude=latitude,
+            longitude=longitude,
+            image_obj_key=image_key,
+            thumb_obj_key=thumb_key,
+            vitality=vitality,
+            position=f'POINT({longitude} {latitude})',
+            location="東京都多摩市",  # TODO: 逆ジオコーディングAPIから取得
+            prefecture_code="13",  # TODO: 逆ジオコーディングAPIから取得
+            municipality_code="132241"  # TODO: 逆ジオコーディングAPIから取得
+        )
+        logger.info(f"木の登録が完了: ツリーUID={tree_uid}, 元気度={vitality}")
+    except Exception as e:
+        logger.exception(f"DB登録中にエラー発生: {str(e)}")
+        raise HTTPException(status_code=500, detail="データベースへの登録に失敗しました")
 
     return TreeResponse(
         id=tree.uid,
