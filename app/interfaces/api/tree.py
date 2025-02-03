@@ -251,6 +251,10 @@ async def get_tree_detail(
         municipality_code=tree.municipality_code or None,
         image_url=image_service.get_image_url(str(tree.image_obj_key)),
         image_thumb_url=image_service.get_image_url(str(tree.thumb_obj_key)),
+        decorated_image_url=image_service.get_image_url(
+            tree.decorated_image_obj_key) if tree.decorated_image_obj_key else None,
+        ogp_image_url=image_service.get_image_url(
+            tree.ogp_image_obj_key) if tree.ogp_image_obj_key else None,
         stem=None,
         stem_hole=None,
         tengusu=None,

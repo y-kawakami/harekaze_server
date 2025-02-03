@@ -158,6 +158,8 @@ class TreeDetailResponse(TreeResponse):
     contributor: Optional[str] = Field(None, description="投稿者名")
     image_url: str = Field(..., description="桜の木全体の写真のURL")
     image_thumb_url: str = Field(..., description="桜の木全体の写真のサムネイルURL")
+    decorated_image_url: Optional[str] = Field(..., description="装飾済み画像のURL")
+    ogp_image_url: Optional[str] = Field(..., description="OGP画像のURL")
     stem: Optional[StemInfo] = Field(
         None, description="幹の情報（存在する場合のみ）")
     stem_hole: Optional[StemHoleInfo] = Field(

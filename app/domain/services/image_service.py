@@ -89,17 +89,17 @@ class ImageService:
         # TODO: 実際の画像解析モデルを実装
         return 4.2, True
 
-    def analyze_stem(self, image_data: bytes) -> Tuple[bool, int, bool, float]:
-        """
-        幹の画像から情報を分析する
-        Returns:
-            Tuple[bool, int, bool, float]:
-                (幹が検出できたか, 幹の模様スコア, 缶が検出できたか, 推定樹齢)
-        Note:
-            現状はモック実装
-        """
-        # TODO: 実際の画像解析モデルを実装
-        return True, 3, True, 45.0
+    # def analyze_stem(self, image_data: bytes) -> Tuple[bool, int, bool, float]:
+    #    """
+    #    幹の画像から情報を分析する
+    #    Returns:
+    #        Tuple[bool, int, bool, float]:
+    #            (幹が検出できたか, 幹の模様スコア, 缶が検出できたか, 推定樹齢)
+    #    Note:
+    #        現状はモック実装
+    #    """
+    #    # TODO: 実際の画像解析モデルを実装
+    #    return True, 3, True, 45.0
 
     def analyze_stem_image(self, image_data: bytes) -> Tuple[int, bool, Optional[float], int]:
         """
