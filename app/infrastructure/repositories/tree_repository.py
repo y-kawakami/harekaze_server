@@ -177,7 +177,7 @@ class TreeRepository:
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
-        query = self.db.query(Tree).filter(
+        query = self.db.query(Tree).outerjoin(Stem).filter(
             func.ST_Distance_Sphere(
                 Tree.position,
                 func.ST_GeomFromText(f'POINT({longitude} {latitude})')

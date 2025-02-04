@@ -13,8 +13,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          MushroomInfo, StemHoleInfo, StemInfo,
-                                         TengusuInfo, TreeCountResponse,
-                                         TreeDecoratedResponse,
+                                         TengusuInfo, TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
                                          TreeSearchResponse, TreeSearchResult)
 
@@ -218,6 +217,7 @@ async def search_trees(
             prefecture_code=tree.prefecture_code or None,
             municipality_code=tree.municipality_code or None,
             created_at=tree.created_at,
+            age=tree.stem.age if tree.stem else None
         ) for tree in trees]
     )
 

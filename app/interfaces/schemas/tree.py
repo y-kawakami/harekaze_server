@@ -135,6 +135,7 @@ class TreeSearchResult(BaseModel):
     contributor: Optional[str] = Field(None, description="投稿者名")
     vitality: Optional[int] = Field(
         None, description="元気度（1-5の整数値）", ge=1, le=5)
+    age: Optional[int] = Field(None, description="推定樹齢（年）")
     image_thumb_url: str = Field(..., description="サムネイル画像のURL")
     latitude: float = Field(..., description="緯度")
     longitude: float = Field(..., description="経度")
