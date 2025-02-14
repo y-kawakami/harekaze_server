@@ -194,6 +194,10 @@ class AreaCountItem(BaseModel):
     count: int = Field(..., description="桜の本数")
     latitude: float = Field(..., description="エリアの中心緯度")
     longitude: float = Field(..., description="エリアの中心経度")
+    # 最新の撮影者の情報
+    latest_nickname: Optional[str] = Field(None, description="最新の撮影者のニックネーム")
+    latest_image_thumb_url: Optional[str] = Field(
+        None, description="最新の木のサムネイル画像のURL")
 
 
 class AreaCountResponse(BaseModel):

@@ -36,7 +36,8 @@ async def create_session(
         value=jwt_token,
         httponly=True,  # JavaScriptからのアクセスを防ぐ
         secure=True,    # HTTPS接続でのみ送信
-        samesite="lax",  # CSRF対策
+        # samesite="lax",  # CSRF対策
+        samesite="none",  # クロスサイトリクエストを許可
         max_age=60 * 60 * 24 * 30  # 30日間有効
     )
 
