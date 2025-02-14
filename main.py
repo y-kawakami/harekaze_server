@@ -47,7 +47,15 @@ app = FastAPI(
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 本番環境では適切に制限すること
+    allow_origins=[
+        "https://develop.d2t1gkpzg4f6i0.amplifyapp.com",
+        "https://release-dev-inner.d2t1gkpzg4f6i0.amplifyapp.com",
+        "http://localhost:3000",
+        "http://localhost:8000",
+        "http://localhost:8080"
+        "https://localhost:3000",
+        "https://localhost:8000",
+        "https://localhost:8080"],  # 本番環境では適切に制限すること
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -35,6 +35,11 @@ async def create_tree(
         ...,
         description="桜の木全体の写真（推奨サイズ: 1080x1920）"
     ),
+    # TODO: ニックネーム
+    nickname: str = Form(
+        ...,
+        description="投稿者のニックネーム"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -168,12 +173,20 @@ async def search_trees(
     latitude: float = Query(..., description="検索の中心となる緯度"),
     longitude: float = Query(..., description="検索の中心となる経度"),
     radius: float = Query(..., description="検索範囲（メートル）"),
+    # TODO: フィルター条件を追加
+    municipality_code: str | None = Query(
+        None, description="市区町村コード（JIS X 0402に準拠）"),
     page: int = Query(1, description="ページ番号", ge=1),
     per_page: int = Query(10, description="1ページあたりの件数", ge=1, le=100),
     vitality_min: int | None = Query(
         None, description="元気度の最小値（1-5）", ge=1, le=5),
     vitality_max: int | None = Query(
         None, description="元気度の最大値（1-5）", ge=1, le=5),
+    # TODO: 樹齢の範囲を追加
+    age_min: int | None = Query(
+        None, description="年齢の最小値（0-100）", ge=0, le=100),
+    age_max: int | None = Query(
+        None, description="元気度の最大値（0-1000）", ge=0, le=1000),
     has_hole: bool | None = Query(None, description="幹の穴の有無"),
     has_tengusu: bool | None = Query(None, description="テングス病の有無"),
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
