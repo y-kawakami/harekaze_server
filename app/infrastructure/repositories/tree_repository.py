@@ -215,6 +215,11 @@ class TreeRepository:
                 Tree.vitality >= vitality_range[0],
                 Tree.vitality <= vitality_range[1]
             )
+        if age_range:
+            query = query.join(Stem).filter(
+                Stem.age >= age_range[0],
+                Stem.age <= age_range[1]
+            )
 
         if has_hole is not None:
             subq = self.db.query(StemHole.tree_id).distinct()

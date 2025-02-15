@@ -61,6 +61,14 @@ def search_trees(
         )
         logger.debug(f"元気度の範囲を指定: {vitality_range}")
 
+    age_range = None
+    if age_min is not None or age_max is not None:
+        age_range = (
+            age_min or 0,
+            age_max or 1000
+        )
+        logger.debug(f"年齢の範囲を指定: {age_range}")
+
     # リポジトリで検索を実行
     repository = TreeRepository(db)
     trees, total = repository.search_trees(
@@ -68,6 +76,7 @@ def search_trees(
         longitude=longitude,
         radius=radius,
         vitality_range=vitality_range,
+        age_range=age_range,
         has_hole=has_hole,
         has_tengusu=has_tengusu,
         has_mushroom=has_mushroom,

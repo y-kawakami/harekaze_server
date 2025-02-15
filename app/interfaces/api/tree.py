@@ -123,7 +123,6 @@ async def search_trees(
         None, description="元気度の最小値（1-5）", ge=1, le=5),
     vitality_max: int | None = Query(
         None, description="元気度の最大値（1-5）", ge=1, le=5),
-    # TODO: 樹齢の範囲を追加
     age_min: int | None = Query(
         None, description="年齢の最小値（0-100）", ge=0, le=100),
     age_max: int | None = Query(
