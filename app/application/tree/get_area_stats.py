@@ -4,14 +4,12 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError, TreeNotFoundError
-from app.domain.models.models import User
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import AreaStatsResponse
 
 
 def get_area_stats(
     db: Session,
-    current_user: User,
     prefecture_code: Optional[str],
     municipality_code: Optional[str],
 ) -> AreaStatsResponse:

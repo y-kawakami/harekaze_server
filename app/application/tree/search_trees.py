@@ -3,7 +3,6 @@ from typing import Optional
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeSearchResponse, TreeSearchResult
@@ -11,7 +10,6 @@ from app.interfaces.schemas.tree import TreeSearchResponse, TreeSearchResult
 
 def search_trees(
     db: Session,
-    current_user: User,
     latitude: float,
     longitude: float,
     radius: float,

@@ -131,7 +131,6 @@ async def search_trees(
     has_tengusu: bool | None = Query(None, description="テングス病の有無"),
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(ImageService)
 ):
     """
@@ -139,7 +138,6 @@ async def search_trees(
     """
     return search_trees_app(
         db=db,
-        current_user=current_user,
         latitude=latitude,
         longitude=longitude,
         radius=radius,
@@ -209,8 +207,7 @@ async def get_area_count(
         None,
         description="キノコの有無"
     ),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Session = Depends(get_db)
 ):
     """
     エリア（都道府県または市区町村）ごとの桜の本数を取得する。
@@ -219,7 +216,6 @@ async def get_area_count(
     """
     return get_area_count_app(
         db=db,
-        current_user=current_user,
         area_type=area_type,
         latitude=latitude,
         longitude=longitude,
@@ -245,7 +241,6 @@ async def get_area_stats(
         description="市区町村コード（JIS X 0402に準拠）"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
 ):
     """
     指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
@@ -253,7 +248,6 @@ async def get_area_stats(
     """
     return get_area_stats_app(
         db=db,
-        current_user=current_user,
         prefecture_code=prefecture_code,
         municipality_code=municipality_code
     )
@@ -266,7 +260,6 @@ async def get_tree_detail(
         description="取得したい桜の木のUID"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(ImageService)
 ):
     """
@@ -274,7 +267,6 @@ async def get_tree_detail(
     """
     return get_tree_detail_app(
         db=db,
-        current_user=current_user,
         tree_id=tree_id,
         image_service=image_service
     )

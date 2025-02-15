@@ -4,14 +4,12 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError
-from app.domain.models.models import User
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import AreaCountResponse
 
 
 def get_area_count(
     db: Session,
-    current_user: User,
     area_type: str,
     latitude: float,
     longitude: float,

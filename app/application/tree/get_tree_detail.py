@@ -2,7 +2,6 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import TreeNotFoundError
-from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import (MushroomInfo, StemHoleInfo, StemInfo,
@@ -11,7 +10,6 @@ from app.interfaces.schemas.tree import (MushroomInfo, StemHoleInfo, StemInfo,
 
 def get_tree_detail(
     db: Session,
-    current_user: User,
     tree_id: str,
     image_service: ImageService,
 ) -> TreeDetailResponse:
