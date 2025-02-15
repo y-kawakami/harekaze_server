@@ -122,3 +122,8 @@ class ImageService:
         age = 45  # 年
 
         return texture, can_detected, circumference, age
+
+
+def get_image_service() -> "ImageService":
+    """画像サービスのインスタンスを取得する"""
+    return ImageService()

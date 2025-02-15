@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from app.application.tree.create_kobu import create_kobu as create_kobu_app
 from app.application.tree.create_mushroom import \
     create_mushroom as create_mushroom_app
 from app.application.tree.create_stem import create_stem as create_stem_app
@@ -19,17 +20,17 @@ from app.application.tree.search_trees import search_trees as search_trees_app
 from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
-from app.domain.services.image_service import ImageService
+from app.domain.services.image_service import ImageService, get_image_service
 from app.infrastructure.database.database import get_db
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
-                                         MushroomInfo, StemHoleInfo, StemInfo,
-                                         TengusuInfo, TreeDecoratedResponse,
+                                         KobuInfo, MushroomInfo, StemHoleInfo,
+                                         StemInfo, TengusuInfo,
+                                         TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
                                          TreeSearchResponse)
 
 router = APIRouter()
-# image_service = ImageService()  # 本番環境では環境変数から取得
 
 
 @router.post("/tree/entire", response_model=TreeResponse)
@@ -52,7 +53,7 @@ async def create_tree(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     桜の木全体の写真を登録する。
@@ -89,7 +90,7 @@ async def update_tree_decorated_image(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     桜の木全体の写真に、診断結果（元気度）に基づき情報を付与して装飾した写真を送信する。
@@ -131,7 +132,7 @@ async def search_trees(
     has_tengusu: bool | None = Query(None, description="テングス病の有無"),
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     全ユーザから投稿された桜の情報の検索を行う。
@@ -260,7 +261,7 @@ async def get_tree_detail(
         description="取得したい桜の木のUID"
     ),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     各木の詳細情報を取得する。
@@ -292,7 +293,7 @@ async def create_stem(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """幹の写真を登録する"""
     image_data = await image.read()
@@ -327,7 +328,7 @@ async def create_stem_hole(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     幹の穴の写真を登録する。
@@ -364,7 +365,7 @@ async def create_tengusu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     テングス病の写真を登録する。
@@ -401,13 +402,50 @@ async def create_mushroom(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(ImageService)
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     キノコの写真を登録する。
     """
     image_data = await image.read()
     return create_mushroom_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_data=image_data,
+        latitude=latitude,
+        longitude=longitude,
+        image_service=image_service
+    )
+
+
+@router.post("/tree/{tree_id}/kobu", response_model=KobuInfo)
+async def create_kobu(
+    tree_id: str = Path(
+        ...,
+        description="こぶ状の枝の写真を登録する木のUID"
+    ),
+    latitude: float = Form(
+        ...,
+        description="撮影場所の緯度"
+    ),
+    longitude: float = Form(
+        ...,
+        description="撮影場所の経度"
+    ),
+    image: UploadFile = File(
+        ...,
+        description="こぶ状の枝の写真"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(get_image_service)
+):
+    """
+    こぶ状の枝の写真を登録する。
+    """
+    image_data = await image.read()
+    return create_kobu_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,

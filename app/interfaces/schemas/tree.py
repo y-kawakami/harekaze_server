@@ -69,6 +69,11 @@ class MushroomInfo(TreeImageInfo):
     # is_harmful: Optional[bool] = Field(None, description="有害なキノコかどうか")
 
 
+class KobuInfo(TreeImageInfo):
+    """こぶ状の枝の情報"""
+    created_at: datetime = Field(..., description="投稿日時")
+
+
 class TreeSearchFilter(BaseModel):
     vitality_min: Optional[int] = Field(
         None,

@@ -72,6 +72,8 @@ class Tree(Base):
         "Tengus", back_populates="tree")
     mushrooms: Mapped[List["Mushroom"]] = relationship(
         "Mushroom", back_populates="tree")
+    kobus: Mapped[List["Kobu"]] = relationship(
+        "Kobu", back_populates="tree")
 
 
 class Stem(Base):
@@ -181,6 +183,32 @@ class Mushroom(Base):
 
     user: Mapped["User"] = relationship("User")
     tree: Mapped["Tree"] = relationship("Tree", back_populates="mushrooms")
+
+
+class Kobu(Base):
+    __tablename__ = "kobus"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'), nullable=False)
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'), nullable=False)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
+
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="kobus")
 
 
 class PrefectureStats(Base):

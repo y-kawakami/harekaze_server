@@ -4,7 +4,7 @@ from loguru import logger
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.domain.models.models import (MunicipalityStats, Mushroom,
+from app.domain.models.models import (Kobu, MunicipalityStats, Mushroom,
                                       PrefectureStats, Stem, StemHole, Tengus,
                                       Tree)
 from app.interfaces.schemas.tree import AreaCountItem
@@ -153,6 +153,32 @@ class TreeRepository:
             thumb_obj_key=thumb_obj_key
         )
         self.db.add(mushroom)
+        self.db.commit()
+        return True
+
+    def create_kobu(
+        self,
+        user_id: int,
+        tree_id: int,
+        latitude: float,
+        longitude: float,
+        image_obj_key: str,
+        thumb_obj_key: str
+    ) -> bool:
+        """こぶ状の枝の写真を登録する"""
+        tree = self.db.query(Tree).filter(Tree.id == tree_id).first()
+        if not tree:
+            return False
+
+        kobu = Kobu(
+            user_id=user_id,
+            tree_id=tree_id,
+            latitude=latitude,
+            longitude=longitude,
+            image_obj_key=image_obj_key,
+            thumb_obj_key=thumb_obj_key
+        )
+        self.db.add(kobu)
         self.db.commit()
         return True
 
