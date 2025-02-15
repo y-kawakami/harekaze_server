@@ -470,7 +470,9 @@ class TreeRepository:
                     location='TODO: 東京都',  # locationは集計時には不要
                     count=r[3] or 0,  # countは4番目のカラム
                     latitude=r[1] or 0,  # latitudeは2番目のカラム
-                    longitude=r[2] or 0  # longitudeは3番目のカラム
+                    longitude=r[2] or 0,  # longitudeは3番目のカラム
+                    latest_nickname=None,
+                    latest_image_thumb_url=None,
                 )
                 for r in results
             ]
