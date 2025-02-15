@@ -114,7 +114,6 @@ async def search_trees(
     latitude: float = Query(..., description="検索の中心となる緯度"),
     longitude: float = Query(..., description="検索の中心となる経度"),
     radius: float = Query(..., description="検索範囲（メートル）"),
-    # TODO: フィルター条件を追加
     municipality_code: str | None = Query(
         None, description="市区町村コード（JIS X 0402に準拠）"),
     page: int = Query(1, description="ページ番号", ge=1),

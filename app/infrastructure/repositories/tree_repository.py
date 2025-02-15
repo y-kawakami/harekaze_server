@@ -192,9 +192,10 @@ class TreeRepository:
 
     def search_trees(
         self,
-        latitude: float,
-        longitude: float,
-        radius: float,
+        latitude: Optional[float] = None,
+        longitude: Optional[float] = None,
+        radius: Optional[float] = None,
+        municipality_code: Optional[str] = None,
         vitality_range: Optional[tuple[int, int]] = None,
         age_range: Optional[tuple[int, int]] = None,
         has_hole: Optional[bool] = None,
@@ -203,12 +204,18 @@ class TreeRepository:
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
-        query = self.db.query(Tree).outerjoin(Stem).filter(
-            func.ST_Distance_Sphere(
-                Tree.position,
-                func.ST_GeomFromText(f'POINT({longitude} {latitude})')
-            ) <= radius
-        )
+        query = self.db.query(Tree).outerjoin(Stem)
+
+        # 市区町村コードまたは位置による検索
+        if municipality_code is not None:
+            query = query.filter(Tree.municipality_code == municipality_code)
+        elif latitude is not None and longitude is not None and radius is not None:
+            query = query.filter(
+                func.ST_Distance_Sphere(
+                    Tree.position,
+                    func.ST_GeomFromText(f'POINT({longitude} {latitude})')
+                ) <= radius
+            )
 
         if vitality_range:
             query = query.filter(
