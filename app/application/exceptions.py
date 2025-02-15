@@ -14,6 +14,18 @@ class ApplicationError(Exception):
         return self.reason
 
 
+class InvalidParamError(ApplicationError):
+    """パラメータが不正な場合の例外"""
+
+    def __init__(self, reason: str, param_name: str | None = None):
+        super().__init__(
+            reason=reason,
+            error_code=105,
+            status=400,
+            details={"param": param_name} if param_name else None
+        )
+
+
 class TreeNotFoundError(ApplicationError):
     """指定された木が見つからない場合の例外"""
 

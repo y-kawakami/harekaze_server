@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 
+from app.application.info.get_flowering_date import \
+    get_flowering_date as get_flowering_date_app
+from app.domain.models.models import User
 from app.infrastructure.database.database import get_db
-from app.infrastructure.repositories.tree_repository import TreeRepository
+from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import FloweringDateResponse
 
 router = APIRouter()
@@ -18,19 +21,15 @@ async def get_flowering_date(
         ...,
         description="経度"
     ),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
     """
     桜の開花日に関する情報を取得する。
     """
-    repository = TreeRepository(db)
-    flowering_info = repository.get_flowering_info(
+    return get_flowering_date_app(
+        db=db,
+        current_user=current_user,
         latitude=latitude,
         longitude=longitude
     )
-
-    return {
-        "address": flowering_info["address"],
-        "flowering_date": flowering_info["flowering_date"],
-        "full_bloom_date": flowering_info["full_bloom_date"]
-    }

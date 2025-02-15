@@ -1,24 +1,32 @@
-import uuid
-from datetime import datetime, timezone
-
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, Path,
-                     Query, UploadFile)
-from loguru import logger
+from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from app.application.tree.create_mushroom import \
+    create_mushroom as create_mushroom_app
+from app.application.tree.create_stem import create_stem as create_stem_app
+from app.application.tree.create_stem_hole import \
+    create_stem_hole as create_stem_hole_app
+from app.application.tree.create_tengusu import \
+    create_tengusu as create_tengusu_app
 from app.application.tree.create_tree import create_tree as create_tree_app
+from app.application.tree.get_area_count import \
+    get_area_count as get_area_count_app
+from app.application.tree.get_area_stats import \
+    get_area_stats as get_area_stats_app
+from app.application.tree.get_tree_detail import \
+    get_tree_detail as get_tree_detail_app
 from app.application.tree.search_trees import search_trees as search_trees_app
-from app.application.tree.update_tree_decorated import update_tree_decorated_image as update_tree_decorated_app
+from app.application.tree.update_tree_decorated import \
+    update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
-from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          MushroomInfo, StemHoleInfo, StemInfo,
                                          TengusuInfo, TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
-                                         TreeSearchResponse, TreeSearchResult)
+                                         TreeSearchResponse)
 
 router = APIRouter()
 # image_service = ImageService()  # 本番環境では環境変数から取得
@@ -209,70 +217,21 @@ async def get_area_count(
     area_typeで'prefecture'または'municipality'を指定し、
     指定された範囲内の桜を集計する。
     """
-    logger.info(f"エリアごとの桜の本数取得開始: area_type={area_type}, lat={
-                latitude}, lon={longitude}, radius={radius}m")
-
-    try:
-        # area_typeのバリデーション
-        if area_type not in ['prefecture', 'municipality']:
-            logger.error(f"不正なarea_type: {area_type}")
-            raise HTTPException(
-                status_code=400,
-                detail="area_typeは'prefecture'または'municipality'を指定してください"
-            )
-
-        # パラメータのログ出力
-        logger.debug(f"検索条件: vitality_min={vitality_min}, vitality_max={vitality_max}, "
-                     f"age_min={age_min}, age_max={age_max}, "
-                     f"has_hole={has_hole}, has_tengusu={has_tengusu}, has_mushroom={has_mushroom}")
-
-        repository = TreeRepository(db)
-
-        # レンジパラメータの構築
-        vitality_range = None
-        if vitality_min is not None or vitality_max is not None:
-            vitality_range = (
-                vitality_min or 1,
-                vitality_max or 5
-            )
-            logger.debug(f"元気度範囲を設定: {vitality_range}")
-
-        age_range = None
-        if age_min is not None or age_max is not None:
-            age_range = (
-                age_min or 0,
-                age_max or 1000
-            )
-            logger.debug(f"樹齢範囲を設定: {age_range}")
-
-        # エリアごとの集計を取得
-        area_counts = repository.get_area_counts(
-            area_type=area_type,
-            latitude=latitude,
-            longitude=longitude,
-            radius=radius,
-            vitality_range=vitality_range,
-            age_range=age_range,
-            has_hole=has_hole,
-            has_tengusu=has_tengusu,
-            has_mushroom=has_mushroom
-        )
-
-        if not area_counts:
-            logger.info("指定された条件に一致する桜は見つかりませんでした")
-            return AreaCountResponse(total=0, areas=[])
-
-        # 合計を計算
-        total = sum(area.count for area in area_counts)
-        logger.info(f"集計完了: 合計{total}件のデータを取得")
-
-        return AreaCountResponse(total=total, areas=area_counts)
-
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.exception(f"エリアごとの桜の本数取得中に予期せぬエラーが発生: {str(e)}")
-        raise HTTPException(status_code=500, detail="内部サーバーエラーが発生しました")
+    return get_area_count_app(
+        db=db,
+        current_user=current_user,
+        area_type=area_type,
+        latitude=latitude,
+        longitude=longitude,
+        radius=radius,
+        vitality_min=vitality_min,
+        vitality_max=vitality_max,
+        age_min=age_min,
+        age_max=age_max,
+        has_hole=has_hole,
+        has_tengusu=has_tengusu,
+        has_mushroom=has_mushroom
+    )
 
 
 @router.get("/tree/area_stats", response_model=AreaStatsResponse)
@@ -292,52 +251,11 @@ async def get_area_stats(
     指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
     都道府県コードまたは市区町村コードのいずれかは必須。
     """
-    if municipality_code:
-        # 市区町村の統計情報を取得
-        repository = TreeRepository(db)
-        stats = repository.get_municipality_stats(municipality_code)
-        if not stats:
-            raise HTTPException(
-                status_code=404,
-                detail="指定された市区町村の統計情報が見つかりません"
-            )
-    elif prefecture_code:
-        # 都道府県の統計情報を取得
-        repository = TreeRepository(db)
-        stats = repository.get_prefecture_stats(prefecture_code)
-        if not stats:
-            raise HTTPException(
-                status_code=404,
-                detail="指定された都道府県の統計情報が見つかりません"
-            )
-    else:
-        raise HTTPException(
-            status_code=400,
-            detail="都道府県コードまたは市区町村コードのいずれかを指定してください"
-        )
-
-    return AreaStatsResponse(
-        total_trees=stats.total_trees,
-        location=stats.location,
-        # 元気度の分布
-        vitality1_count=stats.vitality1_count,
-        vitality2_count=stats.vitality2_count,
-        vitality3_count=stats.vitality3_count,
-        vitality4_count=stats.vitality4_count,
-        vitality5_count=stats.vitality5_count,
-        # 樹齢の分布
-        age20_count=stats.age20_count,
-        age30_count=stats.age30_count,
-        age40_count=stats.age40_count,
-        age50_count=stats.age50_count,
-        age60_count=stats.age60_count,
-        # 問題の分布
-        hole_count=stats.hole_count,
-        tengusu_count=stats.tengus_count,
-        mushroom_count=stats.mushroom_count,
-        # 位置情報
-        latitude=stats.latitude,
-        longitude=stats.longitude,
+    return get_area_stats_app(
+        db=db,
+        current_user=current_user,
+        prefecture_code=prefecture_code,
+        municipality_code=municipality_code
     )
 
 
@@ -348,80 +266,18 @@ async def get_tree_detail(
         description="取得したい桜の木のUID"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     各木の詳細情報を取得する。
     """
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    response = TreeDetailResponse(
-        id=tree.uid,
-        tree_number=f"#{tree.id}",
-        contributor=tree.contributor,
-        latitude=tree.latitude,
-        longitude=tree.longitude,
-        location=tree.location,
-        vitality=tree.vitality,
-        prefecture_code=tree.prefecture_code or None,
-        municipality_code=tree.municipality_code or None,
-        image_url=image_service.get_image_url(str(tree.image_obj_key)),
-        image_thumb_url=image_service.get_image_url(str(tree.thumb_obj_key)),
-        decorated_image_url=image_service.get_image_url(
-            tree.decorated_image_obj_key) if tree.decorated_image_obj_key else None,
-        ogp_image_url=image_service.get_image_url(
-            tree.ogp_image_obj_key) if tree.ogp_image_obj_key else None,
-        stem=None,
-        stem_hole=None,
-        tengusu=None,
-        mushroom=None,
-        created_at=tree.created_at,
+    return get_tree_detail_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_service=image_service
     )
-
-    if tree.stem:
-        response.stem = StemInfo(
-            image_url=image_service.get_image_url(
-                str(tree.stem.image_obj_key)),
-            image_thumb_url=image_service.get_image_url(
-                str(tree.stem.thumb_obj_key)),
-            texture=tree.stem.texture,
-            can_detected=tree.stem.can_detected,
-            circumference=tree.stem.circumference,
-            age=tree.stem.age,
-            created_at=tree.stem.created_at,
-        )
-
-    if tree.stem_holes:
-        response.stem_hole = StemHoleInfo(
-            image_url=image_service.get_image_url(
-                str(tree.stem_holes[0].image_obj_key)),
-            image_thumb_url=image_service.get_image_url(
-                str(tree.stem_holes[0].thumb_obj_key)),
-            created_at=tree.stem_holes[0].created_at,
-        )
-
-    if tree.tengus:
-        response.tengusu = TengusuInfo(
-            image_url=image_service.get_image_url(
-                str(tree.tengus[0].image_obj_key)),
-            image_thumb_url=image_service.get_image_url(
-                str(tree.tengus[0].thumb_obj_key)),
-            created_at=tree.tengus[0].created_at,
-        )
-
-    if tree.mushrooms:
-        response.mushroom = MushroomInfo(
-            image_url=image_service.get_image_url(
-                str(tree.mushrooms[0].image_obj_key)),
-            image_thumb_url=image_service.get_image_url(
-                str(tree.mushrooms[0].thumb_obj_key)),
-            created_at=tree.mushrooms[0].created_at,
-        )
-
-    return response
 
 
 @router.post("/tree/{tree_id}/stem", response_model=StemInfo)
@@ -443,63 +299,19 @@ async def create_stem(
         description="撮影場所の経度"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """幹の写真を登録する"""
-    # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    # 画像データを読み込む
     image_data = await image.read()
-
-    # 画像を解析
-    texture, can_detected, circumference, age = image_service.analyze_stem_image(
-        image_data)
-
-    # サムネイル作成
-    thumb_data = image_service.create_thumbnail(image_data)
-
-    # 画像をアップロード
-    random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/stem_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/stem_thumb_{random_suffix}.jpg"
-    if not (image_service.upload_image(image_data, image_key) and
-            image_service.upload_image(thumb_data, thumb_key)):
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # DBに保存
-    try:
-        repository.create_stem(
-            db=db,
-            tree_id=tree.id,  # 内部IDを使用
-            user_id=current_user.id,  # 認証済みユーザーのIDを使用
-            latitude=latitude,
-            longitude=longitude,
-            image_obj_key=image_key,
-            thumb_obj_key=thumb_key,
-            texture=texture,
-            can_detected=can_detected,
-            circumference=circumference,
-            age=age,
-        )
-    except Exception as e:
-        logger.exception(e)
-        raise HTTPException(status_code=400, detail={
-            "error": 100,
-            "reason": "tree_id が存在しません"
-        })
-
-    return StemInfo(
-        texture=texture,
-        can_detected=can_detected,
-        circumference=circumference,
-        age=age,
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=datetime.now(timezone.utc)
+    return create_stem_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_data=image_data,
+        latitude=latitude,
+        longitude=longitude,
+        image_service=image_service
     )
 
 
@@ -522,52 +334,21 @@ async def create_stem_hole(
         description="幹の穴の写真"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     幹の穴の写真を登録する。
     """
-    # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    # 画像をアップロード
     image_data = await image.read()
-
-    # サムネイル作成
-    thumb_data = image_service.create_thumbnail(image_data)
-
-    # 画像をアップロード
-    random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/hole_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/hole_thumb_{random_suffix}.jpg"
-    if not (image_service.upload_image(image_data, image_key) and
-            image_service.upload_image(thumb_data, thumb_key)):
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # DBに登録
-    if not repository.create_stem_hole(
-        user_id=current_user.id,  # 認証済みユーザーのIDを使用
-        tree_id=tree.id,  # 内部IDを使用
+    return create_stem_hole_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_obj_key=image_key,
-        thumb_obj_key=thumb_key
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": 100,
-                "message": "指定された木が見つかりません"
-            }
-        )
-
-    return StemHoleInfo(
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=datetime.now(timezone.utc)
+        image_service=image_service
     )
 
 
@@ -591,52 +372,20 @@ async def create_tengusu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_ser
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     テングス病の写真を登録する。
     """
-    # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    # 画像をアップロード
     image_data = await image.read()
-
-    # サムネイル作成
-    thumb_data = image_service.create_thumbnail(image_data)
-
-    # 画像をアップロード
-    random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/tengusu_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/tengusu_thumb_{random_suffix}.jpg"
-    if not (image_service.upload_image(image_data, image_key) and
-            image_service.upload_image(thumb_data, thumb_key)):
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # DBに登録
-    if not repository.create_tengus(
-        user_id=current_user.id,  # 認証済みユーザーのIDを使用
-        tree_id=tree.id,  # 内部IDを使用
+    return create_tengusu_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_obj_key=image_key,
-        thumb_obj_key=thumb_key
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": 100,
-                "message": "指定された木が見つかりません"
-            }
-        )
-
-    return TengusuInfo(
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=datetime.now(timezone.utc)
+        image_service=image_service
     )
 
 
@@ -659,50 +408,19 @@ async def create_mushroom(
         description="キノコの写真"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     キノコの写真を登録する。
     """
-    # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    # 画像をアップロード
     image_data = await image.read()
-
-    # サムネイル作成
-    thumb_data = image_service.create_thumbnail(image_data)
-
-    # 画像をアップロード
-    random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/mushroom_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/mushroom_thumb_{random_suffix}.jpg"
-    if not (image_service.upload_image(image_data, image_key) and
-            image_service.upload_image(thumb_data, thumb_key)):
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # DBに登録
-    if not repository.create_mushroom(
-        user_id=current_user.id,  # 認証済みユーザーのIDを使用
-        tree_id=tree.id,  # 内部IDを使用
+    return create_mushroom_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_obj_key=image_key,
-        thumb_obj_key=thumb_key
-    ):
-        raise HTTPException(
-            status_code=400,
-            detail={
-                "code": 100,
-                "message": "指定された木が見つかりません"
-            }
-        )
-
-    return MushroomInfo(
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=datetime.now(timezone.utc)
+        image_service=image_service
     )
