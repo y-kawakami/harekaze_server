@@ -14,15 +14,26 @@ class ApplicationError(Exception):
         return self.reason
 
 
+class TreeNotFoundError(ApplicationError):
+    """指定された木が見つからない場合の例外"""
+
+    def __init__(self, tree_id: str):
+        super().__init__(
+            reason="指定された木が見つかりません",
+            error_code=104,
+            status=400,
+            details={"tree_id": tree_id}
+        )
+
+
 class TreeNotDetectedError(ApplicationError):
     """木が検出できない場合の例外"""
 
-    def __init__(self, user_id: int):
+    def __init__(self):
         super().__init__(
             reason="木が検出できません",
             error_code=101,
-            status=400,
-            details={"user_id": user_id}
+            status=400
         )
 
 

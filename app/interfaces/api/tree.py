@@ -6,8 +6,9 @@ from fastapi import (APIRouter, Depends, File, Form, HTTPException, Path,
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import ApplicationError
 from app.application.tree.create_tree import create_tree as create_tree_app
+from app.application.tree.search_trees import search_trees as search_trees_app
+from app.application.tree.update_tree_decorated import update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.database.database import get_db
@@ -20,7 +21,7 @@ from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          TreeSearchResponse, TreeSearchResult)
 
 router = APIRouter()
-image_service = ImageService()  # 本番環境では環境変数から取得
+# image_service = ImageService()  # 本番環境では環境変数から取得
 
 
 @router.post("/tree/entire", response_model=TreeResponse)
@@ -42,31 +43,22 @@ async def create_tree(
         description="投稿者のニックネーム"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     桜の木全体の写真を登録する。
     """
-    try:
-        image_data = await image.read()
-        return create_tree_app(
-            db=db,
-            current_user=current_user,
-            latitude=latitude,
-            longitude=longitude,
-            image_data=image_data,
-            nickname=nickname
-        )
-    except ApplicationError as e:
-        # アプリケーション層の例外をHTTPExceptionに変換
-        raise HTTPException(
-            status_code=e.status,
-            detail={
-                "code": e.error_code,
-                "reason": e.reason,
-                **({"details": e.details} if e.details else {})
-            }
-        ) from e
+    image_data = await image.read()
+    return create_tree_app(
+        db=db,
+        current_user=current_user,
+        latitude=latitude,
+        longitude=longitude,
+        image_data=image_data,
+        nickname=nickname,
+        image_service=image_service
+    )
 
 
 @router.post("/tree/{tree_id}/decorated", response_model=TreeDecoratedResponse)
@@ -88,38 +80,23 @@ async def update_tree_decorated_image(
         description="OGP用の画像"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     桜の木全体の写真に、診断結果（元気度）に基づき情報を付与して装飾した写真を送信する。
     """
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
-    if not tree:
-        raise HTTPException(status_code=404, detail="指定された木が見つかりません")
-
-    # 装飾画像をアップロード
     image_data = await image.read()
-    random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/decorated_{random_suffix}.jpg"
-    if not image_service.upload_image(image_data, image_key):
-        raise HTTPException(status_code=500, detail="画像のアップロードに失敗しました")
-
-    # OGP画像をアップロード
     ogp_image_data = await ogp_image.read()
-    ogp_image_key = f"trees/{tree.id}/ogp_{random_suffix}.jpg"
-    if not image_service.upload_image(ogp_image_data, ogp_image_key):
-        raise HTTPException(status_code=500, detail="OGP画像のアップロードに失敗しました")
 
-    # DBを更新
-    tree.decorated_image_obj_key = image_key
-    tree.ogp_image_obj_key = ogp_image_key
-    tree.contributor = contributor
-    repository.update_tree(tree)
-
-    return TreeDecoratedResponse(
-        decorated_image_url=image_service.get_image_url(image_key),
-        ogp_image_url=image_service.get_image_url(ogp_image_key)
+    return update_tree_decorated_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        contributor=contributor,
+        image_data=image_data,
+        ogp_image_data=ogp_image_data,
+        image_service=image_service
     )
 
 
@@ -146,47 +123,29 @@ async def search_trees(
     has_tengusu: bool | None = Query(None, description="テングス病の有無"),
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(ImageService)
 ):
     """
     全ユーザから投稿された桜の情報の検索を行う。
     """
-    repository = TreeRepository(db)
-    vitality_range = None
-    if vitality_min is not None or vitality_max is not None:
-        vitality_range = (
-            vitality_min or 1,
-            vitality_max or 5
-        )
-
-    trees, total = repository.search_trees(
+    return search_trees_app(
+        db=db,
+        current_user=current_user,
         latitude=latitude,
         longitude=longitude,
         radius=radius,
-        vitality_range=vitality_range,
+        municipality_code=municipality_code,
+        page=page,
+        per_page=per_page,
+        vitality_min=vitality_min,
+        vitality_max=vitality_max,
+        age_min=age_min,
+        age_max=age_max,
         has_hole=has_hole,
         has_tengusu=has_tengusu,
         has_mushroom=has_mushroom,
-        offset=(page - 1) * per_page,
-        limit=per_page
-    )
-
-    return TreeSearchResponse(
-        total=total,
-        trees=[TreeSearchResult(
-            id=tree.uid,
-            tree_number=f"#{tree.id}",
-            contributor=tree.contributor,
-            vitality=tree.vitality,
-            image_thumb_url=image_service.get_image_url(tree.thumb_obj_key),
-            latitude=tree.latitude,
-            longitude=tree.longitude,
-            location=tree.location,
-            prefecture_code=tree.prefecture_code or None,
-            municipality_code=tree.municipality_code or None,
-            created_at=tree.created_at,
-            age=tree.stem.age if tree.stem else None
-        ) for tree in trees]
+        image_service=image_service
     )
 
 
@@ -631,7 +590,8 @@ async def create_tengusu(
         description="テングス病の写真"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    image_ser
 ):
     """
     テングス病の写真を登録する。

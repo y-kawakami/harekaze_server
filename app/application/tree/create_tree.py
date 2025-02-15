@@ -10,8 +10,6 @@ from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
 
-image_service = ImageService()
-
 
 def create_tree(
     db: Session,
@@ -20,6 +18,7 @@ def create_tree(
     longitude: float,
     image_data: bytes,
     nickname: str,
+    image_service: ImageService
 ) -> TreeResponse:
     """
     桜の木全体の写真を登録する。
@@ -48,7 +47,7 @@ def create_tree(
     vitality, tree_detected = image_service.analyze_tree_vitality(image_data)
     if not tree_detected:
         logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
-        raise TreeNotDetectedError(user_id=current_user.id)
+        raise TreeNotDetectedError()
 
     # サムネイル作成
     logger.debug("サムネイル作成を開始")

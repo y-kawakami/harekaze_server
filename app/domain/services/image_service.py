@@ -16,9 +16,18 @@ TREE_IMAGE_PREFIX = "trees"
 
 
 class ImageService:
-    def __init__(self):
-        self.s3 = boto3.client('s3')
-        self.bucket_name = os.getenv("S3_ASSETS_BUCKET")
+    def __init__(
+        self,
+        bucket_name: str = os.getenv("S3_ASSETS_BUCKET", "kkcraft-samples"),
+        region_name: str = os.getenv("AWS_REGION", "ap-northeast-1"),
+        endpoint_url: str | None = os.getenv("AWS_ENDPOINT_URL")
+    ):
+        self.s3_client = boto3.client(
+            's3',
+            region_name=region_name,
+            endpoint_url=endpoint_url
+        )
+        self.bucket_name = bucket_name
         if not self.bucket_name:
             raise ValueError(
                 "S3_ASSETS_BUCKET environment variable is not set")
@@ -35,7 +44,7 @@ class ImageService:
     def upload_image(self, image_data: bytes, object_key: str) -> bool:
         """画像をS3にアップロードする"""
         try:
-            self.s3.put_object(
+            self.s3_client.put_object(
                 Bucket=self.bucket_name,
                 Key=f'{TREE_IMAGE_PREFIX}/{object_key}',
                 Body=image_data,
@@ -66,7 +75,7 @@ class ImageService:
         if not object_key:
             return ""
         try:
-            url = self.s3.generate_presigned_url(
+            url = self.s3_client.generate_presigned_url(
                 'get_object',
                 Params={
                     'Bucket': self.bucket_name,

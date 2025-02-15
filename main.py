@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.interfaces.api import auth, info, tree
+from app.interfaces.api.error_handlers import register_error_handlers
 
 app = FastAPI(
     title="晴れ風API",
@@ -43,6 +44,9 @@ app = FastAPI(
         }
     ]
 )
+
+# エラーハンドラの登録
+register_error_handlers(app)
 
 # CORS設定
 app.add_middleware(
