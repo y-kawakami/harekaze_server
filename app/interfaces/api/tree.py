@@ -21,6 +21,8 @@ from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService, get_image_service
+from app.domain.services.municipality_service import (MunicipalityService,
+                                                      get_municipality_service)
 from app.infrastructure.database.database import get_db
 from app.infrastructure.geocoding.geocoding_service import (
     GeocodingService, get_geocoding_service)
@@ -33,6 +35,13 @@ from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          TreeSearchResponse)
 
 router = APIRouter()
+
+
+def get_geocoding_service_dependency(
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service)
+):
+    return GeocodingService(municipality_service)
 
 
 @router.post("/tree/entire", response_model=TreeResponse)
@@ -57,7 +66,7 @@ async def create_tree(
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     geocoding_service: GeocodingService = Depends(
-        get_geocoding_service, use_cache=True)
+        get_geocoding_service_dependency, use_cache=True)
 ):
     """
     桜の木全体の写真を登録する。

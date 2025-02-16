@@ -106,3 +106,78 @@ PASS: harekaze2025
 ```bash
 ngrok http --region=ap --basic-auth "harekaze:harekaze2025"--domain=harekaze-kkcraft.jp.ngrok.io 8000
 ```
+
+## テスト
+
+### テスト環境のセットアップ
+
+テストと開発用の依存関係をインストールします：
+
+```bash
+uv pip sync --group test --group dev
+```
+
+### テストの実行
+
+全てのテストを実行：
+
+```bash
+pytest
+```
+
+特定のマーカーのテストのみ実行：
+
+```bash
+# 単体テストのみ実行
+pytest -m unit
+
+# APIテストのみ実行
+pytest -m api
+
+# 結合テストのみ実行
+pytest -m integration
+```
+
+特定のテストファイルを実行：
+
+```bash
+# ファイルを指定して実行
+pytest tests/domain/services/test_municipality_service.py
+
+# 特定のクラスを実行
+pytest tests/domain/services/test_municipality_service.py::TestMunicipalityService
+
+# 特定のテストメソッドを実行
+pytest tests/domain/services/test_municipality_service.py::TestMunicipalityService::test_get_prefecture_code
+
+# 詳細な出力で実行
+pytest -v tests/domain/services/test_municipality_service.py
+```
+
+カバレッジレポートの生成：
+
+```bash
+pytest --cov=app --cov-report=html
+```
+
+カバレッジレポートは `htmlcov` ディレクトリに生成されます。
+
+### テストの構造
+
+テストは以下の層に分かれています：
+
+- `tests/domain/`: ドメイン層のテスト
+  - ビジネスロジックの単体テスト
+  - 外部依存のないピュアな関数のテスト
+
+- `tests/infrastructure/`: インフラストラクチャ層のテスト
+  - 外部サービスとのインテグレーション
+  - データベース操作のテスト
+
+- `tests/application/`: アプリケーション層のテスト
+  - ユースケースのテスト
+  - 複数のサービスを組み合わせた統合テスト
+
+- `tests/interfaces/`: インターフェース層のテスト
+  - APIエンドポイントのテスト
+  - リクエスト/レスポンスの検証
