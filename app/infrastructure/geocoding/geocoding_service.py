@@ -63,6 +63,12 @@ class GeocodingService:
                 f"Geocoding API response: {json.dumps(result, indent=2, ensure_ascii=False)}")
 
             address_components = result[0]['address_components']
+
+            # plus_codeのみの結果の場合は住所なしとして扱う
+            if len(address_components) == 1 and address_components[0]['types'][0] == 'plus_code':
+                logger.warning(f"Plus Codeのみの結果でした: ({latitude}, {longitude})")
+                return Address(None, None, None, None, None, None)
+
             prefecture = None
             municipality = None
             country = None
