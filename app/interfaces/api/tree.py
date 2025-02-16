@@ -22,6 +22,8 @@ from app.application.tree.update_tree_decorated import \
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService, get_image_service
 from app.infrastructure.database.database import get_db
+from app.infrastructure.geocoding.geocoding_service import (
+    GeocodingService, get_geocoding_service)
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
@@ -47,13 +49,15 @@ async def create_tree(
         ...,
         description="桜の木全体の写真（推奨サイズ: 1080x1920）"
     ),
-    nickname: str = Form(
+    contributor: str = Form(
         ...,
         description="投稿者のニックネーム"
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    geocoding_service: GeocodingService = Depends(
+        get_geocoding_service, use_cache=True)
 ):
     """
     桜の木全体の写真を登録する。
@@ -65,8 +69,9 @@ async def create_tree(
         latitude=latitude,
         longitude=longitude,
         image_data=image_data,
-        nickname=nickname,
-        image_service=image_service
+        contributor=contributor,
+        image_service=image_service,
+        geocoding_service=geocoding_service
     )
 
 

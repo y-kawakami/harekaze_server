@@ -49,6 +49,42 @@ class TreeNotDetectedError(ApplicationError):
         )
 
 
+class LocationNotFoundError(ApplicationError):
+    """指定された場所が見つからない場合の例外"""
+
+    def __init__(self, latitude: float, longitude: float):
+        super().__init__(
+            reason="指定された場所が見つかりません",
+            error_code=106,
+            status=400,
+            details={"latitude": latitude, "longitude": longitude}
+        )
+
+
+class LocationNotInJapanError(ApplicationError):
+    """指定された場所が日本国内に存在しない場合の例外"""
+
+    def __init__(self, latitude: float, longitude: float):
+        super().__init__(
+            reason="指定された場所が日本国内に存在しません",
+            error_code=107,
+            status=400,
+            details={"latitude": latitude, "longitude": longitude}
+        )
+
+
+class NgWordError(ApplicationError):
+    """不適切な単語が含まれている場合の例外"""
+
+    def __init__(self, ng_word: str):
+        super().__init__(
+            reason="不適切な単語が含まれています",
+            error_code=108,
+            status=400,
+            details={"ng_word": ng_word}
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 

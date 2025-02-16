@@ -1,12 +1,18 @@
 import uuid
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ImageUploadError,
+                                        LocationNotFoundError,
+                                        LocationNotInJapanError,
                                         TreeNotDetectedError)
+from app.domain.constants.anonymous import ANONYMOUS_LABEL
+from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
+from app.infrastructure.geocoding.geocoding_service import GeocodingService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
 
@@ -17,8 +23,9 @@ def create_tree(
     latitude: float,
     longitude: float,
     image_data: bytes,
-    nickname: str,
-    image_service: ImageService
+    contributor: Optional[str],
+    image_service: ImageService,
+    geocoding_service: GeocodingService
 ) -> TreeResponse:
     """
     桜の木全体の写真を登録する。
@@ -42,7 +49,18 @@ def create_tree(
     logger.info(
         f"新しい木の登録を開始: ユーザーID={current_user.id}, 位置={latitude},{longitude}")
 
-    # 画像を解析
+    address = geocoding_service.get_address(latitude, longitude)
+    if address.country is None:
+        logger.warning(f"指定された場所が見つかりません: ({latitude}, {longitude})")
+        raise LocationNotFoundError(latitude=latitude, longitude=longitude)
+    if address.country != "日本":
+        logger.warning(f"日本国内の場所を指定してください: ({latitude}, {longitude})")
+        raise LocationNotInJapanError(latitude=latitude, longitude=longitude)
+    if address.detail is None or address.prefecture_code is None or address.municipality_code is None:
+        logger.warning(f"住所情報が不足しています: ({latitude}, {longitude})")
+        raise LocationNotFoundError(latitude=latitude, longitude=longitude)
+
+        # 画像を解析
     logger.debug("画像解析を開始")
     vitality, tree_detected = image_service.analyze_tree_vitality(image_data)
     if not tree_detected:
@@ -62,6 +80,9 @@ def create_tree(
     image_key = f"{tree_uid}/entire_{random_suffix}.jpg"
     thumb_key = f"{tree_uid}/entire_thumb_{random_suffix}.jpg"
 
+    if contributor is not None and is_ng_word(contributor):
+        contributor = ANONYMOUS_LABEL
+
     try:
         if not (image_service.upload_image(image_data, image_key) and
                 image_service.upload_image(thumb_data, thumb_key)):
@@ -78,15 +99,16 @@ def create_tree(
         tree = repository.create_tree(
             user_id=current_user.id,
             uid=tree_uid,
+            contributor=contributor,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             vitality=vitality,
             position=f'POINT({longitude} {latitude})',
-            location="東京都多摩市",  # TODO: 逆ジオコーディングAPIから取得
-            prefecture_code="13",  # TODO: 逆ジオコーディングAPIから取得
-            municipality_code="132241"  # TODO: 逆ジオコーディングAPIから取得
+            location=address.detail,
+            prefecture_code=address.prefecture_code,
+            municipality_code=address.municipality_code
         )
         logger.info(f"木の登録が完了: ツリーUID={tree_uid}, 元気度={vitality}")
     except Exception as e:

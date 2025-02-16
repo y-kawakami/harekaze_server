@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy.orm import Session
 
+from app.domain.constants.anonymous import filter_anonymous
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeSearchResponse, TreeSearchResult
@@ -111,7 +112,8 @@ def search_trees(
         trees=[TreeSearchResult(
             id=tree.uid,
             tree_number=f"#{tree.id}",
-            contributor=tree.contributor,
+            contributor=filter_anonymous(
+                tree.contributor) if tree.contributor else None,
             vitality=tree.vitality,
             image_thumb_url=image_service.get_image_url(tree.thumb_obj_key),
             latitude=tree.latitude,

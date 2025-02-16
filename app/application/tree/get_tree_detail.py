@@ -2,6 +2,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import TreeNotFoundError
+from app.domain.constants.anonymous import filter_anonymous
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import (MushroomInfo, StemHoleInfo, StemInfo,
@@ -39,7 +40,8 @@ def get_tree_detail(
     response = TreeDetailResponse(
         id=tree.uid,
         tree_number=f"#{tree.id}",
-        contributor=tree.contributor,
+        contributor=filter_anonymous(
+            tree.contributor) if tree.contributor else tree.contributor,
         latitude=tree.latitude,
         longitude=tree.longitude,
         location=tree.location,

@@ -18,6 +18,7 @@ class TreeRepository:
         self,
         user_id: int,
         uid: str,
+        contributor: Optional[str],
         latitude: float,
         longitude: float,
         image_obj_key: str,
@@ -31,6 +32,7 @@ class TreeRepository:
         tree = Tree(
             user_id=user_id,
             uid=uid,
+            contributor=contributor,
             latitude=latitude,
             longitude=longitude,
             position=func.ST_GeomFromText(position),
