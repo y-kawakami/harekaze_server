@@ -4,9 +4,11 @@ from dataclasses import dataclass
 @dataclass
 class Municipality:
     code: str  # 団体コード
-    name: str  # 団体名
-    postal_code: str  # 新郵便番号
+    prefecture: str  # 都道府県名
+    jititai: str  # 団体名
+    city_kana: str  # 市区町村名（カナ）
+    zip: str  # 新郵便番号
     address: str  # 住所
-    phone: str  # 電話番号
+    tel: str  # 電話番号
     latitude: float  # 緯度
     longitude: float  # 経度
