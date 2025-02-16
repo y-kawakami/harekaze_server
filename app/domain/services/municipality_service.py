@@ -27,10 +27,12 @@ class MunicipalityService:
                 self.municipalities = [
                     Municipality(
                         code=item['code'],
-                        name=item['name'],
-                        postal_code=item['postal_code'],
+                        prefecture=item['prefecture'],
+                        jititai=item['jititai'],
+                        city_kana=item['city_kana'],
+                        zip=item['zip'],
                         address=item['address'],
-                        phone=item['phone'],
+                        tel=item['tel'],
                         latitude=item['latitude'],
                         longitude=item['longitude']
                     )
@@ -65,7 +67,7 @@ class MunicipalityService:
         max_match_length = 0
 
         for municipality in self.municipalities:
-            mun_address = municipality.address
+            mun_address = municipality.prefecture + municipality.address
             # 前方からの共通部分の長さを計算
             match_length = 0
             for i in range(min(len(address), len(mun_address))):

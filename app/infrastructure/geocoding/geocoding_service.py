@@ -93,7 +93,7 @@ class GeocodingService:
             municipality_code = matched_municipality.code if matched_municipality else None
 
             if matched_municipality and not municipality:
-                municipality = matched_municipality.name
+                municipality = matched_municipality.jititai
 
             # 都道府県コードを取得
             prefecture_code = self.municipality_service.get_prefecture_code(
