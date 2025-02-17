@@ -27,6 +27,7 @@ async def create_session(
 ):
     """
     セッション管理用のJWTトークンをCookieに設定する。
+    こちら不要になりました。（互換のためにのこしておきます）
     """
     # クライアントのIPアドレスからユーザーを取得または作成
     auth_service = AuthService(db)

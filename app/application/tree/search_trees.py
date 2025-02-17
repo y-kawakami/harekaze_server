@@ -26,6 +26,7 @@ def search_trees(
     has_hole: Optional[bool] = None,
     has_tengusu: Optional[bool] = None,
     has_mushroom: Optional[bool] = None,
+    has_kobu: Optional[bool] = None,
 ) -> TreeSearchResponse:
     """
     全ユーザから投稿された桜の情報の検索を行う。
@@ -46,6 +47,7 @@ def search_trees(
         has_hole (Optional[bool]): 幹の穴の有無
         has_tengusu (Optional[bool]): テングス病の有無
         has_mushroom (Optional[bool]): キノコの有無
+        has_kobu (Optional[bool]): コブ状の枝の有無
 
     Returns:
         TreeSearchResponse: 検索結果
@@ -101,6 +103,7 @@ def search_trees(
         has_hole=has_hole,
         has_tengusu=has_tengusu,
         has_mushroom=has_mushroom,
+        has_kobu=has_kobu,
         offset=(page - 1) * per_page,
         limit=per_page
     )

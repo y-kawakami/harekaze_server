@@ -1,42 +1,46 @@
 """自治体関連のサービス"""
-import json
+import csv
 from typing import Dict, List, Optional
 
 from loguru import logger
 
 from app.domain.constants.prefecture import PREFECTURE_CODE_MAP
 from app.domain.models.municipality import Municipality
+from app.domain.models.prefecture import Prefecture
 
 
 class MunicipalityService:
     """自治体関連のサービスクラス"""
     municipalities: List[Municipality]
     municipality_by_code: Dict[str, Municipality]
+    prefectures: List[Prefecture]
+    prefecture_by_name: Dict[str, Prefecture]
 
     def __init__(self):
         """
         自治体データを読み込んで初期化する
         """
         self._load_municipalities()
+        self._load_prefectures()
 
     def _load_municipalities(self):
-        """自治体データをJSONファイルから読み込む"""
+        """自治体データをCSVファイルから読み込む"""
         try:
-            with open('master/municipalities.json', 'r', encoding='utf-8') as f:
-                data = json.load(f)
+            with open('master/municipalities.csv', 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
                 self.municipalities = [
                     Municipality(
-                        code=item['code'],
-                        prefecture=item['prefecture'],
-                        jititai=item['jititai'],
-                        city_kana=item['city_kana'],
-                        zip=item['zip'],
-                        address=item['address'],
-                        tel=item['tel'],
-                        latitude=item['latitude'],
-                        longitude=item['longitude']
+                        code=row['code'],
+                        prefecture=row['prefecture'],
+                        jititai=row['jititai'],
+                        city_kana=row['city_kana'],
+                        zip=row['zip'],
+                        address=row['address'],
+                        tel=row['tel'],
+                        latitude=float(row['latitude']),
+                        longitude=float(row['longitude'])
                     )
-                    for item in data
+                    for row in reader
                 ]
                 # コードでの高速検索用にディクショナリも作成
                 self.municipality_by_code = {
@@ -47,6 +51,35 @@ class MunicipalityService:
             logger.error(f"自治体データの読み込みに失敗しました: {str(e)}")
             self.municipalities = []
             self.municipality_by_code = {}
+
+    def _load_prefectures(self):
+        """都道府県データをCSVファイルから読み込む"""
+        try:
+            with open('master/pref_lat_lon.csv', 'r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                self.prefectures = []
+                for row in reader:
+                    # 都道府県名から都道府県コードを取得
+                    pref_name = row['pref_name']
+                    pref_code = self.get_prefecture_code(pref_name)
+                    if pref_code:
+                        self.prefectures.append(
+                            Prefecture(
+                                code=pref_code,
+                                name=pref_name,
+                                latitude=float(row['lat']),
+                                longitude=float(row['lon'])
+                            )
+                        )
+                # 都道府県名での高速検索用にディクショナリも作成
+                self.prefecture_by_name = {
+                    p.name: p for p in self.prefectures
+                }
+                logger.info(f"{len(self.prefectures)}件の都道府県データを読み込みました")
+        except Exception as e:
+            logger.error(f"都道府県データの読み込みに失敗しました: {str(e)}")
+            self.prefectures = []
+            self.prefecture_by_name = {}
 
     def find_municipality(self, address: str) -> Optional[Municipality]:
         """
@@ -106,6 +139,83 @@ class MunicipalityService:
 
         # 定数マップから都道府県コードを取得
         return PREFECTURE_CODE_MAP.get(prefecture)
+
+    def _calculate_distance_sphere(self, lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+        """
+        2点間の距離をメートル単位で計算する（ST_Distance_Sphere相当）
+
+        Args:
+            lat1 (float): 地点1の緯度
+            lon1 (float): 地点1の経度
+            lat2 (float): 地点2の緯度
+            lon2 (float): 地点2の経度
+
+        Returns:
+            float: 2点間の距離（メートル）
+        """
+        import math
+
+        # 地球の半径（メートル）
+        EARTH_RADIUS = 6371000
+
+        # 緯度経度をラジアンに変換
+        lat1_rad = math.radians(lat1)
+        lon1_rad = math.radians(lon1)
+        lat2_rad = math.radians(lat2)
+        lon2_rad = math.radians(lon2)
+
+        # Haversine公式による距離計算
+        dlat = lat2_rad - lat1_rad
+        dlon = lon2_rad - lon1_rad
+        a = math.sin(dlat / 2) * math.sin(dlat / 2) + \
+            math.cos(lat1_rad) * math.cos(lat2_rad) * \
+            math.sin(dlon / 2) * math.sin(dlon / 2)
+        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+        distance = EARTH_RADIUS * c
+
+        return distance
+
+    def search_municipalities(self, latitude: float, longitude: float, radius: float) -> List[Municipality]:
+        """
+        指定された緯度経度から半径内の自治体を検索する
+
+        Args:
+            latitude (float): 緯度
+            longitude (float): 経度
+            radius (float): 検索半径（メートル）
+
+        Returns:
+            List[Municipality]: 検索された自治体のリスト
+        """
+        # 半径内の自治体を検索
+        result = []
+        for municipality in self.municipalities:
+            distance = self._calculate_distance_sphere(
+                latitude, longitude, municipality.latitude, municipality.longitude)
+            if distance <= radius:
+                result.append(municipality)
+        return result
+
+    def search_prefectures(self, latitude: float, longitude: float, radius: float) -> List[Prefecture]:
+        """
+        指定された緯度経度から半径内の都道府県を検索する
+
+        Args:
+            latitude (float): 緯度
+            longitude (float): 経度
+            radius (float): 検索半径（メートル）
+
+        Returns:
+            List[Prefecture]: 検索された都道府県のリスト
+        """
+        # 半径内の都道府県を検索
+        result = []
+        for prefecture in self.prefectures:
+            distance = self._calculate_distance_sphere(
+                latitude, longitude, prefecture.latitude, prefecture.longitude)
+            if distance <= radius:
+                result.append(prefecture)
+        return result
 
 
 def get_municipality_service() -> MunicipalityService:

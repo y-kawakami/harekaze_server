@@ -235,6 +235,7 @@ class PrefectureStats(Base):
     hole_count: Mapped[int] = mapped_column(Integer)
     tengus_count: Mapped[int] = mapped_column(Integer)
     mushroom_count: Mapped[int] = mapped_column(Integer)
+    kobu_count: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),
@@ -266,6 +267,7 @@ class MunicipalityStats(Base):
     hole_count: Mapped[int] = mapped_column(Integer)
     tengus_count: Mapped[int] = mapped_column(Integer)
     mushroom_count: Mapped[int] = mapped_column(Integer)
+    kobu_count: Mapped[int] = mapped_column(Integer)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),

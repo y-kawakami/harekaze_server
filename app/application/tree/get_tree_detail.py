@@ -5,8 +5,9 @@ from app.application.exceptions import TreeNotFoundError
 from app.domain.constants.anonymous import filter_anonymous
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
-from app.interfaces.schemas.tree import (MushroomInfo, StemHoleInfo, StemInfo,
-                                         TengusuInfo, TreeDetailResponse)
+from app.interfaces.schemas.tree import (KobuInfo, MushroomInfo, StemHoleInfo,
+                                         StemInfo, TengusuInfo,
+                                         TreeDetailResponse)
 
 
 def get_tree_detail(
@@ -58,6 +59,7 @@ def get_tree_detail(
         stem_hole=None,
         tengusu=None,
         mushroom=None,
+        kobu=None,
         created_at=tree.created_at,
     )
 
@@ -103,6 +105,16 @@ def get_tree_detail(
             image_thumb_url=image_service.get_image_url(
                 str(tree.mushrooms[0].thumb_obj_key)),
             created_at=tree.mushrooms[0].created_at,
+        )
+
+    # こぶ状の枝の情報を追加
+    if tree.kobus:
+        response.kobu = KobuInfo(
+            image_url=image_service.get_image_url(
+                str(tree.kobus[0].image_obj_key)),
+            image_thumb_url=image_service.get_image_url(
+                str(tree.kobus[0].thumb_obj_key)),
+            created_at=tree.kobus[0].created_at,
         )
 
     logger.info(f"木の詳細情報取得完了: tree_id={tree_id}")

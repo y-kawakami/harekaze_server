@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from loguru import logger
@@ -8,6 +9,22 @@ from app.domain.models.models import (Kobu, MunicipalityStats, Mushroom,
                                       PrefectureStats, Stem, StemHole, Tengus,
                                       Tree)
 from app.interfaces.schemas.tree import AreaCountItem
+
+
+@dataclass
+class TreeRelatedEntities:
+    """木に関連するエンティティのデータクラス"""
+    stem_holes: List[StemHole]
+    tengus: List[Tengus]
+    mushrooms: List[Mushroom]
+    kobus: List[Kobu]
+
+    def __post_init__(self):
+        """各リストを最大30件に制限"""
+        self.stem_holes = self.stem_holes[:30]
+        self.tengus = self.tengus[:30]
+        self.mushrooms = self.mushrooms[:30]
+        self.kobus = self.kobus[:30]
 
 
 class TreeRepository:
@@ -203,6 +220,7 @@ class TreeRepository:
         has_hole: Optional[bool] = None,
         has_tengusu: Optional[bool] = None,
         has_mushroom: Optional[bool] = None,
+        has_kobu: Optional[bool] = None,
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
@@ -247,6 +265,13 @@ class TreeRepository:
         if has_mushroom is not None:
             subq = self.db.query(Mushroom.tree_id).distinct()
             if has_mushroom:
+                query = query.filter(Tree.id.in_(subq))
+            else:
+                query = query.filter(~Tree.id.in_(subq))
+
+        if has_kobu is not None:
+            subq = self.db.query(Kobu.tree_id).distinct()
+            if has_kobu:
                 query = query.filter(Tree.id.in_(subq))
             else:
                 query = query.filter(~Tree.id.in_(subq))
@@ -430,7 +455,8 @@ class TreeRepository:
         age_range: Optional[Tuple[int, int]] = None,
         has_hole: Optional[bool] = None,
         has_tengusu: Optional[bool] = None,
-        has_mushroom: Optional[bool] = None
+        has_mushroom: Optional[bool] = None,
+        has_kobu: Optional[bool] = None
     ) -> List[AreaCountItem]:
         """エリアごとの桜の本数を取得する"""
         logger.info(f"エリアごとの桜の本数を取得開始: area_type={area_type}, lat={
@@ -490,6 +516,12 @@ class TreeRepository:
                 else:
                     query = query.outerjoin(Mushroom).filter(
                         Mushroom.id.is_(None))
+            if has_kobu is not None:
+                logger.debug(f"こぶフィルタを適用: has_kobu={has_kobu}")
+                if has_kobu:
+                    query = query.join(Kobu)
+                else:
+                    query = query.outerjoin(Kobu).filter(Kobu.id.is_(None))
 
             # グループ化
             if area_type == 'prefecture':
@@ -507,7 +539,7 @@ class TreeRepository:
                 AreaCountItem(
                     prefecture_code=r[0] if area_type == 'prefecture' else None,
                     municipality_code=r[0] if area_type == 'municipality' else None,
-                    location='TODO: 東京都',  # locationは集計時には不要
+                    location='NotSet',  # locationは集計時には不要
                     count=r[3] or 0,  # countは4番目のカラム
                     latitude=r[1] or 0,  # latitudeは2番目のカラム
                     longitude=r[2] or 0,  # longitudeは3番目のカラム
@@ -522,3 +554,168 @@ class TreeRepository:
         except Exception as e:
             logger.exception(f"エリアごとの桜の本数取得中にエラー発生: {str(e)}")
             raise
+
+    def list_tree_related_entities_in_region(
+        self,
+        prefecture_code: str | None = None,
+        municipality_code: str | None = None,
+    ) -> TreeRelatedEntities:
+        """指定された地域の木に関連するエンティティを取得する
+
+        Args:
+            prefecture_code (str | None): 都道府県コード
+            municipality_code (str | None): 市区町村コード
+
+        Returns:
+            TreeRelatedEntities: 各エンティティのリストを含むデータクラス
+                - stem_holes: 幹の穴のリスト（最大30件）
+                - tengus: テングス病のリスト（最大30件）
+                - mushrooms: キノコのリスト（最大30件）
+                - kobus: こぶのリスト（最大30件）
+
+        Raises:
+            ValueError: prefecture_codeとmunicipality_codeの両方がNoneの場合
+        """
+        # 基本となるツリーのクエリを作成
+        tree_query = self.db.query(Tree.id)
+
+        if municipality_code:
+            tree_query = tree_query.filter(
+                Tree.municipality_code == municipality_code)
+        elif prefecture_code:
+            tree_query = tree_query.filter(
+                Tree.prefecture_code == prefecture_code)
+        else:
+            raise ValueError(
+                "prefecture_code または municipality_code のいずれかを指定する必要があります")
+
+        # 対象の木のIDを取得
+        tree_ids = [tree_id for (tree_id,) in tree_query.all()]
+
+        if not tree_ids:
+            return TreeRelatedEntities(
+                stem_holes=[],
+                tengus=[],
+                mushrooms=[],
+                kobus=[]
+            )
+
+        # 各エンティティを取得（最大30件）
+        stem_holes = self.db.query(StemHole).filter(
+            StemHole.tree_id.in_(tree_ids)
+        ).limit(30).all()
+
+        tengus = self.db.query(Tengus).filter(
+            Tengus.tree_id.in_(tree_ids)
+        ).limit(30).all()
+
+        mushrooms = self.db.query(Mushroom).filter(
+            Mushroom.tree_id.in_(tree_ids)
+        ).limit(30).all()
+
+        kobus = self.db.query(Kobu).filter(
+            Kobu.tree_id.in_(tree_ids)
+        ).limit(30).all()
+
+        return TreeRelatedEntities(
+            stem_holes=stem_holes,
+            tengus=tengus,
+            mushrooms=mushrooms,
+            kobus=kobus
+        )
+
+    def get_area_counts_by_codes(
+        self,
+        area_type: str,
+        area_codes: List[str],
+        vitality_range: Optional[Tuple[int, int]] = None,
+        age_range: Optional[Tuple[int, int]] = None,
+        has_hole: Optional[bool] = None,
+        has_tengusu: Optional[bool] = None,
+        has_mushroom: Optional[bool] = None,
+        has_kobu: Optional[bool] = None
+    ) -> List[AreaCountItem]:
+        """エリアコードのリストに基づいて桜の本数を集計する
+
+        Args:
+            area_type (str): 集計レベル（'prefecture'または'municipality'）
+            area_codes (List[str]): 都道府県コードまたは市区町村コードのリスト
+            vitality_range (Optional[Tuple[int, int]]): 元気度の範囲
+            age_range (Optional[Tuple[int, int]]): 樹齢の範囲
+            has_hole (Optional[bool]): 幹の穴の有無
+            has_tengusu (Optional[bool]): テングス病の有無
+            has_mushroom (Optional[bool]): キノコの有無
+            has_kobu (Optional[bool]): こぶの有無
+
+        Returns:
+            List[AreaCountItem]: エリアごとの集計結果
+        """
+        logger.info(f"エリアコードに基づく桜の本数集計開始: area_type={area_type}")
+
+        # クエリの作成
+        if area_type == 'prefecture':
+            query = self.db.query(
+                Tree.prefecture_code,
+                func.avg(Tree.latitude).label('latitude'),
+                func.avg(Tree.longitude).label('longitude'),
+                func.count(Tree.id).label('count')
+            ).filter(Tree.prefecture_code.in_(area_codes))
+        else:  # municipality
+            query = self.db.query(
+                Tree.municipality_code,
+                func.avg(Tree.latitude).label('latitude'),
+                func.avg(Tree.longitude).label('longitude'),
+                func.count(Tree.id).label('count')
+            ).filter(Tree.municipality_code.in_(area_codes))
+
+        # フィルタ条件を適用
+        if vitality_range:
+            query = query.filter(
+                Tree.vitality.between(vitality_range[0], vitality_range[1]))
+        if age_range:
+            query = query.join(Stem).filter(
+                Stem.age.between(age_range[0], age_range[1]))
+        if has_hole is not None:
+            if has_hole:
+                query = query.join(StemHole)
+            else:
+                query = query.outerjoin(StemHole).filter(StemHole.id.is_(None))
+        if has_tengusu is not None:
+            if has_tengusu:
+                query = query.join(Tengus)
+            else:
+                query = query.outerjoin(Tengus).filter(Tengus.id.is_(None))
+        if has_mushroom is not None:
+            if has_mushroom:
+                query = query.join(Mushroom)
+            else:
+                query = query.outerjoin(Mushroom).filter(Mushroom.id.is_(None))
+        if has_kobu is not None:
+            if has_kobu:
+                query = query.join(Kobu)
+            else:
+                query = query.outerjoin(Kobu).filter(Kobu.id.is_(None))
+
+        # グループ化
+        if area_type == 'prefecture':
+            query = query.group_by(Tree.prefecture_code)
+        else:  # municipality
+            query = query.group_by(Tree.municipality_code)
+
+        results = query.all()
+        logger.debug(f"集計結果: {len(results)}件")
+
+        # 結果をAreaCountItemに変換
+        return [
+            AreaCountItem(
+                prefecture_code=r[0] if area_type == 'prefecture' else None,
+                municipality_code=r[0] if area_type == 'municipality' else None,
+                location='NotSet',  # locationは呼び出し側で設定
+                count=r[3] or 0,
+                latitude=r[1] or 0,
+                longitude=r[2] or 0,
+                latest_nickname=None,
+                latest_image_thumb_url=None,
+            )
+            for r in results
+        ]

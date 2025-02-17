@@ -4,8 +4,10 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError
+from app.domain.models.prefecture import Prefecture
+from app.domain.services.municipality_service import get_municipality_service
 from app.infrastructure.repositories.tree_repository import TreeRepository
-from app.interfaces.schemas.tree import AreaCountResponse
+from app.interfaces.schemas.tree import AreaCountItem, AreaCountResponse
 
 
 def get_area_count(
@@ -21,6 +23,7 @@ def get_area_count(
     has_hole: Optional[bool],
     has_tengusu: Optional[bool],
     has_mushroom: Optional[bool],
+    has_kobu: Optional[bool],
 ) -> AreaCountResponse:
     """
     エリア（都道府県または市区町村）ごとの桜の本数を取得する。
@@ -39,6 +42,7 @@ def get_area_count(
         has_hole (Optional[bool]): 幹の穴の有無
         has_tengusu (Optional[bool]): テングス病の有無
         has_mushroom (Optional[bool]): キノコの有無
+        has_kobu (Optional[bool]): コブ状の枝の有無
 
     Returns:
         AreaCountResponse: エリアごとの集計結果
@@ -62,6 +66,19 @@ def get_area_count(
                  f"age_min={age_min}, age_max={age_max}, "
                  f"has_hole={has_hole}, has_tengusu={has_tengusu}, has_mushroom={has_mushroom}")
 
+    # MunicipalityServiceを使用して範囲内の自治体/都道府県を取得
+    municipality_service = get_municipality_service()
+    if area_type == 'prefecture':
+        areas = municipality_service.search_prefectures(
+            latitude, longitude, radius)
+        area_codes = [area.code for area in areas]
+        logger.debug(f"検索範囲内の都道府県コード: {area_codes}")
+    else:  # municipality
+        areas = municipality_service.search_municipalities(
+            latitude, longitude, radius)
+        area_codes = [area.code for area in areas]
+        logger.debug(f"検索範囲内の市区町村コード: {area_codes}")
+
     repository = TreeRepository(db)
 
     # レンジパラメータの構築
@@ -82,21 +99,47 @@ def get_area_count(
         logger.debug(f"樹齢範囲を設定: {age_range}")
 
     # エリアごとの集計を取得
-    area_counts = repository.get_area_counts(
+    tree_counts = repository.get_area_counts_by_codes(
         area_type=area_type,
-        latitude=latitude,
-        longitude=longitude,
-        radius=radius,
+        area_codes=area_codes,
         vitality_range=vitality_range,
         age_range=age_range,
         has_hole=has_hole,
         has_tengusu=has_tengusu,
-        has_mushroom=has_mushroom
+        has_mushroom=has_mushroom,
+        has_kobu=has_kobu
     )
 
-    if not area_counts:
-        logger.info("指定された条件に一致する桜は見つかりませんでした")
-        return AreaCountResponse(total=0, areas=[])
+    # 木が0件のエリアも含めてレスポンスを作成
+    area_counts = []
+    for area in areas:
+        count = 0
+        latitude = area.latitude
+        longitude = area.longitude
+
+        # 対応する集計結果があれば取得
+        for tree_count in tree_counts:
+            if area_type == 'prefecture' and tree_count.prefecture_code == area.code:
+                count = tree_count.count
+                break
+            elif area_type == 'municipality' and tree_count.municipality_code == area.code:
+                count = tree_count.count
+                break
+
+        area_counts.append(
+            AreaCountItem(
+                prefecture_code=area.code if area_type == 'prefecture' else None,
+                municipality_code=area.code if area_type == 'municipality' else None,
+                # 都道府県の場合はname、市区町村の場合はjititaiを使用
+                location=area.name if isinstance(
+                    area, Prefecture) else area.jititai,
+                count=count,
+                latitude=latitude,
+                longitude=longitude,
+                latest_nickname=None,
+                latest_image_thumb_url=None,
+            )
+        )
 
     # 合計を計算
     total = sum(area.count for area in area_counts)

@@ -24,8 +24,7 @@ from app.domain.services.image_service import ImageService, get_image_service
 from app.domain.services.municipality_service import (MunicipalityService,
                                                       get_municipality_service)
 from app.infrastructure.database.database import get_db
-from app.infrastructure.geocoding.geocoding_service import (
-    GeocodingService, get_geocoding_service)
+from app.infrastructure.geocoding.geocoding_service import GeocodingService
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
@@ -143,6 +142,7 @@ async def search_trees(
     has_hole: bool | None = Query(None, description="幹の穴の有無"),
     has_tengusu: bool | None = Query(None, description="テングス病の有無"),
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
+    has_kobu: bool | None = Query(None, description="コブ状の枝の有無"),
     db: Session = Depends(get_db),
     image_service: ImageService = Depends(get_image_service)
 ):
@@ -164,6 +164,7 @@ async def search_trees(
         has_hole=has_hole,
         has_tengusu=has_tengusu,
         has_mushroom=has_mushroom,
+        has_kobu=has_kobu,
         image_service=image_service
     )
 
@@ -220,6 +221,10 @@ async def get_area_count(
         None,
         description="キノコの有無"
     ),
+    has_kobu: bool | None = Query(
+        None,
+        description="コブ状の枝の有無"
+    ),
     db: Session = Depends(get_db)
 ):
     """
@@ -239,7 +244,8 @@ async def get_area_count(
         age_max=age_max,
         has_hole=has_hole,
         has_tengusu=has_tengusu,
-        has_mushroom=has_mushroom
+        has_mushroom=has_mushroom,
+        has_kobu=has_kobu
     )
 
 
@@ -254,6 +260,7 @@ async def get_area_stats(
         description="市区町村コード（JIS X 0402に準拠）"
     ),
     db: Session = Depends(get_db),
+    image_service: ImageService = Depends(get_image_service)
 ):
     """
     指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
@@ -262,7 +269,8 @@ async def get_area_stats(
     return get_area_stats_app(
         db=db,
         prefecture_code=prefecture_code,
-        municipality_code=municipality_code
+        municipality_code=municipality_code,
+        image_service=image_service
     )
 
 

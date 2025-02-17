@@ -174,6 +174,8 @@ class TreeDetailResponse(TreeResponse):
         None, description="テングス病の情報（存在する場合のみ）")
     mushroom: Optional[MushroomInfo] = Field(
         None, description="キノコの情報（存在する場合のみ）")
+    kobu: Optional[KobuInfo] = Field(
+        None, description="こぶ状の枝の情報（存在する場合のみ）")
 
     class Config:
         from_attributes = True
@@ -218,6 +220,13 @@ class TreeStatsResponse(BaseModel):
         ..., description="樹齢の分布（キー: 0-20/30-39/40-49/50-59/60+、値: 本数）")
 
 
+class AreaStatsImage(BaseModel):
+    """地域の統計情報の画像情報"""
+    id: str = Field(..., description="登録した桜に付与されるID")
+    image_url: str = Field(..., description="地域の統計情報の画像のURL")
+    image_thumb_url: str = Field(..., description="地域の統計情報の画像のサムネイルURL")
+
+
 class AreaStatsResponse(BaseModel):
     """地域の統計情報レスポンス"""
     total_trees: int = Field(..., description="桜の総本数")
@@ -238,9 +247,19 @@ class AreaStatsResponse(BaseModel):
     hole_count: int = Field(..., description="幹の穴がある木の本数")
     tengusu_count: int = Field(..., description="テングス病の木の本数")
     mushroom_count: int = Field(..., description="キノコが生えている木の本数")
+    kobu_count: int = Field(..., description="こぶ状の枝がある木の本数")
     # 位置情報
     latitude: float = Field(..., description="地域の中心緯度")
     longitude: float = Field(..., description="地域の中心経度")
+    # 画像情報
+    hole_images: List[AreaStatsImage] = Field(
+        ..., description="幹の穴の画像情報のリスト(最大30件)")
+    tengusu_images: List[AreaStatsImage] = Field(
+        ..., description="テングス病の画像情報のリスト(最大30件)")
+    mushroom_images: List[AreaStatsImage] = Field(
+        ..., description="キノコの画像情報のリスト(最大30件)")
+    kobu_images: List[AreaStatsImage] = Field(
+        ..., description="こぶ状の枝の画像情報のリスト(最大30件)")
 
 
 class TreeDecoratedResponse(BaseModel):
