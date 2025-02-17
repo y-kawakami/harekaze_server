@@ -543,7 +543,7 @@ class TreeRepository:
                     count=r[3] or 0,  # countは4番目のカラム
                     latitude=r[1] or 0,  # latitudeは2番目のカラム
                     longitude=r[2] or 0,  # longitudeは3番目のカラム
-                    latest_nickname=None,
+                    latest_contributor=None,
                     latest_image_thumb_url=None,
                 )
                 for r in results
@@ -652,20 +652,50 @@ class TreeRepository:
         """
         logger.info(f"エリアコードに基づく桜の本数集計開始: area_type={area_type}")
 
-        # クエリの作成
+        # サブクエリで最新の木を取得
+        latest_tree_subq = self.db.query(
+            Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
+            Tree.contributor.label('latest_contributor'),
+            Tree.thumb_obj_key.label('latest_image_thumb_url'),
+            func.row_number().over(
+                partition_by=Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
+                order_by=Tree.created_at.desc()
+            ).label('rn')
+        ).filter(
+            Tree.prefecture_code.in_(area_codes) if area_type == 'prefecture'
+            else Tree.municipality_code.in_(area_codes)
+        ).subquery()
+
+        # メインクエリの作成
         if area_type == 'prefecture':
             query = self.db.query(
                 Tree.prefecture_code,
                 func.avg(Tree.latitude).label('latitude'),
                 func.avg(Tree.longitude).label('longitude'),
-                func.count(Tree.id).label('count')
+                func.count(Tree.id).label('count'),
+                func.max(latest_tree_subq.c.latest_contributor).label(
+                    'latest_contributor'),
+                func.max(latest_tree_subq.c.latest_image_thumb_url).label(
+                    'latest_image_thumb_url')
+            ).outerjoin(
+                latest_tree_subq,
+                (Tree.prefecture_code == latest_tree_subq.c.prefecture_code) &
+                (latest_tree_subq.c.rn == 1)
             ).filter(Tree.prefecture_code.in_(area_codes))
         else:  # municipality
             query = self.db.query(
                 Tree.municipality_code,
                 func.avg(Tree.latitude).label('latitude'),
                 func.avg(Tree.longitude).label('longitude'),
-                func.count(Tree.id).label('count')
+                func.count(Tree.id).label('count'),
+                func.max(latest_tree_subq.c.latest_contributor).label(
+                    'latest_contributor'),
+                func.max(latest_tree_subq.c.latest_image_thumb_url).label(
+                    'latest_image_thumb_url')
+            ).outerjoin(
+                latest_tree_subq,
+                (Tree.municipality_code == latest_tree_subq.c.municipality_code) &
+                (latest_tree_subq.c.rn == 1)
             ).filter(Tree.municipality_code.in_(area_codes))
 
         # フィルタ条件を適用
@@ -714,8 +744,8 @@ class TreeRepository:
                 count=r[3] or 0,
                 latitude=r[1] or 0,
                 longitude=r[2] or 0,
-                latest_nickname=None,
-                latest_image_thumb_url=None,
+                latest_contributor=r[4],
+                latest_image_thumb_url=r[5],
             )
             for r in results
         ]

@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError
 from app.domain.models.prefecture import Prefecture
+from app.domain.services.image_service import ImageService
 from app.domain.services.municipality_service import get_municipality_service
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import AreaCountItem, AreaCountResponse
@@ -12,6 +13,7 @@ from app.interfaces.schemas.tree import AreaCountItem, AreaCountResponse
 
 def get_area_count(
     db: Session,
+    image_service: ImageService,
     area_type: str,
     latitude: float,
     longitude: float,
@@ -114,6 +116,8 @@ def get_area_count(
     area_counts = []
     for area in areas:
         count = 0
+        latest_contributor = None
+        latest_image_thumb_url = None
         latitude = area.latitude
         longitude = area.longitude
 
@@ -121,9 +125,17 @@ def get_area_count(
         for tree_count in tree_counts:
             if area_type == 'prefecture' and tree_count.prefecture_code == area.code:
                 count = tree_count.count
+                latest_contributor = tree_count.latest_contributor
+                if tree_count.latest_image_thumb_url:
+                    latest_image_thumb_url = image_service.get_image_url(
+                        tree_count.latest_image_thumb_url)
                 break
             elif area_type == 'municipality' and tree_count.municipality_code == area.code:
                 count = tree_count.count
+                latest_contributor = tree_count.latest_contributor
+                if tree_count.latest_image_thumb_url:
+                    latest_image_thumb_url = image_service.get_image_url(
+                        tree_count.latest_image_thumb_url)
                 break
 
         area_counts.append(
@@ -136,8 +148,8 @@ def get_area_count(
                 count=count,
                 latitude=latitude,
                 longitude=longitude,
-                latest_nickname=None,
-                latest_image_thumb_url=None,
+                latest_contributor=latest_contributor,
+                latest_image_thumb_url=latest_image_thumb_url
             )
         )
 
