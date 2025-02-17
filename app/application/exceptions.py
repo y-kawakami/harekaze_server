@@ -85,6 +85,30 @@ class NgWordError(ApplicationError):
         )
 
 
+class MunicipalityNotFoundError(ApplicationError):
+    """指定された市区町村が見つからない場合の例外"""
+
+    def __init__(self, municipality_code: str):
+        super().__init__(
+            reason="指定された市区町村が見つかりません",
+            error_code=109,
+            status=400,
+            details={"municipality_code": municipality_code}
+        )
+
+
+class PrefectureNotFoundError(ApplicationError):
+    """指定された都道府県が見つからない場合の例外"""
+
+    def __init__(self, prefecture_code: str):
+        super().__init__(
+            reason="指定された都道府県が見つかりません",
+            error_code=110,
+            status=400,
+            details={"prefecture_code": prefecture_code}
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 

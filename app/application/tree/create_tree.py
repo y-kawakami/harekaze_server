@@ -8,7 +8,7 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         LocationNotFoundError,
                                         LocationNotInJapanError,
                                         TreeNotDetectedError)
-from app.domain.constants.anonymous import ANONYMOUS_LABEL
+from app.domain.constants.anonymous import ANONYMOUS_LABEL, filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
@@ -118,6 +118,7 @@ def create_tree(
     return TreeResponse(
         id=tree.uid,
         tree_number=f"#{tree.id}",
+        contributor=filter_anonymous(contributor) if contributor else None,
         latitude=tree.latitude,
         longitude=tree.longitude,
         location=tree.location,

@@ -2,12 +2,12 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple
 
 from loguru import logger
-from sqlalchemy import func
+from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
-from app.domain.models.models import (Kobu, MunicipalityStats, Mushroom,
-                                      PrefectureStats, Stem, StemHole, Tengus,
-                                      Tree)
+from app.domain.models.area_stats import AreaStats
+from app.domain.models.models import (Kobu, Mushroom, PrefectureStats, Stem,
+                                      StemHole, Tengus, Tree)
 from app.interfaces.schemas.tree import AreaCountItem
 
 
@@ -224,7 +224,7 @@ class TreeRepository:
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
-        query = self.db.query(Tree).outerjoin(Stem)
+        query = self.db.query(Tree)
 
         # 市区町村コードまたは位置による検索
         if municipality_code is not None:
@@ -242,6 +242,8 @@ class TreeRepository:
                 Tree.vitality >= vitality_range[0],
                 Tree.vitality <= vitality_range[1]
             )
+
+        # age_rangeが指定されている場合のみstemテーブルと結合
         if age_range:
             query = query.join(Stem).filter(
                 Stem.age >= age_range[0],
@@ -439,11 +441,117 @@ class TreeRepository:
             PrefectureStats.prefecture_code == prefecture_code
         ).first()
 
-    def get_municipality_stats(self, municipality_code: str) -> MunicipalityStats | None:
-        """市区町村の統計情報を取得する"""
-        return self.db.query(MunicipalityStats).filter(
-            MunicipalityStats.municipality_code == municipality_code
-        ).first()
+    def get_area_stats(
+        self,
+        prefecture_code: Optional[str] = None,
+        municipality_code: Optional[str] = None
+    ) -> Optional[AreaStats]:
+        """地域（都道府県または市区町村）の統計情報を取得する
+
+        Args:
+            prefecture_code (Optional[str]): 都道府県コード
+            municipality_code (Optional[str]): 市区町村コード
+            ※いずれか一方を指定する必要があります
+
+        Returns:
+            Optional[AreaStats]: 地域の統計情報
+        """
+        if not municipality_code and not prefecture_code:
+            logger.error("都道府県コードと市区町村コードの両方が指定されていません")
+            return None
+
+        if municipality_code and prefecture_code:
+            logger.error("都道府県コードと市区町村コードの両方が指定されています")
+            return None
+
+        # 基本となるクエリを作成
+        base_query = self.db.query(Tree)
+        if municipality_code:
+            base_query = base_query.filter(
+                Tree.municipality_code == municipality_code)
+        else:
+            base_query = base_query.filter(
+                Tree.prefecture_code == prefecture_code)
+
+        # 総本数を取得
+        total_trees = base_query.count()
+        if total_trees == 0:
+            return None
+
+        # 元気度ごとの本数を取得
+        vitality_counts = self.db.query(
+            Tree.vitality,
+            func.count(Tree.id).label('count')
+        )
+        if municipality_code:
+            vitality_counts = vitality_counts.filter(
+                Tree.municipality_code == municipality_code)
+        else:
+            vitality_counts = vitality_counts.filter(
+                Tree.prefecture_code == prefecture_code)
+        vitality_counts = vitality_counts.group_by(Tree.vitality).all()
+
+        vitality_dict = {v: 0 for v in range(1, 6)}
+        for vitality, count in vitality_counts:
+            vitality_dict[vitality] = count
+
+        # 樹齢ごとの本数を取得
+        age_counts = self.db.query(
+            case(
+                {
+                    Stem.age <= 20: '20',
+                    Stem.age <= 30: '30',
+                    Stem.age <= 40: '40',
+                    Stem.age <= 50: '50'
+                },
+                else_='60'
+            ).label('age_group'),
+            func.count(Tree.id).label('count')
+        ).join(Tree)
+        if municipality_code:
+            age_counts = age_counts.filter(
+                Tree.municipality_code == municipality_code)
+        else:
+            age_counts = age_counts.filter(
+                Tree.prefecture_code == prefecture_code)
+        age_counts = age_counts.group_by('age_group').all()
+
+        age_dict = {'20': 0, '30': 0, '40': 0, '50': 0, '60': 0}
+        for age_group, count in age_counts:
+            age_dict[age_group] = count
+
+        # 問題のある木の数を取得
+        base_problem_query = self.db.query(Tree)
+        if municipality_code:
+            base_problem_query = base_problem_query.filter(
+                Tree.municipality_code == municipality_code)
+        else:
+            base_problem_query = base_problem_query.filter(
+                Tree.prefecture_code == prefecture_code)
+
+        hole_count = base_problem_query.join(StemHole).distinct().count()
+        tengusu_count = base_problem_query.join(Tengus).distinct().count()
+        mushroom_count = base_problem_query.join(Mushroom).distinct().count()
+        kobu_count = base_problem_query.join(Kobu).distinct().count()
+
+        # AreaStatsオブジェクトを作成して返す
+        return AreaStats(
+            total_trees=total_trees,
+            vitality1_count=vitality_dict[1],
+            vitality2_count=vitality_dict[2],
+            vitality3_count=vitality_dict[3],
+            vitality4_count=vitality_dict[4],
+            vitality5_count=vitality_dict[5],
+            age20_count=age_dict['20'],
+            age30_count=age_dict['30'],
+            age40_count=age_dict['40'],
+            age50_count=age_dict['50'],
+            age60_count=age_dict['60'],
+            hole_count=hole_count,
+            tengus_count=tengusu_count,
+            mushroom_count=mushroom_count,
+            kobu_count=kobu_count,
+        )
 
     def get_area_counts(
         self,

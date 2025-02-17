@@ -15,6 +15,7 @@ class MunicipalityService:
     municipality_by_code: Dict[str, Municipality]
     prefectures: List[Prefecture]
     prefecture_by_name: Dict[str, Prefecture]
+    prefecture_by_code: Dict[str, Prefecture]
 
     def __init__(self):
         """
@@ -74,6 +75,9 @@ class MunicipalityService:
                 # 都道府県名での高速検索用にディクショナリも作成
                 self.prefecture_by_name = {
                     p.name: p for p in self.prefectures
+                }
+                self.prefecture_by_code = {
+                    p.code: p for p in self.prefectures
                 }
                 logger.info(f"{len(self.prefectures)}件の都道府県データを読み込みました")
         except Exception as e:
@@ -216,6 +220,30 @@ class MunicipalityService:
             if distance <= radius:
                 result.append(prefecture)
         return result
+
+    def get_municipality_by_code(self, code: str) -> Optional[Municipality]:
+        """
+        団体コードから自治体情報を取得する
+
+        Args:
+            code (str): 団体コード
+
+        Returns:
+            Optional[Municipality]: 取得した自治体情報
+        """
+        return self.municipality_by_code.get(code)
+
+    def get_prefecture_by_code(self, code: str) -> Optional[Prefecture]:
+        """
+        都道府県コードから都道府県情報を取得する
+
+        Args:
+            code (str): 都道府県コード
+
+        Returns:
+            Optional[Prefecture]: 取得した都道府県情報
+        """
+        return self.prefecture_by_code.get(code)
 
 
 def get_municipality_service() -> MunicipalityService:

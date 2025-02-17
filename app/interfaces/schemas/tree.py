@@ -16,6 +16,7 @@ class TreeCreate(TreeBase):
 class TreeResponse(TreeBase):
     id: str = Field(..., description="登録した桜に付与されるID")
     tree_number: str = Field(..., description="表示用の番号（例: #23493）")
+    contributor: Optional[str] = Field(None, description="投稿者名")
     vitality: Optional[int] = Field(None,
                                     description="元気度（1-5の整数値）", ge=1, le=5)
     latitude: float = Field(..., description="撮影場所の緯度")
@@ -261,6 +262,34 @@ class AreaStatsResponse(BaseModel):
         ..., description="キノコの画像情報のリスト(最大30件)")
     kobu_images: List[AreaStatsImage] = Field(
         ..., description="こぶ状の枝の画像情報のリスト(最大30件)")
+
+    @classmethod
+    def get_default(cls) -> "AreaStatsResponse":
+        """デフォルト値を設定したインスタンスを返す"""
+        return cls(
+            total_trees=0,
+            location="",
+            vitality1_count=0,
+            vitality2_count=0,
+            vitality3_count=0,
+            vitality4_count=0,
+            vitality5_count=0,
+            age20_count=0,
+            age30_count=0,
+            age40_count=0,
+            age50_count=0,
+            age60_count=0,
+            hole_count=0,
+            tengusu_count=0,
+            mushroom_count=0,
+            kobu_count=0,
+            latitude=0.0,
+            longitude=0.0,
+            hole_images=[],
+            tengusu_images=[],
+            mushroom_images=[],
+            kobu_images=[]
+        )
 
 
 class TreeDecoratedResponse(BaseModel):

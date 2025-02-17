@@ -3,8 +3,11 @@ from typing import Optional
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import InvalidParamError, TreeNotFoundError
+from app.application.exceptions import (InvalidParamError,
+                                        MunicipalityNotFoundError,
+                                        PrefectureNotFoundError)
 from app.domain.services.image_service import ImageService
+from app.domain.services.municipality_service import MunicipalityService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import AreaStatsImage, AreaStatsResponse
 
@@ -14,6 +17,7 @@ def get_area_stats(
     prefecture_code: Optional[str],
     municipality_code: Optional[str],
     image_service: ImageService,
+    municipality_service: MunicipalityService,
 ) -> AreaStatsResponse:
     """指定された地域の統計情報を取得する
 
@@ -48,19 +52,39 @@ def get_area_stats(
     repository = TreeRepository(db)
 
     # 基本的な統計情報を取得
+    latitude = 0.0
+    longitude = 0.0
+    location = ''
+    stats = repository.get_area_stats(
+        prefecture_code=prefecture_code, municipality_code=municipality_code)
+
     if municipality_code:
-        # 市区町村の統計情報を取得
-        stats = repository.get_municipality_stats(municipality_code)
-        if not stats:
-            logger.warning(f"市区町村の統計情報が見つかりません: code={municipality_code}")
-            raise TreeNotFoundError(tree_id=municipality_code)
+        municipality = municipality_service.get_municipality_by_code(
+            municipality_code)
+        if not municipality:
+            raise MunicipalityNotFoundError(
+                municipality_code=municipality_code)
+        latitude = municipality.latitude
+        longitude = municipality.longitude
+        location = municipality.jititai
     else:
         # 都道府県の統計情報を取得
         assert prefecture_code is not None  # この時点でprefecture_codeはNoneではない
-        stats = repository.get_prefecture_stats(prefecture_code)
-        if not stats:
-            logger.warning(f"都道府県の統計情報が見つかりません: code={prefecture_code}")
-            raise TreeNotFoundError(tree_id=prefecture_code)
+        prefecture = municipality_service.get_prefecture_by_code(
+            prefecture_code)
+        if not prefecture:
+            raise PrefectureNotFoundError(prefecture_code=prefecture_code)
+        latitude = prefecture.latitude
+        longitude = prefecture.longitude
+        location = prefecture.name
+
+    if not stats:
+        logger.warning(f"市区町村の統計情報が見つかりません: code={municipality_code}")
+        response = AreaStatsResponse.get_default()
+        response.location = location
+        response.latitude = latitude
+        response.longitude = longitude
+        return response
 
     # 関連エンティティの情報を取得
     related_entities = repository.list_tree_related_entities_in_region(
@@ -120,7 +144,7 @@ def get_area_stats(
     # 統計情報を作成
     response = AreaStatsResponse(
         total_trees=stats.total_trees,
-        location=stats.location,
+        location=location,
         # 元気度の分布
         vitality1_count=stats.vitality1_count,
         vitality2_count=stats.vitality2_count,
@@ -139,8 +163,8 @@ def get_area_stats(
         mushroom_count=len(related_entities.mushrooms),
         kobu_count=len(related_entities.kobus),
         # 位置情報
-        latitude=stats.latitude,
-        longitude=stats.longitude,
+        latitude=latitude,
+        longitude=longitude,
         # 画像情報
         hole_images=hole_images,
         tengusu_images=tengusu_images,
@@ -148,5 +172,5 @@ def get_area_stats(
         kobu_images=kobu_images
     )
 
-    logger.info(f"統計情報の取得が完了: location={stats.location}")
+    logger.info(f"統計情報の取得が完了: location={location}")
     return response
