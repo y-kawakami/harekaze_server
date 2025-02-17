@@ -4,6 +4,7 @@ from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy.orm import Session
 
+from app.application.exceptions import InvalidParamError
 from app.domain.constants.anonymous import filter_anonymous
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
@@ -57,15 +58,13 @@ def search_trees(
     """
     # 検索条件のバリデーション
     if municipality_code is None and (latitude is None or longitude is None or radius is None):
-        raise HTTPException(
-            status_code=400,
-            detail="市区町村コード、もしくは緯度・経度・検索範囲のいずれかを指定してください"
+        raise InvalidParamError(
+            reason="市区町村コード、もしくは緯度・経度・検索範囲のいずれかを指定してください"
         )
 
     if municipality_code is not None and (latitude is not None or longitude is not None or radius is not None):
-        raise HTTPException(
-            status_code=400,
-            detail="市区町村コードと位置検索（緯度・経度・検索範囲）は同時に指定できません"
+        raise InvalidParamError(
+            reason="市区町村コードと位置検索（緯度・経度・検索範囲）は同時に指定できません"
         )
 
     logger.info(
