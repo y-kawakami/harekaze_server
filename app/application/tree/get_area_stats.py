@@ -40,6 +40,13 @@ def get_area_stats(
         InvalidParamError: 都道府県コードと市区町村コードの両方が指定されていない場合
         TreeNotFoundError: 指定された地域の統計情報が見つからない場合
     """
+    # prefecture_codeとmunicipality_codeのいずれか一方のみが指定されていることをチェック
+    if prefecture_code is not None and municipality_code is not None:
+        logger.error("都道府県コードと市区町村コードのいずれか一方のみを指定する必要があります")
+        raise InvalidParamError(
+            reason="都道府県コードと市区町村コードのいずれか一方のみを指定してください"
+        )
+
     logger.info(
         f"地域の統計情報取得開始: prefecture_code={prefecture_code}, municipality_code={municipality_code}")
 
