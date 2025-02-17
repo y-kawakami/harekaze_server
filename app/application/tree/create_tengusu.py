@@ -8,6 +8,7 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         TreeNotFoundError)
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
+from app.infrastructure.repositories.tengus_repository import TengusRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TengusuInfo
 
@@ -22,7 +23,7 @@ def create_tengusu(
     image_service: ImageService,
 ) -> TengusuInfo:
     """
-    テングス病の写真を登録する。
+    テングス病の写真を登録する。既存のテングス病の写真がある場合は削除して新規登録する。
 
     Args:
         db (Session): データベースセッション
@@ -39,15 +40,35 @@ def create_tengusu(
     Raises:
         TreeNotFoundError: 指定された木が見つからない場合
         ImageUploadError: 画像のアップロードに失敗した場合
+        DatabaseError: データベースの操作に失敗した場合
     """
     logger.info(f"テングス病の写真登録開始: tree_id={tree_id}")
 
     # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
+    tree_repository = TreeRepository(db)
+    tree = tree_repository.get_tree(tree_id)
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
+
+    # 既存のテングス病の写真があれば削除
+    tengus_repository = TengusRepository(db)
+    existing_tengus = tengus_repository.get_tengus_by_tree_id(tree.id)
+    if existing_tengus:
+        logger.info(f"既存のテングス病の写真を削除: tree_id={tree_id}")
+        for tengus in existing_tengus:
+            try:
+                # S3から画像を削除
+                if tengus.image_obj_key:
+                    image_service.delete_image(tengus.image_obj_key)
+                if tengus.thumb_obj_key:
+                    image_service.delete_image(tengus.thumb_obj_key)
+
+                # DBから削除
+                tengus_repository.delete_tengus(tengus.id)
+            except Exception as e:
+                logger.error(f"既存のテングス病の写真の削除中にエラー発生: {str(e)}")
+                # 削除に失敗しても続行
 
     # サムネイル作成
     logger.debug("サムネイル作成を開始")
@@ -68,25 +89,22 @@ def create_tengusu(
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_uid=tree_id) from e
 
-    # DBに登録
+    # DBに保存
     try:
-        if not repository.create_tengus(
-            user_id=current_user.id,
+        tengus_repository.create_tengus(
             tree_id=tree.id,
+            user_id=current_user.id,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
-            thumb_obj_key=thumb_key
-        ):
-            logger.error(f"DB登録失敗: tree_id={tree_id}")
-            raise TreeNotFoundError(tree_id=tree_id)
+            thumb_obj_key=thumb_key,
+        )
         logger.info(f"テングス病の写真登録完了: tree_id={tree_id}")
+        return TengusuInfo(
+            image_url=image_service.get_image_url(image_key),
+            image_thumb_url=image_service.get_image_url(thumb_key),
+            created_at=datetime.now(timezone.utc)
+        )
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")
         raise DatabaseError(message=str(e)) from e
-
-    return TengusuInfo(
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=datetime.now(timezone.utc)
-    )
