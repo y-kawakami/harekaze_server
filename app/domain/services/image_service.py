@@ -1,5 +1,6 @@
 import io
 import os
+import random
 from typing import Optional, Tuple
 
 import boto3
@@ -87,7 +88,7 @@ class ImageService:
         except ClientError:
             return ""
 
-    def analyze_tree_vitality(self, image_data: bytes) -> Tuple[float, bool]:
+    def analyze_tree_vitality(self, image_data: bytes) -> Tuple[int, bool]:
         """
         桜の木の画像から元気度を分析する
         Returns:
@@ -96,7 +97,7 @@ class ImageService:
             現状はモック実装
         """
         # TODO: 実際の画像解析モデルを実装
-        return 4.2, True
+        return random.randint(1, 5), True
 
     # def analyze_stem(self, image_data: bytes) -> Tuple[bool, int, bool, float]:
     #    """
@@ -116,12 +117,33 @@ class ImageService:
         現時点ではモック実装
         """
         # モック実装: 実際にはここで画像解析を行う
-        texture = 3  # 1:滑らか~5:ガサガサ
+        texture = random.randint(1, 5)  # 1:滑らか~5:ガサガサ
         can_detected = True
-        circumference = 150.0  # cm
-        age = 45  # 年
+        circumference = random.uniform(50.0, 300.0)  # cm
+        age = random.randint(2, 80)  # 年
 
         return texture, can_detected, circumference, age
+
+    def delete_image(self, object_key: str) -> bool:
+        """
+        S3から画像を削除する
+
+        Args:
+            object_key (str): 削除する画像のオブジェクトキー
+
+        Returns:
+            bool: 削除に成功したかどうか
+        """
+        try:
+            self.s3_client.delete_object(
+                Bucket=self.bucket_name,
+                Key=f'{TREE_IMAGE_PREFIX}/{object_key}'
+            )
+            return True
+        except ClientError as e:
+            logger.error(f"Delete Image Client Error: {e}")
+            logger.exception(e)
+            return False
 
 
 def get_image_service() -> "ImageService":

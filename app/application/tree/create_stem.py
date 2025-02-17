@@ -7,6 +7,7 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         TreeNotFoundError)
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
+from app.infrastructure.repositories.stem_repository import StemRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import StemInfo
 
@@ -21,7 +22,7 @@ def create_stem(
     image_service: ImageService,
 ) -> StemInfo:
     """
-    幹の写真を登録する。
+    幹の写真を登録する。既存の幹の写真がある場合は削除して新規登録する。
 
     Args:
         db (Session): データベースセッション
@@ -42,11 +43,29 @@ def create_stem(
     logger.info(f"幹の写真登録開始: tree_id={tree_id}")
 
     # 木の取得
-    repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
+    tree_repository = TreeRepository(db)
+    tree = tree_repository.get_tree(tree_id)
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
+
+    # 既存の幹の写真があれば削除
+    stem_repository = StemRepository(db)
+    existing_stem = stem_repository.get_stem_by_tree_id(tree.id)
+    if existing_stem:
+        logger.info(f"既存の幹の写真を削除: tree_id={tree_id}")
+        try:
+            # S3から画像を削除
+            if existing_stem.image_obj_key:
+                image_service.delete_image(existing_stem.image_obj_key)
+            if existing_stem.thumb_obj_key:
+                image_service.delete_image(existing_stem.thumb_obj_key)
+
+            # DBから削除
+            stem_repository.delete_stem(existing_stem.id)
+        except Exception as e:
+            logger.error(f"既存の幹の写真の削除中にエラー発生: {str(e)}")
+            # 削除に失敗しても続行
 
     # 画像を解析
     logger.debug("幹の画像解析を開始")
@@ -74,8 +93,7 @@ def create_stem(
 
     # DBに保存
     try:
-        repository.create_stem(
-            db=db,
+        stem_repository.create_stem(
             tree_id=tree.id,
             user_id=current_user.id,
             latitude=latitude,

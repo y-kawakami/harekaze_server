@@ -69,38 +69,6 @@ class TreeRepository:
         self.db.commit()
         return True
 
-    def create_stem(
-        self,
-        db: Session,
-        tree_id: int,
-        user_id: int,
-        latitude: float,
-        longitude: float,
-        image_obj_key: str,
-        thumb_obj_key: str,
-        texture: int,
-        can_detected: bool,
-        circumference: Optional[float],
-        age: int,
-    ) -> Stem:
-        """幹の情報を保存する"""
-        stem = Stem(
-            tree_id=tree_id,
-            user_id=user_id,
-            latitude=latitude,
-            longitude=longitude,
-            image_obj_key=image_obj_key,
-            thumb_obj_key=thumb_obj_key,
-            texture=texture,
-            can_detected=can_detected,
-            circumference=circumference,
-            age=age,
-        )
-        db.add(stem)
-        db.commit()
-        db.refresh(stem)
-        return stem
-
     def create_stem_hole(
         self,
         user_id: int,
@@ -499,10 +467,10 @@ class TreeRepository:
         age_counts = self.db.query(
             case(
                 {
-                    Stem.age <= 20: '20',
-                    Stem.age <= 30: '30',
-                    Stem.age <= 40: '40',
-                    Stem.age <= 50: '50'
+                    Stem.age <= 30: '20',
+                    Stem.age <= 40: '30',
+                    Stem.age <= 50: '40',
+                    Stem.age <= 60: '50'
                 },
                 else_='60'
             ).label('age_group'),
