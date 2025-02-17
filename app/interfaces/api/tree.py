@@ -125,9 +125,9 @@ async def update_tree_decorated_image(
 
 @router.get("/tree/search", response_model=TreeSearchResponse)
 async def search_trees(
-    latitude: float = Query(..., description="検索の中心となる緯度"),
-    longitude: float = Query(..., description="検索の中心となる経度"),
-    radius: float = Query(..., description="検索範囲（メートル）"),
+    latitude: float | None = Query(None, description="検索の中心となる緯度"),
+    longitude: float | None = Query(None, description="検索の中心となる経度"),
+    radius: float | None = Query(None, description="検索範囲（メートル）"),
     municipality_code: str | None = Query(
         None, description="市区町村コード（JIS X 0402に準拠）"),
     page: int = Query(1, description="ページ番号", ge=1),
