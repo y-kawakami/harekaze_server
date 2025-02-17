@@ -38,7 +38,7 @@ router = APIRouter()
 
 def get_geocoding_service_dependency(
     municipality_service: MunicipalityService = Depends(
-        get_municipality_service)
+        get_municipality_service, use_cache=True)
 ):
     return GeocodingService(municipality_service)
 
@@ -103,7 +103,7 @@ async def update_tree_decorated_image(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     桜の木全体の写真に、診断結果（元気度）に基づき情報を付与して装飾した写真を送信する。
@@ -144,7 +144,7 @@ async def search_trees(
     has_mushroom: bool | None = Query(None, description="キノコの有無"),
     has_kobu: bool | None = Query(None, description="コブ状の枝の有無"),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     全ユーザから投稿された桜の情報の検索を行う。
@@ -226,7 +226,7 @@ async def get_area_count(
         description="コブ状の枝の有無"
     ),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     エリア（都道府県または市区町村）ごとの桜の本数を取得する。
@@ -262,9 +262,9 @@ async def get_area_stats(
         description="市区町村コード（JIS X 0402に準拠）"
     ),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(get_image_service),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
     municipality_service: MunicipalityService = Depends(
-        get_municipality_service)
+        get_municipality_service, use_cache=True)
 ):
     """
     指定された地域（都道府県または市区町村）の統計情報を取得する。(データサマリー向け)
@@ -286,7 +286,7 @@ async def get_tree_detail(
         description="取得したい桜の木のUID"
     ),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     各木の詳細情報を取得する。
@@ -318,7 +318,7 @@ async def create_stem(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """幹の写真を登録する"""
     image_data = await image.read()
@@ -353,7 +353,7 @@ async def create_stem_hole(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     幹の穴の写真を登録する。
@@ -390,7 +390,7 @@ async def create_tengusu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     テングス病の写真を登録する。
@@ -427,7 +427,7 @@ async def create_mushroom(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     キノコの写真を登録する。
@@ -464,7 +464,7 @@ async def create_kobu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service)
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
     """
     こぶ状の枝の写真を登録する。
