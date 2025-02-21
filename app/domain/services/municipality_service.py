@@ -104,7 +104,7 @@ class MunicipalityService:
         max_match_length = 0
 
         for municipality in self.municipalities:
-            mun_address = municipality.prefecture + municipality.address
+            mun_address = municipality.address
             # 前方からの共通部分の長さを計算
             match_length = 0
             for i in range(min(len(address), len(mun_address))):

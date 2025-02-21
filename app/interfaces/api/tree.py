@@ -57,9 +57,9 @@ async def create_tree(
         ...,
         description="桜の木全体の写真（推奨サイズ: 1080x1920）"
     ),
-    contributor: str = Form(
-        ...,
-        description="投稿者のニックネーム"
+    contributor: str | None = Form(
+        None,
+        description="投稿者のニックネーム（任意）"
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -89,9 +89,9 @@ async def update_tree_decorated_image(
         ...,
         description="装飾する木のUID"
     ),
-    contributor: str = Form(
-        ...,
-        description="投稿者の名前"
+    contributor: str | None = Form(
+        None,
+        description="投稿者の名前（任意）"
     ),
     image: UploadFile = File(
         ...,

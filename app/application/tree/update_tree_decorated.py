@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -16,7 +17,7 @@ def update_tree_decorated_image(
     db: Session,
     current_user: User,
     tree_id: str,
-    contributor: str,
+    contributor: Optional[str],
     image_data: bytes,
     ogp_image_data: bytes,
     image_service: ImageService,
