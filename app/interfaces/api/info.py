@@ -4,6 +4,8 @@ from sqlalchemy.orm import Session
 from app.application.info.get_flowering_date import \
     get_flowering_date as get_flowering_date_app
 from app.domain.models.models import User
+from app.domain.services.flowering_date_service import \
+    get_flowering_date_service
 from app.infrastructure.database.database import get_db
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import FloweringDateResponse
@@ -22,7 +24,8 @@ async def get_flowering_date(
         description="経度"
     ),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    flowering_date_service=Depends(get_flowering_date_service, use_cache=True)
 ):
     """
     桜の開花日に関する情報を取得する。
@@ -30,6 +33,7 @@ async def get_flowering_date(
     return get_flowering_date_app(
         db=db,
         current_user=current_user,
+        flowering_date_service=flowering_date_service,
         latitude=latitude,
         longitude=longitude
     )

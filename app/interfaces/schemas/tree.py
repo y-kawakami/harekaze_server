@@ -301,3 +301,5 @@ class FloweringDateResponse(BaseModel):
     address: str = Field(..., description="住所（例: 東京都千代田区）")
     flowering_date: str = Field(..., description="開花予想日（例: 2024-03-20）")
     full_bloom_date: str = Field(..., description="満開予想日（例: 2024-03-27）")
+    full_bloom_end_date: str = Field(..., description="満開予想終了日（例: 2024-04-03）")
+    variety: str = Field(..., description="品種名（例: ソメイヨシノ）")

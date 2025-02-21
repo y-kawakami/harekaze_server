@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.application.exceptions import InvalidParamError
 from app.domain.models.prefecture import Prefecture
 from app.domain.services.image_service import ImageService
-from app.domain.services.municipality_service import get_municipality_service
+from app.domain.services.municipality_service import MunicipalityService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import AreaCountItem, AreaCountResponse
 
@@ -14,6 +14,7 @@ from app.interfaces.schemas.tree import AreaCountItem, AreaCountResponse
 def get_area_count(
     db: Session,
     image_service: ImageService,
+    municipality_service: MunicipalityService,
     area_type: str,
     latitude: float,
     longitude: float,
@@ -69,7 +70,6 @@ def get_area_count(
                  f"has_hole={has_hole}, has_tengusu={has_tengusu}, has_mushroom={has_mushroom}")
 
     # MunicipalityServiceを使用して範囲内の自治体/都道府県を取得
-    municipality_service = get_municipality_service()
     if area_type == 'prefecture':
         areas = municipality_service.search_prefectures(
             latitude, longitude, radius)

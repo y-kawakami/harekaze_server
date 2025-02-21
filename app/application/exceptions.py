@@ -109,6 +109,18 @@ class PrefectureNotFoundError(ApplicationError):
         )
 
 
+class FloweringDateNotFoundError(ApplicationError):
+    """指定された開花日が見つからない場合の例外"""
+
+    def __init__(self, latitude: float, longitude: float):
+        super().__init__(
+            reason="指定された開花日が見つかりません",
+            error_code=111,
+            status=400,
+            details={"latitude": latitude, "longitude": longitude}
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 

@@ -226,7 +226,9 @@ async def get_area_count(
         description="コブ状の枝の有無"
     ),
     db: Session = Depends(get_db),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service, use_cache=True)
 ):
     """
     エリア（都道府県または市区町村）ごとの桜の本数を取得する。
@@ -236,6 +238,7 @@ async def get_area_count(
     return get_area_count_app(
         db=db,
         image_service=image_service,
+        municipality_service=municipality_service,
         area_type=area_type,
         latitude=latitude,
         longitude=longitude,
