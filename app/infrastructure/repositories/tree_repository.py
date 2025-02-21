@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Optional, Tuple
 
 from loguru import logger
@@ -14,16 +14,25 @@ from app.interfaces.schemas.tree import AreaCountItem
 @dataclass
 class TreeRelatedEntities:
     """木に関連するエンティティのデータクラス"""
-    stem_holes: List[StemHole]
-    tengus: List[Tengus]
-    mushrooms: List[Mushroom]
-    kobus: List[Kobu]
+    stem_holes: List[StemHole] = field(default_factory=list)
+    tengus: List[Tengus] = field(default_factory=list)
+    mushrooms: List[Mushroom] = field(default_factory=list)
+    kobus: List[Kobu] = field(default_factory=list)
+
+    stem_hole_count: int = 0
+    tengus_count: int = 0
+    mushroom_count: int = 0
+    kobu_count: int = 0
 
     def __post_init__(self):
         """各リストを最大30件に制限"""
+        self.stem_hole_count = len(self.stem_holes)
         self.stem_holes = self.stem_holes[:30]
+        self.tengus_count = len(self.tengus)
         self.tengus = self.tengus[:30]
+        self.mushroom_count = len(self.mushrooms)
         self.mushrooms = self.mushrooms[:30]
+        self.kobu_count = len(self.kobus)
         self.kobus = self.kobus[:30]
 
 
@@ -669,12 +678,7 @@ class TreeRepository:
         tree_ids = [tree_id for (tree_id,) in tree_query.all()]
 
         if not tree_ids:
-            return TreeRelatedEntities(
-                stem_holes=[],
-                tengus=[],
-                mushrooms=[],
-                kobus=[]
-            )
+            return TreeRelatedEntities()
 
         # 各エンティティを取得（最大30件）
         stem_holes = self.db.query(StemHole).filter(
