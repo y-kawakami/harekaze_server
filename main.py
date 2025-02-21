@@ -1,5 +1,9 @@
-from fastapi import FastAPI
+import re
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import Response
 
 from app.interfaces.api import auth, info, tree
 from app.interfaces.api.error_handlers import register_error_handlers
@@ -46,15 +50,18 @@ register_error_handlers(app)
 # CORS設定
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://develop.d2t1gkpzg4f6i0.amplifyapp.com",
-        "https://release-dev-inner.d2t1gkpzg4f6i0.amplifyapp.com",
-        "http://localhost:3000",
-        "http://localhost:8000",
-        "http://localhost:8080"
-        "https://localhost:3000",
-        "https://localhost:8000",
-        "https://localhost:8080"],  # 本番環境では適切に制限すること
+    allow_origins=[],  # 以下のドメインを許可していた
+    # allow_origins=[
+    #     "https://develop.d2t1gkpzg4f6i0.amplifyapp.com",
+    #     "https://release-dev-inner.d2t1gkpzg4f6i0.amplifyapp.com",
+    #     "http://localhost:3000",
+    #     "http://localhost:8000",
+    #     "http://localhost:8080"
+    #     "https://localhost:3000",
+    #     "https://localhost:8000",
+    #     "https://localhost:8080"
+    # ],
+    allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
