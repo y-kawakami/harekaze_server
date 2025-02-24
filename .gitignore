@@ -28,3 +28,5 @@ app/trunk_segmentation/
 app/branch_segmentation/
 
 logs/
+
+.DS_Store

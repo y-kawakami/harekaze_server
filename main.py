@@ -5,7 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import Response
 
-from app.interfaces.api import auth, info, tree
+from app.interfaces.api import auth, info, ping, tree
 from app.interfaces.api.error_handlers import register_error_handlers
 
 app = FastAPI(
@@ -68,9 +68,10 @@ app.add_middleware(
 )
 
 # ルーターの登録
-app.include_router(auth.router, prefix="/api", tags=["auth"])
-app.include_router(tree.router, prefix="/api", tags=["tree"])
-app.include_router(info.router, prefix="/api", tags=["info"])
+app.include_router(auth.router, prefix="/sakura_camera/api", tags=["auth"])
+app.include_router(tree.router, prefix="/sakura_camera/api", tags=["tree"])
+app.include_router(info.router, prefix="/sakura_camera/api", tags=["info"])
+app.include_router(ping.router, prefix="/sakura_camera/api", tags=["ping"])
 
 if __name__ == "__main__":
     import uvicorn

@@ -8,7 +8,8 @@
     // コーディング中にインテリジェンスされたモジュールのインポート文を自動挿入するか。
     // 僕はこの手の自動的なものがあまり好きではないのと、
     // 気づかぬうちにけっこう追加されていることが多かったので無効化しています。
-    "python.analysis.autoImportCompletions": false,
+    "python.analysis.autoImportCompletions": true,
+    "python.analysis.indexing": true,
     "python.analysis.diagnosticMode": "workspace",
     // いわゆる Linter としての細かいカスタマイズ部分です。
     "python.analysis.diagnosticSeverityOverrides": {
