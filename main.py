@@ -46,6 +46,7 @@ app = FastAPI(
     """,
     version="1.0.0",
     docs_url=None,  # 一旦無効化
+    openapi_url="/sakura_camera/api/openapi.json",
     contact={
         "name": "開発チーム",
         "email": "support@example.com",
