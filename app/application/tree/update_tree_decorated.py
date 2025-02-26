@@ -4,8 +4,8 @@ from typing import Optional
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import ImageUploadError, TreeNotFoundError
-from app.domain.constants.anonymous import ANONYMOUS_LABEL
+from app.application.exceptions import (ImageUploadError, NgWordError,
+                                        TreeNotFoundError)
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
@@ -41,6 +41,10 @@ def update_tree_decorated_image(
         TreeNotFoundError: 指定された木が見つからない場合
         ImageUploadError: 画像のアップロードに失敗した場合
     """
+
+    if contributor is not None and is_ng_word(contributor):
+        raise NgWordError(contributor)
+
     logger.info(f"木の装飾画像の更新を開始: tree_id={tree_id}")
 
     # 木の取得
@@ -71,9 +75,6 @@ def update_tree_decorated_image(
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_uid=tree_id) from e
-
-    if contributor is not None and is_ng_word(contributor):
-        contributor = ANONYMOUS_LABEL
 
     # DBを更新
     tree.decorated_image_obj_key = image_key

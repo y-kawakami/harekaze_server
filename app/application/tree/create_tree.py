@@ -6,9 +6,9 @@ from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         LocationNotFoundError,
-                                        LocationNotInJapanError,
+                                        LocationNotInJapanError, NgWordError,
                                         TreeNotDetectedError)
-from app.domain.constants.anonymous import ANONYMOUS_LABEL, filter_anonymous
+from app.domain.constants.anonymous import filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
@@ -46,6 +46,10 @@ def create_tree(
         ImageUploadError: 画像のアップロードに失敗した場合
         DatabaseError: データベースの操作に失敗した場合
     """
+
+    if contributor is not None and is_ng_word(contributor):
+        raise NgWordError(contributor)
+
     logger.info(
         f"新しい木の登録を開始: ユーザーID={current_user.id}, 位置={latitude},{longitude}")
 
@@ -79,9 +83,6 @@ def create_tree(
     random_suffix = str(uuid.uuid4())
     image_key = f"{tree_uid}/entire_{random_suffix}.jpg"
     thumb_key = f"{tree_uid}/entire_thumb_{random_suffix}.jpg"
-
-    if contributor is not None and is_ng_word(contributor):
-        contributor = ANONYMOUS_LABEL
 
     try:
         if not (image_service.upload_image(image_data, image_key) and
