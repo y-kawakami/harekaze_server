@@ -3,7 +3,7 @@ from datetime import datetime, timedelta
 
 from dotenv import load_dotenv
 from jose import JWTError, jwt
-from loguru import logger
+# from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.domain.models.models import User
@@ -17,15 +17,15 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 30  # 30日間
 
 # loguruの設定
-logger.add(
-    "logs/app.log",  # ログファイルのパス
-    rotation="500 MB",  # ログローテーション
-    retention="10 days",  # ログの保持期間
-    level="INFO",  # ログレベル
-    # ログフォーマット
-    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
-    serialize=True  # JSON形式で出力
-)
+# logger.add(
+#     "logs/app.log",  # ログファイルのパス
+#     rotation="500 MB",  # ログローテーション
+#     retention="10 days",  # ログの保持期間
+#     level="INFO",  # ログレベル
+#     # ログフォーマット
+#     format="{time:YYYY-MM-DD HH:mm:ss} | {level} | {name}:{function}:{line} | {message}",
+#     serialize=True  # JSON形式で出力
+# )
 
 
 class AuthService:

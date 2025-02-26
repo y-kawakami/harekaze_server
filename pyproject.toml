@@ -20,6 +20,8 @@ dependencies = [
     "GeoAlchemy2==0.17.0",
     "loguru>=0.7.3",
     "googlemaps>=4.10.0",
+    "pymysql[rsa]>=1.1.1",
+    "mysql-connector-python>=9.2.0",
 ]
 
 [tool.uv]

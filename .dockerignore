@@ -1,0 +1,50 @@
+# Git関連
+.git
+.gitignore
+.gitattributes
+
+# Python関連
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.py[cod]
+*$py.class
+requirements.txt
+
+# 環境設定ファイル
+.env
+.env.*
+
+# エディタ設定
+.vscode
+.idea
+*.swp
+*.swo
+.DS_Store
+
+# ログファイル
+logs/
+*.log
+
+# テスト関連
+tests/
+test_*.py
+*_test.py
+
+# ドキュメント
+*.md
+docs/
+
+# その他
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+*.bak
+
+Docker/
+scripts/

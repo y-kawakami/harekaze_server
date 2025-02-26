@@ -1,9 +1,5 @@
-import re
-
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import Response
 
 from app.interfaces.api import auth, info, ping, tree
 from app.interfaces.api.error_handlers import register_error_handlers

@@ -13,15 +13,16 @@ from PIL import Image
 load_dotenv()
 
 
-TREE_IMAGE_PREFIX = "trees"
+TREE_IMAGE_PREFIX = "sakura_camera/media/trees"
 
 
 class ImageService:
     def __init__(
         self,
-        bucket_name: str = os.getenv("S3_ASSETS_BUCKET", "kkcraft-samples"),
+        bucket_name: str = os.getenv("S3_CONTENTS_BUCKET", "kkcraft-samples"),
         region_name: str = os.getenv("AWS_REGION", "ap-northeast-1"),
-        endpoint_url: str | None = os.getenv("AWS_ENDPOINT_URL")
+        endpoint_url: str | None = os.getenv("AWS_ENDPOINT_URL"),
+        app_host: str | None = os.getenv("APP_HOST"),
     ):
         self.s3_client = boto3.client(
             's3',
@@ -31,7 +32,8 @@ class ImageService:
         self.bucket_name = bucket_name
         if not self.bucket_name:
             raise ValueError(
-                "S3_ASSETS_BUCKET environment variable is not set")
+                "S3_CONTENTS_BUCKET environment variable is not set")
+        self.app_host = app_host
 
     def create_thumbnail(self, image_data: bytes) -> bytes:
         """画像データからサムネイルを作成する"""
@@ -50,7 +52,7 @@ class ImageService:
                 Key=f'{TREE_IMAGE_PREFIX}/{object_key}',
                 Body=image_data,
                 ContentType='image/jpeg',
-                ACL='public-read'
+                # ACL='public-read'
             )
             return True
         except ClientError as e:
@@ -62,7 +64,8 @@ class ImageService:
         """画像のURLを取得する"""
         if not object_key:
             return ""
-        return f"https://{self.bucket_name}.s3.ap-northeast-1.amazonaws.com/{TREE_IMAGE_PREFIX}/{object_key}"
+        return f'{self.app_host}/{TREE_IMAGE_PREFIX}/{object_key}'
+        # return f"https://{self.bucket_name}.s3.ap-northeast-1.amazonaws.com/{TREE_IMAGE_PREFIX}/{object_key}"
 
     def get_presigned_url(self, object_key: str, expires_in: int = 3600) -> str:
         """

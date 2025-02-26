@@ -11,11 +11,14 @@ wheels/
 
 # Environment variables
 .env
+.env.staging
+*_imagedefinitions.json
 
 # Test and coverage tools
 .pytest_cache/
 .coverage
 htmlcov/
+doc/
 
 # IDEs
 .idea/

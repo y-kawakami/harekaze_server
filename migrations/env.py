@@ -1,5 +1,6 @@
 import os
 import sys
+from configparser import ConfigParser
 from logging.config import fileConfig
 
 from dotenv import load_dotenv
@@ -19,11 +20,21 @@ sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 # access to the values within the .ini file in use.
 config = context.config
 
+# 補間を無効化したConfigParserを作成(パスワードに%記号が含まれる場合にエラーになるため)
+parser = ConfigParser(interpolation=None)
+if config.config_file_name is not None:
+    parser.read(config.config_file_name)
+config.file_config = parser
+
 # .envファイルを読み込む
 load_dotenv()
 
+# 接続文字列を作成
+alembic_sqlalchemy_url = SQLALCHEMY_DATABASE_URL.render_as_string(
+    hide_password=False)
+
 # SQLAlchemy URL を設定
-config.set_main_option("sqlalchemy.url", SQLALCHEMY_DATABASE_URL)
+config.set_main_option("sqlalchemy.url", alembic_sqlalchemy_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
