@@ -1,8 +1,36 @@
-from fastapi import FastAPI
+import os
+import secrets
+
+from dotenv import load_dotenv
+from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from app.interfaces.api import auth, info, ping, tree
 from app.interfaces.api.error_handlers import register_error_handlers
+
+load_dotenv()
+
+security = HTTPBasic()
+
+
+def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
+    correct_username = secrets.compare_digest(
+        credentials.username, os.getenv("SWAGGER_USERNAME", "harekaze"))
+    correct_password = secrets.compare_digest(
+        credentials.password, os.getenv("SWAGGER_PASSWORD", "hrkz2025"))
+    if not (correct_username and correct_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="認証に失敗しました",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    return credentials.username
+
+
+def swagger_ui_auth(username: str = Depends(get_current_username)):
+    return username
+
 
 app = FastAPI(
     title="晴れ風API",
@@ -17,6 +45,7 @@ app = FastAPI(
     * 地域ごとの桜の木の検索と統計情報の取得
     """,
     version="1.0.0",
+    docs_url=None,  # 一旦無効化
     contact={
         "name": "開発チーム",
         "email": "support@example.com",
@@ -68,6 +97,17 @@ app.include_router(auth.router, prefix="/sakura_camera/api", tags=["auth"])
 app.include_router(tree.router, prefix="/sakura_camera/api", tags=["tree"])
 app.include_router(info.router, prefix="/sakura_camera/api", tags=["info"])
 app.include_router(ping.router, prefix="/sakura_camera/api", tags=["ping"])
+
+# カスタムSwagger UIエンドポイントを追加
+
+
+@app.get("/sakura_camera/api/docs", dependencies=[Depends(get_current_username)])
+async def custom_swagger_ui():
+    from fastapi.openapi.docs import get_swagger_ui_html
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url if app.openapi_url else "/sakura_camera/api/openapi.json",
+        title="晴れ風API - Swagger UI"
+    )
 
 if __name__ == "__main__":
     import uvicorn
