@@ -626,9 +626,9 @@ class TreeRepository:
                     prefecture_code=r[0] if area_type == 'prefecture' else None,
                     municipality_code=r[0] if area_type == 'municipality' else None,
                     location='NotSet',  # locationは集計時には不要
-                    count=r[3] or 0,  # countは4番目のカラム
-                    latitude=r[1] or 0,  # latitudeは2番目のカラム
-                    longitude=r[2] or 0,  # longitudeは3番目のカラム
+                    count=r[1] or 0,  # countは4番目のカラム
+                    latitude=0,  # latitudeとlongitudeは呼び出し側で設定
+                    longitude=0,
                     latest_contributor=None,
                     latest_image_thumb_url=None,
                 )
@@ -751,8 +751,6 @@ class TreeRepository:
         if area_type == 'prefecture':
             query = self.db.query(
                 Tree.prefecture_code,
-                func.avg(Tree.latitude).label('latitude'),
-                func.avg(Tree.longitude).label('longitude'),
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_subq.c.latest_contributor).label(
                     'latest_contributor'),
@@ -766,8 +764,6 @@ class TreeRepository:
         else:  # municipality
             query = self.db.query(
                 Tree.municipality_code,
-                func.avg(Tree.latitude).label('latitude'),
-                func.avg(Tree.longitude).label('longitude'),
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_subq.c.latest_contributor).label(
                     'latest_contributor'),
@@ -822,11 +818,11 @@ class TreeRepository:
                 prefecture_code=r[0] if area_type == 'prefecture' else None,
                 municipality_code=r[0] if area_type == 'municipality' else None,
                 location='NotSet',  # locationは呼び出し側で設定
-                count=r[3] or 0,
-                latitude=r[1] or 0,
-                longitude=r[2] or 0,
-                latest_contributor=r[4],
-                latest_image_thumb_url=r[5],
+                count=r[1] or 0,
+                latitude=0,  # latitudeとlongitudeは呼び出し側で設定
+                longitude=0,
+                latest_contributor=r[2],
+                latest_image_thumb_url=r[3],
             )
             for r in results
         ]
