@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from loguru import logger
@@ -42,6 +43,7 @@ class KobuRepository:
         longitude: float,
         image_obj_key: str,
         thumb_obj_key: str,
+        photo_date: Optional[datetime] = None
     ) -> Kobu:
         """
         こぶ状の枝の情報を保存する
@@ -53,6 +55,7 @@ class KobuRepository:
             longitude (float): 経度
             image_obj_key (str): 画像のオブジェクトキー
             thumb_obj_key (str): サムネイル画像のオブジェクトキー
+            photo_date (Optional[datetime]): 撮影日時
 
         Returns:
             Kobu: 作成されたこぶ状の枝の情報
@@ -64,6 +67,7 @@ class KobuRepository:
             longitude=longitude,
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
+            photo_date=photo_date
         )
         self.db.add(kobu)
         self.db.commit()

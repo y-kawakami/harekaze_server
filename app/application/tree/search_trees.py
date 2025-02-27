@@ -128,7 +128,7 @@ def search_trees(
             location=tree.location,
             prefecture_code=tree.prefecture_code or None,
             municipality_code=tree.municipality_code or None,
-            created_at=tree.created_at,
+            created_at=tree.photo_date,
             age=tree.stem.age if tree.stem and tree.stem.censorship_status == CensorshipStatus.APPROVED else None
         ) for tree in trees]
     )

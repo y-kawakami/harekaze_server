@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from loguru import logger
@@ -46,6 +47,7 @@ class StemRepository:
         can_detected: bool,
         circumference: Optional[float],
         age: int,
+        photo_date: Optional[datetime] = None
     ) -> Stem:
         """
         幹の情報を保存する
@@ -61,6 +63,7 @@ class StemRepository:
             can_detected (bool): 缶が検出されたかどうか
             circumference (Optional[float]): 幹周（cm）
             age (int): 推定樹齢
+            photo_date (Optional[datetime]): 撮影日時
 
         Returns:
             Stem: 作成された幹の情報
@@ -76,6 +79,7 @@ class StemRepository:
             can_detected=can_detected,
             circumference=circumference,
             age=age,
+            photo_date=photo_date
         )
         self.db.add(stem)
         self.db.commit()
@@ -103,5 +107,30 @@ class StemRepository:
             return True
         except Exception as e:
             logger.error(f"幹の削除中にエラー発生: {str(e)}")
+            self.db.rollback()
+            return False
+
+    def delete_stem_for_tree(self, tree_id: int) -> bool:
+        """
+        特定の木に紐づく幹の情報を削除する
+
+        Args:
+            tree_id (int): 木のID
+
+        Returns:
+            bool: 削除に成功したかどうか
+        """
+        try:
+            stem = self.get_stem_by_tree_id(tree_id)
+            if not stem:
+                # 対象の幹がない場合は成功扱い
+                return True
+
+            self.db.delete(stem)
+            self.db.commit()
+            return True
+        except Exception as e:
+            logger.error(
+                f"木に紐づく幹の削除中にエラー発生: tree_id={tree_id}, error={str(e)}")
             self.db.rollback()
             return False

@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class TreeBase(BaseModel):
     latitude: float = Field(..., description="緯度")
     longitude: float = Field(..., description="経度")
+    # photo_date: Optional[datetime] = Field(None, description="撮影日時（ISO8601形式）")
 
 
 class TreeCreate(TreeBase):
@@ -27,8 +28,6 @@ class TreeResponse(TreeBase):
     municipality_code: Optional[str] = Field(
         None, description="自治体コード（JIS X 0402に準拠）")
     created_at: datetime = Field(..., description="撮影日時（ISO8601形式）")
-    censorship_status: Optional[int] = Field(
-        None, description="検閲ステータス（投稿者自身が閲覧時のみ）")
 
     class Config:
         from_attributes = True

@@ -5,6 +5,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ImageUploadError,
+                                        InvalidParamError,
                                         LocationNotFoundError,
                                         LocationNotInJapanError, NgWordError,
                                         TreeNotDetectedError)
@@ -12,6 +13,7 @@ from app.domain.constants.anonymous import filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
+from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
@@ -25,7 +27,8 @@ def create_tree(
     image_data: bytes,
     contributor: Optional[str],
     image_service: ImageService,
-    geocoding_service: GeocodingService
+    geocoding_service: GeocodingService,
+    photo_date: Optional[str] = None
 ) -> TreeResponse:
     """
     桜の木全体の写真を登録する。
@@ -36,7 +39,10 @@ def create_tree(
         latitude (float): 撮影場所の緯度
         longitude (float): 撮影場所の経度
         image_data (bytes): 画像データ
-        nickname (str): 投稿者のニックネーム
+        contributor (str): 投稿者のニックネーム
+        image_service (ImageService): 画像サービス
+        geocoding_service (GeocodingService): 位置情報サービス
+        photo_date (Optional[str]): 撮影日時（ISO8601形式）
 
     Returns:
         TreeResponse: 作成された木の情報
@@ -64,7 +70,18 @@ def create_tree(
         logger.warning(f"住所情報が不足しています: ({latitude}, {longitude})")
         raise LocationNotFoundError(latitude=latitude, longitude=longitude)
 
-        # 画像を解析
+    # 日時の解析
+    parsed_photo_date = None
+    if photo_date:
+        parsed_photo_date = DateUtils.parse_iso_date(photo_date)
+        if not parsed_photo_date:
+            logger.warning(f"不正な日時形式: {photo_date}")
+            raise InvalidParamError(
+                reason=f"不正な日時形式です: {photo_date}",
+                param_name="photo_date"
+            )
+
+    # 画像を解析
     logger.debug("画像解析を開始")
     vitality, tree_detected = image_service.analyze_tree_vitality(image_data)
     if not tree_detected:
@@ -99,17 +116,17 @@ def create_tree(
         repository = TreeRepository(db)
         tree = repository.create_tree(
             user_id=current_user.id,
-            uid=tree_uid,
+            # uid=tree_uid,
             contributor=contributor,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             vitality=vitality,
-            position=f'POINT({longitude} {latitude})',
             location=address.detail,
             prefecture_code=address.prefecture_code,
-            municipality_code=address.municipality_code
+            municipality_code=address.municipality_code,
+            photo_date=parsed_photo_date
         )
         logger.info(f"木の登録が完了: ツリーUID={tree_uid}, 元気度={vitality}")
     except Exception as e:
@@ -126,5 +143,5 @@ def create_tree(
         prefecture_code=tree.prefecture_code,
         municipality_code=tree.municipality_code,
         vitality=tree.vitality,
-        created_at=tree.created_at
+        created_at=tree.photo_date
     )

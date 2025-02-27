@@ -52,6 +52,9 @@ class Tree(Base):
         String(8), index=True)  # 自治体コード（JIS X 0402）
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, index=True)
     updated_at: Mapped[datetime] = mapped_column(
@@ -93,6 +96,9 @@ class EntireTree(Base):
     ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -126,6 +132,9 @@ class Stem(Base):
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -154,6 +163,9 @@ class StemHole(Base):
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -182,6 +194,9 @@ class Tengus(Base):
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -210,6 +225,9 @@ class Mushroom(Base):
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -238,6 +256,9 @@ class Kobu(Base):
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    photo_date: Mapped[datetime] = mapped_column(
+        # 撮影日時
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),

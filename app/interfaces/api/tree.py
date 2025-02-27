@@ -64,6 +64,10 @@ async def create_tree(
         None,
         description="投稿者のニックネーム（任意）"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
@@ -82,7 +86,8 @@ async def create_tree(
         image_data=image_data,
         contributor=contributor,
         image_service=image_service,
-        geocoding_service=geocoding_service
+        geocoding_service=geocoding_service,
+        photo_date=date
     )
 
 
@@ -333,11 +338,17 @@ async def create_stem(
         ...,
         description="撮影場所の経度"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
-    """幹の写真を登録する"""
+    """
+    幹の写真を登録する。
+    """
     image_data = await image.read()
     return create_stem_app(
         db=db,
@@ -346,7 +357,8 @@ async def create_stem(
         image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_service=image_service
+        image_service=image_service,
+        photo_date=date
     )
 
 
@@ -368,6 +380,10 @@ async def create_stem_hole(
         ...,
         description="幹の穴の写真"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -383,7 +399,8 @@ async def create_stem_hole(
         image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_service=image_service
+        image_service=image_service,
+        photo_date=date
     )
 
 
@@ -405,6 +422,10 @@ async def create_tengusu(
         ...,
         description="テングス病の写真"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -420,7 +441,8 @@ async def create_tengusu(
         image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_service=image_service
+        image_service=image_service,
+        photo_date=date
     )
 
 
@@ -442,6 +464,10 @@ async def create_mushroom(
         ...,
         description="キノコの写真"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -457,7 +483,8 @@ async def create_mushroom(
         image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_service=image_service
+        image_service=image_service,
+        photo_date=date
     )
 
 
@@ -479,6 +506,10 @@ async def create_kobu(
         ...,
         description="こぶ状の枝の写真"
     ),
+    date: str | None = Form(
+        None,
+        description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -494,5 +525,6 @@ async def create_kobu(
         image_data=image_data,
         latitude=latitude,
         longitude=longitude,
-        image_service=image_service
+        image_service=image_service,
+        photo_date=date
     )

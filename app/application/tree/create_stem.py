@@ -1,4 +1,6 @@
 import uuid
+from datetime import datetime
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
@@ -20,6 +22,7 @@ def create_stem(
     latitude: float,
     longitude: float,
     image_service: ImageService,
+    photo_date: Optional[str] = None
 ) -> StemInfo:
     """
     幹の写真を登録する。既存の幹の写真がある場合は削除して新規登録する。
@@ -32,6 +35,7 @@ def create_stem(
         latitude (float): 撮影場所の緯度
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
+        photo_date (Optional[str]): 撮影日時（ISO8601形式）
 
     Returns:
         StemInfo: 登録された幹の情報
@@ -49,73 +53,75 @@ def create_stem(
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
 
-    # 既存の幹の写真があれば削除
-    stem_repository = StemRepository(db)
-    existing_stem = stem_repository.get_stem_by_tree_id(tree.id)
-    if existing_stem:
-        logger.info(f"既存の幹の写真を削除: tree_id={tree_id}")
-        try:
-            # S3から画像を削除
-            if existing_stem.image_obj_key:
-                image_service.delete_image(existing_stem.image_obj_key)
-            if existing_stem.thumb_obj_key:
-                image_service.delete_image(existing_stem.thumb_obj_key)
+    if tree.user_id != current_user.id:
+        logger.warning(f"木の所有者ではないユーザーが幹の写真を登録しようとしました: tree_id={tree_id}")
+        raise DatabaseError(message="他のユーザーの木に対して幹の写真を登録することはできません")
 
-            # DBから削除
-            stem_repository.delete_stem(existing_stem.id)
-        except Exception as e:
-            logger.error(f"既存の幹の写真の削除中にエラー発生: {str(e)}")
-            # 削除に失敗しても続行
-
-    # 画像を解析
-    logger.debug("幹の画像解析を開始")
+    # 画像の解析
     texture, can_detected, circumference, age = image_service.analyze_stem_image(
         image_data)
 
     # サムネイル作成
-    logger.debug("サムネイル作成を開始")
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
     random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/stem_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/stem_thumb_{random_suffix}.jpg"
+    image_key = f"{tree_id}/stem_{random_suffix}.jpg"
+    thumb_key = f"{tree_id}/stem_thumb_{random_suffix}.jpg"
 
     try:
-        if not (image_service.upload_image(image_data, image_key) and
-                image_service.upload_image(thumb_data, thumb_key)):
-            logger.error(f"画像アップロード失敗: tree_id={tree_id}")
-            raise ImageUploadError(tree_uid=tree_id)
-        logger.debug(f"画像アップロード成功: image_key={image_key}")
+        image_service.upload_image(image_data, image_key)
+        image_service.upload_image(thumb_data, thumb_key)
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
-        raise ImageUploadError(tree_uid=tree_id) from e
+        raise ImageUploadError(tree_id) from e
 
-    # DBに保存
+    # 日時の解析
+    parsed_photo_date = None
+    if photo_date:
+        try:
+            parsed_photo_date = datetime.fromisoformat(
+                photo_date.replace('Z', '+00:00'))
+        except ValueError:
+            logger.warning(
+                f"Invalid date format: {photo_date}, using current time instead")
+
+    # 幹の情報を保存
+    stem_repository = StemRepository(db)
     try:
-        stem_repository.create_stem(
-            tree_id=tree.id,
+        # 既存の記録があれば削除
+        stem_repository.delete_stem_for_tree(tree.id)
+
+        # 新規作成
+        stem = stem_repository.create_stem(
             user_id=current_user.id,
+            tree_id=tree.id,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
-            texture=texture,
             can_detected=can_detected,
-            circumference=circumference,
+            circumference=circumference if can_detected else None,
+            texture=texture,
             age=age,
+            photo_date=parsed_photo_date
         )
-        logger.info(f"幹の写真登録完了: tree_id={tree_id}")
-    except Exception as e:
-        logger.exception(f"DB登録中にエラー発生: {str(e)}")
-        raise DatabaseError(message=str(e)) from e
+        logger.info(f"幹の写真登録完了: stem_id={stem.id}")
 
-    return StemInfo(
-        texture=texture,
-        can_detected=can_detected,
-        circumference=circumference,
-        age=age,
-        image_url=image_service.get_image_url(image_key),
-        image_thumb_url=image_service.get_image_url(thumb_key),
-        created_at=tree.created_at
-    )
+        # レスポンス用情報取得
+        image_url = image_service.get_image_url(stem.image_obj_key)
+        thumb_url = image_service.get_image_url(stem.thumb_obj_key)
+
+        return StemInfo(
+            image_url=image_url,
+            image_thumb_url=thumb_url,
+            texture=stem.texture,
+            can_detected=stem.can_detected,
+            circumference=stem.circumference,
+            age=stem.age,
+            censorship_status=stem.censorship_status,
+            created_at=stem.photo_date
+        )
+    except Exception as e:
+        logger.exception(f"幹の情報保存中にエラー発生: {str(e)}")
+        raise DatabaseError(message="幹の情報の保存に失敗しました") from e

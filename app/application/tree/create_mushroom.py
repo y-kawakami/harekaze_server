@@ -1,13 +1,14 @@
 import uuid
-from datetime import datetime, timezone
+from typing import Optional
 
 from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ImageUploadError,
-                                        TreeNotFoundError)
+                                        InvalidParamError, TreeNotFoundError)
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
+from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.repositories.mushroom_repository import \
     MushroomRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
@@ -22,6 +23,7 @@ def create_mushroom(
     latitude: float,
     longitude: float,
     image_service: ImageService,
+    photo_date: Optional[str] = None
 ) -> MushroomInfo:
     """
     キノコの写真を登録する。既存のキノコの写真がある場合は削除して新規登録する。
@@ -34,6 +36,7 @@ def create_mushroom(
         latitude (float): 撮影場所の緯度
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
+        photo_date (Optional[str]): 撮影日時（ISO8601形式）
 
     Returns:
         MushroomInfo: 登録されたキノコの情報
@@ -42,6 +45,7 @@ def create_mushroom(
         TreeNotFoundError: 指定された木が見つからない場合
         ImageUploadError: 画像のアップロードに失敗した場合
         DatabaseError: データベースの操作に失敗した場合
+        InvalidParamError: 不正なパラメータが指定された場合
     """
     logger.info(f"キノコの写真登録開始: tree_id={tree_id}")
 
@@ -51,6 +55,17 @@ def create_mushroom(
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
+
+    # 日時の解析
+    parsed_photo_date = None
+    if photo_date:
+        parsed_photo_date = DateUtils.parse_iso_date(photo_date)
+        if not parsed_photo_date:
+            logger.warning(f"不正な日時形式: {photo_date}")
+            raise InvalidParamError(
+                reason=f"不正な日時形式です: {photo_date}",
+                param_name="photo_date"
+            )
 
     # 既存のキノコの写真があれば削除
     mushroom_repository = MushroomRepository(db)
@@ -92,19 +107,26 @@ def create_mushroom(
 
     # DBに保存
     try:
-        mushroom_repository.create_mushroom(
+        mushroom = mushroom_repository.create_mushroom(
             tree_id=tree.id,
             user_id=current_user.id,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
+            photo_date=parsed_photo_date
         )
         logger.info(f"キノコの写真登録完了: tree_id={tree_id}")
+
+        # 画像URLの取得
+        image_url = image_service.get_image_url(image_key)
+        thumb_url = image_service.get_image_url(thumb_key)
+
         return MushroomInfo(
-            image_url=image_service.get_image_url(image_key),
-            image_thumb_url=image_service.get_image_url(thumb_key),
-            created_at=datetime.now(timezone.utc)
+            image_url=image_url,
+            image_thumb_url=thumb_url,
+            created_at=mushroom.photo_date,
+            censorship_status=mushroom.censorship_status
         )
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")

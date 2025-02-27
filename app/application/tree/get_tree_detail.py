@@ -5,7 +5,6 @@ from sqlalchemy.orm import Session
 
 from app.application.exceptions import TreeNotFoundError
 from app.domain.constants.anonymous import filter_anonymous
-from app.domain.models.models import CensorshipStatus
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import (KobuInfo, MushroomInfo, StemHoleInfo,
@@ -42,15 +41,6 @@ def get_tree_detail(
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
 
-    # 自分の投稿かどうかをチェック
-    is_own_post = current_user_id is not None and tree.user_id == current_user_id
-
-    # 木全体の検閲ステータスをチェック（自分の投稿の場合はスキップ）
-    if not is_own_post and tree.censorship_status != CensorshipStatus.APPROVED:
-        logger.warning(
-            f"木が検閲で承認されていません: tree_id={tree_id}, status={tree.censorship_status}")
-        raise TreeNotFoundError(tree_id=tree_id)
-
     # EntireTreeの情報を準備
     vitality = None
     image_url = ""
@@ -58,8 +48,7 @@ def get_tree_detail(
     decorated_image_url = None
     ogp_image_url = None
 
-    # 自分の投稿か検閲ステータスがAPPROVEDの場合に情報を表示
-    if tree.entire_tree and (is_own_post or tree.entire_tree.censorship_status == CensorshipStatus.APPROVED):
+    if tree.entire_tree:
         vitality = tree.entire_tree.vitality
         image_url = image_service.get_image_url(
             str(tree.entire_tree.image_obj_key))
@@ -92,13 +81,11 @@ def get_tree_detail(
         tengusu=None,
         mushroom=None,
         kobu=None,
-        created_at=tree.created_at,
-        # 自分の投稿の場合は検閲ステータスも追加
-        censorship_status=tree.censorship_status if is_own_post else None
+        created_at=tree.photo_date,
     )
 
-    # 幹の情報を追加（自分の投稿か検閲ステータスがAPPROVEDの場合）
-    if tree.stem and (is_own_post or tree.stem.censorship_status == CensorshipStatus.APPROVED):
+    # 幹の情報を追加
+    if tree.stem:
         response.stem = StemInfo(
             image_url=image_service.get_image_url(
                 str(tree.stem.image_obj_key)),
@@ -108,58 +95,53 @@ def get_tree_detail(
             can_detected=tree.stem.can_detected,
             circumference=tree.stem.circumference,
             age=tree.stem.age,
-            created_at=tree.stem.created_at,
-            censorship_status=tree.stem.censorship_status if is_own_post else None
+            created_at=tree.stem.photo_date,
+            censorship_status=tree.stem.censorship_status
         )
 
-    # 幹の穴の情報を追加（自分の投稿か検閲ステータスがAPPROVEDの場合）
-    if tree.stem_holes and (is_own_post or tree.stem_holes[0].censorship_status == CensorshipStatus.APPROVED):
+    # 幹の穴の情報を追加
+    if tree.stem_holes:
         response.stem_hole = StemHoleInfo(
             image_url=image_service.get_image_url(
                 str(tree.stem_holes[0].image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(tree.stem_holes[0].thumb_obj_key)),
-            created_at=tree.stem_holes[0].created_at,
-            censorship_status=tree.stem_holes[0].censorship_status if is_own_post else None
+            created_at=tree.stem_holes[0].photo_date,
+            censorship_status=tree.stem_holes[0].censorship_status
         )
 
-    # テングス病の情報を追加（自分の投稿か検閲ステータスがAPPROVEDの場合）
-    if tree.tengus and (is_own_post or tree.tengus[0].censorship_status == CensorshipStatus.APPROVED):
+    # テングス病の情報を追加
+    if tree.tengus:
         response.tengusu = TengusuInfo(
             image_url=image_service.get_image_url(
                 str(tree.tengus[0].image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(tree.tengus[0].thumb_obj_key)),
-            created_at=tree.tengus[0].created_at,
-            censorship_status=tree.tengus[0].censorship_status if is_own_post else None
+            created_at=tree.tengus[0].photo_date,
+            censorship_status=tree.tengus[0].censorship_status
         )
 
-    # キノコの情報を追加（自分の投稿か検閲ステータスがAPPROVEDの場合）
-    if tree.mushrooms and (is_own_post or tree.mushrooms[0].censorship_status == CensorshipStatus.APPROVED):
+    # キノコの情報を追加
+    if tree.mushrooms:
         response.mushroom = MushroomInfo(
             image_url=image_service.get_image_url(
                 str(tree.mushrooms[0].image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(tree.mushrooms[0].thumb_obj_key)),
-            created_at=tree.mushrooms[0].created_at,
-            censorship_status=tree.mushrooms[0].censorship_status if is_own_post else None
+            created_at=tree.mushrooms[0].photo_date,
+            censorship_status=tree.mushrooms[0].censorship_status
         )
 
-    # こぶ状の枝の情報を追加（自分の投稿か検閲ステータスがAPPROVEDの場合）
-    if tree.kobus and (is_own_post or tree.kobus[0].censorship_status == CensorshipStatus.APPROVED):
+    # こぶ状の枝の情報を追加
+    if tree.kobus:
         response.kobu = KobuInfo(
             image_url=image_service.get_image_url(
                 str(tree.kobus[0].image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(tree.kobus[0].thumb_obj_key)),
-            created_at=tree.kobus[0].created_at,
-            censorship_status=tree.kobus[0].censorship_status if is_own_post else None
+            created_at=tree.kobus[0].photo_date,
+            censorship_status=tree.kobus[0].censorship_status
         )
-
-    # 自分の投稿の場合はログにその旨を記録
-    if is_own_post:
-        logger.info(
-            f"投稿者自身による木の詳細情報取得: tree_id={tree_id}, user_id={current_user_id}")
 
     logger.info(f"木の詳細情報取得完了: tree_id={tree_id}")
     return response

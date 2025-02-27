@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import List, Optional
 
 from loguru import logger
@@ -42,6 +43,7 @@ class StemHoleRepository:
         longitude: float,
         image_obj_key: str,
         thumb_obj_key: str,
+        photo_date: Optional[datetime] = None
     ) -> StemHole:
         """
         幹の穴の情報を保存する
@@ -53,6 +55,7 @@ class StemHoleRepository:
             longitude (float): 経度
             image_obj_key (str): 画像のオブジェクトキー
             thumb_obj_key (str): サムネイル画像のオブジェクトキー
+            photo_date (Optional[datetime]): 撮影日時
 
         Returns:
             StemHole: 作成された幹の穴の情報
@@ -64,6 +67,7 @@ class StemHoleRepository:
             longitude=longitude,
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
+            photo_date=photo_date
         )
         self.db.add(stem_hole)
         self.db.commit()

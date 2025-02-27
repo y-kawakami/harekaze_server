@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import List, Optional, Tuple
 
 from loguru import logger
@@ -44,33 +45,65 @@ class TreeRepository:
     def create_tree(
         self,
         user_id: int,
-        uid: str,
         contributor: Optional[str],
         latitude: float,
         longitude: float,
         image_obj_key: str,
         thumb_obj_key: str,
-        vitality: float,
-        position: str,
-        location: str,
-        prefecture_code: str,
-        municipality_code: str
+        vitality: int,
+        vitality_real: Optional[float] = None,
+        location: Optional[str] = None,
+        prefecture_code: Optional[str] = None,
+        municipality_code: Optional[str] = None,
+        photo_date: Optional[datetime] = None
     ) -> Tree:
+        """
+        新しい木を作成する
+
+        Args:
+            user_id: ユーザーID
+            contributor: 投稿者名
+            latitude: 緯度
+            longitude: 経度
+            image_obj_key: 画像のS3オブジェクトキー
+            thumb_obj_key: サムネイル画像のS3オブジェクトキー
+            vitality: 元気度
+            vitality_real: 元気度の実数値
+            location: 場所の名前
+            prefecture_code: 都道府県コード
+            municipality_code: 自治体コード
+            photo_date: 撮影日時
+
+        Returns:
+            作成された木のオブジェクト
+        """
+        position = f'POINT({longitude} {latitude})'
         tree = Tree(
             user_id=user_id,
-            uid=uid,
             contributor=contributor,
             latitude=latitude,
             longitude=longitude,
             position=func.ST_GeomFromText(position),
-            image_obj_key=image_obj_key,
-            thumb_obj_key=thumb_obj_key,
-            vitality=vitality,
             location=location,
             prefecture_code=prefecture_code,
-            municipality_code=municipality_code
+            municipality_code=municipality_code,
+            photo_date=photo_date
         )
         self.db.add(tree)
+        self.db.flush()  # DBに反映してIDを取得
+
+        entire_tree = EntireTree(
+            user_id=user_id,
+            tree_id=tree.id,
+            vitality=vitality,
+            vitality_real=vitality_real,
+            latitude=latitude,
+            longitude=longitude,
+            image_obj_key=image_obj_key,
+            thumb_obj_key=thumb_obj_key,
+            photo_date=photo_date
+        )
+        self.db.add(entire_tree)
         self.db.commit()
         self.db.refresh(tree)
         return tree
