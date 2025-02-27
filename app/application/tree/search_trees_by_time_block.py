@@ -1,4 +1,4 @@
-from datetime import datetime, time, timedelta
+from datetime import datetime, time, timedelta, timezone
 from typing import List
 
 from loguru import logger
@@ -34,12 +34,12 @@ def search_trees_by_time_block(
     Returns:
         TimeRangeTreesResponse: 時間帯別ブロック別の桜の木情報
     """
-    # 1ヶ月前の日付を計算
-    one_month_ago = datetime.now() - timedelta(days=30)
+    # 1ヶ月前の日付を計算 (UTC)
+    one_month_ago = datetime.now(timezone.utc) - timedelta(days=30)
 
-    # 時間範囲の計算（基準時刻から1時間前まで）
+    # 時間範囲の計算（基準時刻から1時間前まで）(UTC)
     end_time = reference_time
-    start_time = (datetime.combine(datetime.today(),
+    start_time = (datetime.combine(datetime.now(timezone.utc).date(),
                   end_time) - timedelta(hours=1)).time()
 
     # リポジトリのインスタンス化
@@ -47,6 +47,8 @@ def search_trees_by_time_block(
 
     # 各ブロックの検索
     blocks = ["A", "B", "C"]
+    print(reference_time, one_month_ago, blocks,
+          per_block_limit, censorship_status)
     block_trees = repo.find_trees_by_time_range_block(
         db, reference_time, one_month_ago, blocks, per_block_limit, censorship_status
     )

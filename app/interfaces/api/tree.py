@@ -1,4 +1,4 @@
-from datetime import datetime, time
+from datetime import datetime, time, timedelta, timezone
 
 from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -340,8 +340,8 @@ async def search_trees_by_time_block(
     Returns:
         TimeRangeTreesResponse: 時間帯別ブロック別の投稿一覧
     """
-    # 現在時刻を取得
-    now = datetime.now()
+    # 現在時刻を取得. すぐに反映されるように +1分
+    now = datetime.now(timezone.utc) + timedelta(minutes=1)
     reference_time = time(now.hour, now.minute)
 
     # アプリケーションロジックを呼び出す
