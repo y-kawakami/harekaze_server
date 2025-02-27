@@ -6,8 +6,9 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.domain.models.area_stats import AreaStats
-from app.domain.models.models import (Kobu, Mushroom, PrefectureStats, Stem,
-                                      StemHole, Tengus, Tree)
+from app.domain.models.models import (CensorshipStatus, Kobu, Mushroom,
+                                      PrefectureStats, Stem, StemHole, Tengus,
+                                      Tree)
 from app.interfaces.schemas.tree import AreaCountItem
 
 
@@ -829,3 +830,18 @@ class TreeRepository:
             )
             for r in results
         ]
+
+    def count_trees_by_status(self, status: Optional[CensorshipStatus] = None) -> int:
+        """
+        指定された検閲ステータスの木の総数を取得する
+
+        Args:
+            status (Optional[CensorshipStatus]): 検閲ステータス。Noneの場合は全ての木を対象とする。
+
+        Returns:
+            int: 指定された検閲ステータスの木の総数
+        """
+        query = self.db.query(Tree)
+        if status is not None:
+            query = query.filter(Tree.censorship_status == status)
+        return query.count()

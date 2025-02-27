@@ -14,6 +14,8 @@ from app.application.tree.get_area_count import \
     get_area_count as get_area_count_app
 from app.application.tree.get_area_stats import \
     get_area_stats as get_area_stats_app
+from app.application.tree.get_total_count import \
+    get_total_count as get_total_count_app
 from app.application.tree.get_tree_detail import \
     get_tree_detail as get_tree_detail_app
 from app.application.tree.search_trees import search_trees as search_trees_app
@@ -31,7 +33,8 @@ from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          StemInfo, TengusuInfo,
                                          TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
-                                         TreeSearchResponse)
+                                         TreeSearchResponse,
+                                         TreeTotalCountResponse)
 
 router = APIRouter()
 
@@ -167,6 +170,17 @@ async def search_trees(
         has_kobu=has_kobu,
         image_service=image_service
     )
+
+
+@router.get("/tree/total_count", response_model=TreeTotalCountResponse)
+async def get_total_count(
+    db: Session = Depends(get_db)
+):
+    """
+    承認済みの桜の木の総数を取得する。
+    """
+    total_count = get_total_count_app(db=db)
+    return TreeTotalCountResponse(total_count=total_count)
 
 
 @router.get("/tree/area_count", response_model=AreaCountResponse)
