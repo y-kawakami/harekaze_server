@@ -349,16 +349,19 @@ class TreeRepository:
 
         # 元気度ごとの本数を取得
         vitality_counts = self.db.query(
-            Tree.vitality,
+            EntireTree.vitality,
             func.count(Tree.id).label('count')
-        )
+        ).join(EntireTree, Tree.id == EntireTree.tree_id)
         if municipality_code:
             vitality_counts = vitality_counts.filter(
                 Tree.municipality_code == municipality_code)
         else:
             vitality_counts = vitality_counts.filter(
                 Tree.prefecture_code == prefecture_code)
-        vitality_counts = vitality_counts.group_by(Tree.vitality).all()
+        vitality_counts = vitality_counts.filter(
+            EntireTree.censorship_status == CensorshipStatus.APPROVED,
+            Tree.censorship_status == CensorshipStatus.APPROVED
+        ).group_by(EntireTree.vitality).all()
 
         vitality_dict = {v: 0 for v in range(1, 6)}
         for vitality, count in vitality_counts:
@@ -383,7 +386,10 @@ class TreeRepository:
         else:
             age_counts = age_counts.filter(
                 Tree.prefecture_code == prefecture_code)
-        age_counts = age_counts.group_by('age_group').all()
+        age_counts = age_counts.filter(
+            Stem.censorship_status == CensorshipStatus.APPROVED,
+            Tree.censorship_status == CensorshipStatus.APPROVED
+        ).group_by('age_group').all()
 
         age_dict = {'20': 0, '30': 0, '40': 0, '50': 0, '60': 0}
         for age_group, count in age_counts:
