@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.application.exceptions import (DatabaseError, ForbiddenError,
                                         ImageUploadError, InvalidParamError,
                                         TreeNotFoundError)
-from app.domain.models.models import User
+from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.repositories.stem_hole_repository import \
@@ -24,7 +24,8 @@ def create_stem_hole(
     latitude: float,
     longitude: float,
     image_service: ImageService,
-    photo_date: Optional[str] = None
+    photo_date: Optional[str] = None,
+    is_approved_debug: bool = False
 ) -> StemHoleInfo:
     """
     幹の穴の写真を登録する。既存の幹の穴の写真がある場合は削除して新規登録する。
@@ -38,6 +39,7 @@ def create_stem_hole(
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
         StemHoleInfo: 登録された幹の穴の情報
@@ -113,19 +115,26 @@ def create_stem_hole(
     # DBに保存
     try:
         stem_hole = stem_hole_repository.create_stem_hole(
-            tree_id=tree.id,
             user_id=current_user.id,
+            tree_id=tree.id,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             photo_date=parsed_photo_date
         )
-        logger.info(f"幹の穴の写真登録完了: tree_id={tree_id}")
 
-        # 画像URLの取得
+        # デバッグモードでの自動承認
+        if is_approved_debug:
+            logger.info(f"デバッグモードによる自動承認: 幹の穴ID={stem_hole.id}")
+            stem_hole.censorship_status = CensorshipStatus.APPROVED
+            db.commit()
+
+        # 画像URLを取得
         image_url = image_service.get_image_url(image_key)
         thumb_url = image_service.get_image_url(thumb_key)
+
+        logger.info(f"幹の穴の写真登録完了: stem_hole_id={stem_hole.id}")
 
         return StemHoleInfo(
             image_url=image_url,

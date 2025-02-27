@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ForbiddenError,
                                         ImageUploadError, TreeNotFoundError)
-from app.domain.models.models import User
+from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.stem_repository import StemRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
@@ -22,7 +22,8 @@ def create_stem(
     latitude: float,
     longitude: float,
     image_service: ImageService,
-    photo_date: Optional[str] = None
+    photo_date: Optional[str] = None,
+    is_approved_debug: bool = False
 ) -> StemInfo:
     """
     幹の写真を登録する。既存の幹の写真がある場合は削除して新規登録する。
@@ -36,6 +37,7 @@ def create_stem(
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
         StemInfo: 登録された幹の情報
@@ -106,6 +108,13 @@ def create_stem(
             age=age,
             photo_date=parsed_photo_date
         )
+
+        # デバッグモードでの自動承認
+        if is_approved_debug:
+            logger.info(f"デバッグモードによる自動承認: 幹ID={stem.id}")
+            stem.censorship_status = CensorshipStatus.APPROVED
+            db.commit()
+
         logger.info(f"幹の写真登録完了: stem_id={stem.id}")
 
         # レスポンス用情報取得

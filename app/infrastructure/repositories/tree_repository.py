@@ -523,46 +523,58 @@ class TreeRepository:
         base_query = self.db.query(Tree).filter(
             Tree.censorship_status == CensorshipStatus.APPROVED)
 
-        # サブクエリで最新の木を取得
-        latest_tree_subq = base_query.with_entities(
-            Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
-            Tree.contributor.label('latest_contributor'),
-            Tree.thumb_obj_key.label('latest_image_thumb_url'),
-            func.row_number().over(
-                partition_by=Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
-                order_by=Tree.created_at.desc()
-            ).label('rn')
-        ).filter(
-            Tree.prefecture_code.in_(area_codes) if area_type == 'prefecture'
-            else Tree.municipality_code.in_(area_codes)
-        ).subquery()
+        # 各エリアの最新のツリーIDを取得するサブクエリ
+        latest_trees = (
+            base_query.with_entities(
+                Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
+                func.max(Tree.id).label('latest_tree_id')
+            )
+            .filter(
+                Tree.prefecture_code.in_(area_codes) if area_type == 'prefecture'
+                else Tree.municipality_code.in_(area_codes)
+            )
+            .group_by(Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code)
+            .subquery()
+        )
+
+        # 最新ツリーの詳細情報を取得するサブクエリ
+        latest_tree_details = (
+            self.db.query(
+                Tree.id,
+                Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
+                Tree.contributor.label('latest_contributor'),
+                EntireTree.thumb_obj_key.label('latest_image_thumb_url')
+            )
+            .join(latest_trees, Tree.id == latest_trees.c.latest_tree_id)
+            .join(EntireTree, Tree.id == EntireTree.tree_id)
+            .filter(EntireTree.censorship_status == CensorshipStatus.APPROVED)
+            .subquery()
+        )
 
         # メインクエリの作成
         if area_type == 'prefecture':
             query = self.db.query(
                 Tree.prefecture_code,
                 func.count(Tree.id).label('count'),
-                func.max(latest_tree_subq.c.latest_contributor).label(
+                func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
-                func.max(latest_tree_subq.c.latest_image_thumb_url).label(
+                func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')
             ).outerjoin(
-                latest_tree_subq,
-                (Tree.prefecture_code == latest_tree_subq.c.prefecture_code) &
-                (latest_tree_subq.c.rn == 1)
+                latest_tree_details,
+                Tree.prefecture_code == latest_tree_details.c.prefecture_code
             ).filter(Tree.prefecture_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
         else:  # municipality
             query = self.db.query(
                 Tree.municipality_code,
                 func.count(Tree.id).label('count'),
-                func.max(latest_tree_subq.c.latest_contributor).label(
+                func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
-                func.max(latest_tree_subq.c.latest_image_thumb_url).label(
+                func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')
             ).outerjoin(
-                latest_tree_subq,
-                (Tree.municipality_code == latest_tree_subq.c.municipality_code) &
-                (latest_tree_subq.c.rn == 1)
+                latest_tree_details,
+                Tree.municipality_code == latest_tree_details.c.municipality_code
             ).filter(Tree.municipality_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
 
         # フィルタ条件を適用

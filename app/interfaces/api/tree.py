@@ -73,6 +73,10 @@ async def create_tree(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
@@ -92,7 +96,8 @@ async def create_tree(
         contributor=contributor,
         image_service=image_service,
         geocoding_service=geocoding_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )
 
 
@@ -390,6 +395,10 @@ async def create_stem(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -406,7 +415,8 @@ async def create_stem(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )
 
 
@@ -432,6 +442,10 @@ async def create_stem_hole(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -448,7 +462,8 @@ async def create_stem_hole(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )
 
 
@@ -474,6 +489,10 @@ async def create_tengusu(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -490,7 +509,8 @@ async def create_tengusu(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )
 
 
@@ -516,6 +536,10 @@ async def create_mushroom(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -532,7 +556,8 @@ async def create_mushroom(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )
 
 
@@ -558,6 +583,10 @@ async def create_kobu(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_approved_debug: bool = Form(
+        True,
+        description="デバッグ用: 投稿を承認済みとしてマークする"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
@@ -574,5 +603,6 @@ async def create_kobu(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
-        photo_date=date
+        photo_date=date,
+        is_approved_debug=is_approved_debug
     )

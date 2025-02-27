@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.application.exceptions import (DatabaseError, ForbiddenError,
                                         ImageUploadError, InvalidParamError,
                                         TreeNotFoundError)
-from app.domain.models.models import User
+from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.repositories.mushroom_repository import \
@@ -24,7 +24,8 @@ def create_mushroom(
     latitude: float,
     longitude: float,
     image_service: ImageService,
-    photo_date: Optional[str] = None
+    photo_date: Optional[str] = None,
+    is_approved_debug: bool = False
 ) -> MushroomInfo:
     """
     キノコの写真を登録する。既存のキノコの写真がある場合は削除して新規登録する。
@@ -38,6 +39,7 @@ def create_mushroom(
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
         MushroomInfo: 登録されたキノコの情報
@@ -121,6 +123,13 @@ def create_mushroom(
             thumb_obj_key=thumb_key,
             photo_date=parsed_photo_date
         )
+
+        # デバッグモードでの自動承認
+        if is_approved_debug:
+            logger.info(f"デバッグモードによる自動承認: キノコID={mushroom.id}")
+            mushroom.censorship_status = CensorshipStatus.APPROVED
+            db.commit()
+
         logger.info(f"キノコの写真登録完了: tree_id={tree_id}")
 
         # 画像URLの取得

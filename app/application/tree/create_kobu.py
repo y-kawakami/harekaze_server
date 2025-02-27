@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.application.exceptions import (DatabaseError, ForbiddenError,
                                         ImageUploadError, InvalidParamError,
                                         TreeNotFoundError)
-from app.domain.models.models import User
+from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.repositories.kobu_repository import KobuRepository
@@ -23,7 +23,8 @@ def create_kobu(
     latitude: float,
     longitude: float,
     image_service: ImageService,
-    photo_date: Optional[str] = None
+    photo_date: Optional[str] = None,
+    is_approved_debug: bool = False
 ) -> KobuInfo:
     """
     こぶ状の枝の写真を登録する。既存のこぶ状の枝の写真がある場合は削除して新規登録する。
@@ -37,6 +38,7 @@ def create_kobu(
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
         KobuInfo: 登録されたこぶ状の枝の情報
@@ -120,6 +122,13 @@ def create_kobu(
             thumb_obj_key=thumb_key,
             photo_date=parsed_photo_date
         )
+
+        # デバッグモードでの自動承認
+        if is_approved_debug:
+            logger.info(f"デバッグモードによる自動承認: こぶID={kobu.id}")
+            kobu.censorship_status = CensorshipStatus.APPROVED
+            db.commit()
+
         logger.info(f"こぶ状の枝の写真登録完了: tree_id={tree_id}")
 
         # 画像URLの取得

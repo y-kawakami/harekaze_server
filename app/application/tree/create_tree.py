@@ -11,7 +11,7 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         TreeNotDetectedError)
 from app.domain.constants.anonymous import filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
-from app.domain.models.models import User
+from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
@@ -28,7 +28,8 @@ def create_tree(
     contributor: Optional[str],
     image_service: ImageService,
     geocoding_service: GeocodingService,
-    photo_date: Optional[str] = None
+    photo_date: Optional[str] = None,
+    is_approved_debug: bool = False
 ) -> TreeResponse:
     """
     桜の木全体の写真を登録する。
@@ -43,6 +44,7 @@ def create_tree(
         image_service (ImageService): 画像サービス
         geocoding_service (GeocodingService): 位置情報サービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
         TreeResponse: 作成された木の情報
@@ -129,7 +131,16 @@ def create_tree(
             block=address.block,
             photo_date=parsed_photo_date
         )
-        logger.info(f"木の登録が完了: ツリーUID={tree_uid}, 元気度={vitality}")
+
+        # デバッグモードでの自動承認
+        if is_approved_debug:
+            logger.info(f"デバッグモードによる自動承認: ツリーUID={tree.uid}")
+            tree.censorship_status = CensorshipStatus.APPROVED
+            if tree.entire_tree:
+                tree.entire_tree.censorship_status = CensorshipStatus.APPROVED
+            repository.update_tree(tree)
+
+        logger.info(f"木の登録が完了: ツリーUID={tree.uid}, 元気度={vitality}")
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")
         raise DatabaseError(message=str(e)) from e
