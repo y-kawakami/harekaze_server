@@ -1,6 +1,5 @@
 from typing import Optional
 
-from fastapi import HTTPException
 from loguru import logger
 from sqlalchemy.orm import Session
 

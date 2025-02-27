@@ -16,6 +16,7 @@ class CensorshipStatus(IntEnum):
     UNCENSORED = 0  # 未検閲
     APPROVED = 1    # 検閲OK
     REJECTED = 2    # 検閲NG
+    ESCALATED = 3   # エスカレーション
 
 
 class User(Base):
