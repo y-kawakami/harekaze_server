@@ -27,6 +27,8 @@ class TreeResponse(TreeBase):
     municipality_code: Optional[str] = Field(
         None, description="自治体コード（JIS X 0402に準拠）")
     created_at: datetime = Field(..., description="撮影日時（ISO8601形式）")
+    censorship_status: Optional[int] = Field(
+        None, description="検閲ステータス（投稿者自身が閲覧時のみ）")
 
     class Config:
         from_attributes = True
@@ -36,6 +38,8 @@ class TreeImageInfo(BaseModel):
     """画像情報の基底クラス"""
     image_url: str = Field(..., description="画像のURL")
     image_thumb_url: str = Field(..., description="サムネイル画像のURL")
+    censorship_status: Optional[int] = Field(
+        None, description="検閲ステータス（投稿者自身が閲覧時のみ）")
 
     class Config:
         from_attributes = True
