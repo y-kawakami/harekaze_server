@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError
 from app.domain.constants.anonymous import filter_anonymous
+from app.domain.models.models import CensorshipStatus
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeSearchResponse, TreeSearchResult
@@ -109,20 +110,25 @@ def search_trees(
 
     # レスポンスの作成
     return TreeSearchResponse(
-        total=total,
+        total=total,  # 全体の件数は変更しない
         trees=[TreeSearchResult(
             id=tree.uid,
             tree_number=f"#{tree.id}",
             contributor=filter_anonymous(
                 tree.contributor) if tree.contributor else None,
-            vitality=tree.vitality,
-            image_thumb_url=image_service.get_image_url(tree.thumb_obj_key),
+            # 注: 以下の検閲ステータスチェックは二重チェックのように見えますが必要です
+            # 木全体(Tree)は承認済みでも関連エンティティ(EntireTreeなど)が未承認の場合があります
+            # リポジトリで返される木自体は検索基準を満たしているが、表示対象の詳細情報は個別に判断する必要があります
+            # これにより、木自体は表示しつつ、未承認の画像やデータは非表示にするという柔軟な対応が可能になります
+            vitality=tree.entire_tree.vitality if tree.entire_tree and tree.entire_tree.censorship_status == CensorshipStatus.APPROVED else None,
+            image_thumb_url=image_service.get_image_url(
+                tree.entire_tree.thumb_obj_key if tree.entire_tree and tree.entire_tree.censorship_status == CensorshipStatus.APPROVED else ""),
             latitude=tree.latitude,
             longitude=tree.longitude,
             location=tree.location,
             prefecture_code=tree.prefecture_code or None,
             municipality_code=tree.municipality_code or None,
             created_at=tree.created_at,
-            age=tree.stem.age if tree.stem else None
+            age=tree.stem.age if tree.stem and tree.stem.censorship_status == CensorshipStatus.APPROVED else None
         ) for tree in trees]
     )

@@ -6,9 +6,9 @@ from sqlalchemy import case, func
 from sqlalchemy.orm import Session
 
 from app.domain.models.area_stats import AreaStats
-from app.domain.models.models import (CensorshipStatus, Kobu, Mushroom,
-                                      PrefectureStats, Stem, StemHole, Tengus,
-                                      Tree)
+from app.domain.models.models import (CensorshipStatus, EntireTree, Kobu,
+                                      Mushroom, PrefectureStats, Stem,
+                                      StemHole, Tengus, Tree)
 from app.interfaces.schemas.tree import AreaCountItem
 
 
@@ -202,7 +202,9 @@ class TreeRepository:
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
-        query = self.db.query(Tree)
+        # 検閲ステータスがAPPROVEDのものだけを対象とするベースクエリを作成
+        query = self.db.query(Tree).filter(
+            Tree.censorship_status == CensorshipStatus.APPROVED)
 
         # 市区町村コードまたは位置による検索
         if municipality_code is not None:
@@ -216,45 +218,49 @@ class TreeRepository:
             )
 
         if vitality_range:
-            query = query.filter(
-                Tree.vitality >= vitality_range[0],
-                Tree.vitality <= vitality_range[1]
+            # EntireTreeテーブルと結合して元気度条件を適用（検閲ステータスも考慮）
+            query = query.join(EntireTree).filter(
+                EntireTree.vitality >= vitality_range[0],
+                EntireTree.vitality <= vitality_range[1],
+                EntireTree.censorship_status == CensorshipStatus.APPROVED
             )
 
-        # age_rangeが指定されている場合のみstemテーブルと結合
+        # age_rangeが指定されている場合のみstemテーブルと結合（検閲ステータスも考慮）
         if age_range:
             query = query.join(Stem).filter(
                 Stem.age >= age_range[0],
-                Stem.age <= age_range[1]
+                Stem.age <= age_range[1],
+                Stem.censorship_status == CensorshipStatus.APPROVED
             )
 
         if has_hole is not None:
-            subq = self.db.query(StemHole.tree_id).distinct()
             if has_hole:
-                query = query.filter(Tree.id.in_(subq))
+                query = query.join(StemHole).filter(
+                    StemHole.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.filter(~Tree.id.in_(subq))
-
+                query = query.outerjoin(StemHole).filter(
+                    StemHole.id.is_(None) | (StemHole.censorship_status != CensorshipStatus.APPROVED))
         if has_tengusu is not None:
-            subq = self.db.query(Tengus.tree_id).distinct()
             if has_tengusu:
-                query = query.filter(Tree.id.in_(subq))
+                query = query.join(Tengus).filter(
+                    Tengus.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.filter(~Tree.id.in_(subq))
-
+                query = query.outerjoin(Tengus).filter(
+                    Tengus.id.is_(None) | (Tengus.censorship_status != CensorshipStatus.APPROVED))
         if has_mushroom is not None:
-            subq = self.db.query(Mushroom.tree_id).distinct()
             if has_mushroom:
-                query = query.filter(Tree.id.in_(subq))
+                query = query.join(Mushroom).filter(
+                    Mushroom.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.filter(~Tree.id.in_(subq))
-
+                query = query.outerjoin(Mushroom).filter(
+                    Mushroom.id.is_(None) | (Mushroom.censorship_status != CensorshipStatus.APPROVED))
         if has_kobu is not None:
-            subq = self.db.query(Kobu.tree_id).distinct()
             if has_kobu:
-                query = query.filter(Tree.id.in_(subq))
+                query = query.join(Kobu).filter(
+                    Kobu.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.filter(~Tree.id.in_(subq))
+                query = query.outerjoin(Kobu).filter(
+                    Kobu.id.is_(None) | (Kobu.censorship_status != CensorshipStatus.APPROVED))
 
         total = query.count()
         trees = query.offset(offset).limit(limit).all()
@@ -399,8 +405,9 @@ class TreeRepository:
         Raises:
             ValueError: prefecture_codeとmunicipality_codeの両方がNoneの場合
         """
-        # 基本となるツリーのクエリを作成
-        tree_query = self.db.query(Tree.id)
+        # 基本となるツリーのクエリを作成（検閲ステータスがAPPROVEDのみ）
+        tree_query = self.db.query(Tree.id).filter(
+            Tree.censorship_status == CensorshipStatus.APPROVED)
 
         if municipality_code:
             tree_query = tree_query.filter(
@@ -418,21 +425,25 @@ class TreeRepository:
         if not tree_ids:
             return TreeRelatedEntities()
 
-        # 各エンティティを取得（最大30件）
+        # 各エンティティを取得（最大30件、検閲ステータスがAPPROVEDのみ）
         stem_holes = self.db.query(StemHole).filter(
-            StemHole.tree_id.in_(tree_ids)
+            StemHole.tree_id.in_(tree_ids),
+            StemHole.censorship_status == CensorshipStatus.APPROVED
         ).limit(30).all()
 
         tengus = self.db.query(Tengus).filter(
-            Tengus.tree_id.in_(tree_ids)
+            Tengus.tree_id.in_(tree_ids),
+            Tengus.censorship_status == CensorshipStatus.APPROVED
         ).limit(30).all()
 
         mushrooms = self.db.query(Mushroom).filter(
-            Mushroom.tree_id.in_(tree_ids)
+            Mushroom.tree_id.in_(tree_ids),
+            Mushroom.censorship_status == CensorshipStatus.APPROVED
         ).limit(30).all()
 
         kobus = self.db.query(Kobu).filter(
-            Kobu.tree_id.in_(tree_ids)
+            Kobu.tree_id.in_(tree_ids),
+            Kobu.censorship_status == CensorshipStatus.APPROVED
         ).limit(30).all()
 
         return TreeRelatedEntities(
@@ -470,8 +481,12 @@ class TreeRepository:
         """
         logger.info(f"エリアコードに基づく桜の本数集計開始: area_type={area_type}")
 
+        # 検閲ステータスがAPPROVEDのツリーのみを対象とする
+        base_query = self.db.query(Tree).filter(
+            Tree.censorship_status == CensorshipStatus.APPROVED)
+
         # サブクエリで最新の木を取得
-        latest_tree_subq = self.db.query(
+        latest_tree_subq = base_query.with_entities(
             Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
             Tree.contributor.label('latest_contributor'),
             Tree.thumb_obj_key.label('latest_image_thumb_url'),
@@ -497,7 +512,7 @@ class TreeRepository:
                 latest_tree_subq,
                 (Tree.prefecture_code == latest_tree_subq.c.prefecture_code) &
                 (latest_tree_subq.c.rn == 1)
-            ).filter(Tree.prefecture_code.in_(area_codes))
+            ).filter(Tree.prefecture_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
         else:  # municipality
             query = self.db.query(
                 Tree.municipality_code,
@@ -510,35 +525,46 @@ class TreeRepository:
                 latest_tree_subq,
                 (Tree.municipality_code == latest_tree_subq.c.municipality_code) &
                 (latest_tree_subq.c.rn == 1)
-            ).filter(Tree.municipality_code.in_(area_codes))
+            ).filter(Tree.municipality_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
 
         # フィルタ条件を適用
         if vitality_range:
-            query = query.filter(
-                Tree.vitality.between(vitality_range[0], vitality_range[1]))
+            query = query.join(EntireTree).filter(
+                EntireTree.vitality.between(
+                    vitality_range[0], vitality_range[1]),
+                EntireTree.censorship_status == CensorshipStatus.APPROVED)
         if age_range:
             query = query.join(Stem).filter(
-                Stem.age.between(age_range[0], age_range[1]))
+                Stem.age.between(age_range[0], age_range[1]),
+                Stem.censorship_status == CensorshipStatus.APPROVED)
         if has_hole is not None:
             if has_hole:
-                query = query.join(StemHole)
+                query = query.join(StemHole).filter(
+                    StemHole.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(StemHole).filter(StemHole.id.is_(None))
+                query = query.outerjoin(StemHole).filter(
+                    StemHole.id.is_(None) | (StemHole.censorship_status != CensorshipStatus.APPROVED))
         if has_tengusu is not None:
             if has_tengusu:
-                query = query.join(Tengus)
+                query = query.join(Tengus).filter(
+                    Tengus.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Tengus).filter(Tengus.id.is_(None))
+                query = query.outerjoin(Tengus).filter(
+                    Tengus.id.is_(None) | (Tengus.censorship_status != CensorshipStatus.APPROVED))
         if has_mushroom is not None:
             if has_mushroom:
-                query = query.join(Mushroom)
+                query = query.join(Mushroom).filter(
+                    Mushroom.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Mushroom).filter(Mushroom.id.is_(None))
+                query = query.outerjoin(Mushroom).filter(
+                    Mushroom.id.is_(None) | (Mushroom.censorship_status != CensorshipStatus.APPROVED))
         if has_kobu is not None:
             if has_kobu:
-                query = query.join(Kobu)
+                query = query.join(Kobu).filter(
+                    Kobu.censorship_status == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Kobu).filter(Kobu.id.is_(None))
+                query = query.outerjoin(Kobu).filter(
+                    Kobu.id.is_(None) | (Kobu.censorship_status != CensorshipStatus.APPROVED))
 
         # グループ化
         if area_type == 'prefecture':

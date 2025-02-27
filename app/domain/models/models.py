@@ -42,8 +42,6 @@ class Tree(Base):
         String(36), unique=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     contributor: Mapped[Optional[str]] = mapped_column(String(100))
-    vitality: Mapped[Optional[int]] = mapped_column(Integer, index=True)
-    vitality_real: Mapped[Optional[float]] = mapped_column(Float)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
@@ -52,11 +50,6 @@ class Tree(Base):
         String(2), index=True)  # 都道府県コード（JIS X 0401）
     municipality_code: Mapped[Optional[str]] = mapped_column(
         String(8), index=True)  # 自治体コード（JIS X 0402）
-    image_obj_key: Mapped[str] = mapped_column(String(255))
-    thumb_obj_key: Mapped[str] = mapped_column(String(255))
-    decorated_image_obj_key: Mapped[Optional[str]] = mapped_column(
-        String(255))
-    ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
@@ -65,6 +58,8 @@ class Tree(Base):
         DateTime, default=datetime.now, onupdate=datetime.now)
 
     # リレーションシップ
+    entire_tree: Mapped[Optional["EntireTree"]] = relationship(
+        "EntireTree", uselist=False, back_populates="tree")
     stem: Mapped[Optional["Stem"]] = relationship(
         "Stem", uselist=False, back_populates="tree")
     stem_holes: Mapped[List["StemHole"]] = relationship(
@@ -75,6 +70,38 @@ class Tree(Base):
         "Mushroom", back_populates="tree")
     kobus: Mapped[List["Kobu"]] = relationship(
         "Kobu", back_populates="tree")
+
+
+class EntireTree(Base):
+    __tablename__ = "entire_trees"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(
+        String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('users.id'))
+    tree_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey('trees.id'))
+    vitality: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    vitality_real: Mapped[Optional[float]] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Float)
+    longitude: Mapped[float] = mapped_column(Float)
+    image_obj_key: Mapped[str] = mapped_column(String(255))
+    thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    decorated_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
+    ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.now(timezone.utc), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
+                                                 onupdate=datetime.now(
+                                                     timezone.utc),
+                                                 nullable=False)
+
+    user: Mapped["User"] = relationship("User")
+    tree: Mapped["Tree"] = relationship("Tree", back_populates="entire_tree")
 
 
 class Stem(Base):
@@ -97,6 +124,8 @@ class Stem(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -123,6 +152,8 @@ class StemHole(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -149,6 +180,8 @@ class Tengus(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -175,6 +208,8 @@ class Mushroom(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),
@@ -201,6 +236,8 @@ class Kobu(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now(timezone.utc), nullable=False)
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now(timezone.utc),

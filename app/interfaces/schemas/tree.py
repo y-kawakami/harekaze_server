@@ -142,7 +142,7 @@ class TreeSearchResult(BaseModel):
     vitality: Optional[int] = Field(
         None, description="元気度（1-5の整数値）", ge=1, le=5)
     age: Optional[int] = Field(None, description="推定樹齢（年）")
-    image_thumb_url: str = Field(..., description="サムネイル画像のURL")
+    image_thumb_url: Optional[str] = Field(None, description="サムネイル画像のURL")
     latitude: float = Field(..., description="緯度")
     longitude: float = Field(..., description="経度")
     location: Optional[str] = Field(None, description="撮影場所（例: 東京都千代田区）")
@@ -163,10 +163,11 @@ class TreeSearchResponse(BaseModel):
 
 class TreeDetailResponse(TreeResponse):
     contributor: Optional[str] = Field(None, description="投稿者名")
-    image_url: str = Field(..., description="桜の木全体の写真のURL")
-    image_thumb_url: str = Field(..., description="桜の木全体の写真のサムネイルURL")
-    decorated_image_url: Optional[str] = Field(..., description="装飾済み画像のURL")
-    ogp_image_url: Optional[str] = Field(..., description="OGP画像のURL")
+    image_url: Optional[str] = Field(None, description="桜の木全体の写真のURL")
+    image_thumb_url: Optional[str] = Field(None,
+                                           description="桜の木全体の写真のサムネイルURL")
+    decorated_image_url: Optional[str] = Field(None, description="装飾済み画像のURL")
+    ogp_image_url: Optional[str] = Field(None, description="OGP画像のURL")
     stem: Optional[StemInfo] = Field(
         None, description="幹の情報（存在する場合のみ）")
     stem_hole: Optional[StemHoleInfo] = Field(
