@@ -121,6 +121,17 @@ class FloweringDateNotFoundError(ApplicationError):
         )
 
 
+class ForbiddenError(ApplicationError):
+    """リクエストが許可されていない場合の例外"""
+
+    def __init__(self, reason: str):
+        super().__init__(
+            reason=reason,
+            error_code=112,
+            status=403
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 

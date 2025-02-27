@@ -5,8 +5,8 @@ from typing import Optional
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ImageUploadError,
-                                        TreeNotFoundError)
+from app.application.exceptions import (DatabaseError, ForbiddenError,
+                                        ImageUploadError, TreeNotFoundError)
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.stem_repository import StemRepository
@@ -55,7 +55,7 @@ def create_stem(
 
     if tree.user_id != current_user.id:
         logger.warning(f"木の所有者ではないユーザーが幹の写真を登録しようとしました: tree_id={tree_id}")
-        raise DatabaseError(message="他のユーザーの木に対して幹の写真を登録することはできません")
+        raise ForbiddenError("この木に対して写真を登録することはできません")
 
     # 画像の解析
     texture, can_detected, circumference, age = image_service.analyze_stem_image(

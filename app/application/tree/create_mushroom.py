@@ -4,8 +4,9 @@ from typing import Optional
 from loguru import logger
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ImageUploadError,
-                                        InvalidParamError, TreeNotFoundError)
+from app.application.exceptions import (DatabaseError, ForbiddenError,
+                                        ImageUploadError, InvalidParamError,
+                                        TreeNotFoundError)
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService
 from app.domain.utils.date_utils import DateUtils
@@ -55,6 +56,10 @@ def create_mushroom(
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
+
+    if tree.user_id != current_user.id:
+        logger.warning(f"木の所有者ではないユーザーが幹の写真を登録しようとしました: tree_id={tree_id}")
+        raise ForbiddenError("この木に対して写真を登録することはできません")
 
     # 日時の解析
     parsed_photo_date = None
