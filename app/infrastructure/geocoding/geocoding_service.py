@@ -16,6 +16,7 @@ class Address:
     country: Optional[str]
     prefecture: Optional[str]
     prefecture_code: Optional[str]
+    block: Optional[str]
     municipality: Optional[str]
     municipality_code: Optional[str]
     detail: Optional[str]  # 都道府県から始まる完全な住所
@@ -57,7 +58,7 @@ class GeocodingService:
 
             if not result:
                 logger.warning(f"住所が見つかりませんでした: ({latitude}, {longitude})")
-                return Address(None, None, None, None, None, None)
+                return Address(None, None, None, None, None, None, None)
 
             logger.debug(
                 f"Geocoding API response: {json.dumps(result, indent=2, ensure_ascii=False)}")
@@ -67,7 +68,7 @@ class GeocodingService:
             # plus_codeのみの結果の場合は住所なしとして扱う
             if len(address_components) == 1 and address_components[0]['types'][0] == 'plus_code':
                 logger.warning(f"Plus Codeのみの結果でした: ({latitude}, {longitude})")
-                return Address(None, None, None, None, None, None)
+                return Address(None, None, None, None, None, None, None)
 
             prefecture = None
             municipality = None
@@ -102,13 +103,20 @@ class GeocodingService:
                 municipality = matched_municipality.jititai
 
             # 都道府県コードを取得
-            prefecture_code = self.municipality_service.get_prefecture_code(
-                prefecture) if prefecture else None
+            prefecture_code = None
+            block = None
+            if prefecture:
+                prefecture_code = self.municipality_service.get_prefecture_code(
+                    prefecture)
+                if prefecture_code:
+                    block = self.municipality_service.get_prefecture_block(
+                        prefecture_code)
 
             return Address(
                 country=country,
                 prefecture=prefecture,
                 prefecture_code=prefecture_code,
+                block=block,
                 municipality=municipality,
                 municipality_code=municipality_code,
                 detail=detailed_address
@@ -116,7 +124,7 @@ class GeocodingService:
 
         except Exception as e:
             logger.error(f"Geocoding APIでエラーが発生しました: {str(e)}")
-            return Address(None, None, None, None, None, None)
+            return Address(None, None, None, None, None, None, None)
 
 
 def get_geocoding_service(municipality_service: MunicipalityService) -> GeocodingService:

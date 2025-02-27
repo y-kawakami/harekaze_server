@@ -1,11 +1,11 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 from enum import IntEnum
 from typing import List, Optional
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Integer, Numeric,
-                        String)
+from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Index, Integer,
+                        Numeric, String, Time)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
@@ -50,15 +50,35 @@ class Tree(Base):
         String(2), index=True)  # 都道府県コード（JIS X 0401）
     municipality_code: Mapped[Optional[str]] = mapped_column(
         String(8), index=True)  # 自治体コード（JIS X 0402）
+    block: Mapped[Optional[str]] = mapped_column(
+        String(1), index=True)  # ブロック（A, B, C）
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     photo_date: Mapped[datetime] = mapped_column(
         # 撮影日時
         DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    photo_time: Mapped[time] = mapped_column(
+        # 撮影時間（時刻検索用）
+        Time, default=lambda: datetime.now(timezone.utc).time(), index=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, index=True)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.now, onupdate=datetime.now)
+
+    # find_trees_by_time_range_blockメソッド用の複合インデックス
+    __table_args__ = (
+        # ブロック、検閲ステータス、撮影日付、撮影時間の複合インデックス
+        # これはfind_trees_by_time_range_blockの主要な検索条件をカバー
+        Index('idx_tree_block_status_date_time', 'block',
+              'censorship_status', 'photo_date', 'photo_time'),
+        # get_area_counts_by_codes用の複合インデックス
+        # 都道府県コードと検閲ステータスの複合インデックス
+        Index('idx_tree_prefecture_status',
+              'prefecture_code', 'censorship_status'),
+        # 市区町村コードと検閲ステータスの複合インデックス
+        Index('idx_tree_municipality_status',
+              'municipality_code', 'censorship_status'),
+    )
 
     # リレーションシップ
     entire_tree: Mapped[Optional["EntireTree"]] = relationship(

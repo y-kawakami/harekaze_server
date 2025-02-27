@@ -1,8 +1,8 @@
 """initial
 
-Revision ID: 57e0ef4ea2d1
+Revision ID: cd6ef891e0b3
 Revises: 
-Create Date: 2025-02-27 11:09:26.534301
+Create Date: 2025-02-27 13:13:26.883113
 
 """
 from typing import Sequence, Union
@@ -12,7 +12,7 @@ import sqlalchemy as sa
 from geoalchemy2 import Geometry
 
 # revision identifiers, used by Alembic.
-revision: str = '57e0ef4ea2d1'
+revision: str = 'cd6ef891e0b3'
 down_revision: Union[str, None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -96,17 +96,26 @@ def upgrade() -> None:
     sa.Column('location', sa.String(length=100), nullable=True),
     sa.Column('prefecture_code', sa.String(length=2), nullable=True),
     sa.Column('municipality_code', sa.String(length=8), nullable=True),
+    sa.Column('block', sa.String(length=1), nullable=True),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
+    sa.Column('photo_time', sa.Time(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('uid')
     )
+    op.create_index('idx_tree_block_status_date_time', 'trees', ['block', 'censorship_status', 'photo_date', 'photo_time'], unique=False)
+    op.create_index('idx_tree_municipality_status', 'trees', ['municipality_code', 'censorship_status'], unique=False)
+    op.create_index('idx_tree_prefecture_status', 'trees', ['prefecture_code', 'censorship_status'], unique=False)
     op.create_geospatial_index('idx_trees_position', 'trees', ['position'], unique=False, postgresql_using='gist', postgresql_ops={})
+    op.create_index(op.f('ix_trees_block'), 'trees', ['block'], unique=False)
     op.create_index(op.f('ix_trees_censorship_status'), 'trees', ['censorship_status'], unique=False)
     op.create_index(op.f('ix_trees_created_at'), 'trees', ['created_at'], unique=False)
     op.create_index(op.f('ix_trees_municipality_code'), 'trees', ['municipality_code'], unique=False)
+    op.create_index(op.f('ix_trees_photo_date'), 'trees', ['photo_date'], unique=False)
+    op.create_index(op.f('ix_trees_photo_time'), 'trees', ['photo_time'], unique=False)
     op.create_index(op.f('ix_trees_prefecture_code'), 'trees', ['prefecture_code'], unique=False)
     op.create_table('entire_trees',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -122,6 +131,7 @@ def upgrade() -> None:
     sa.Column('decorated_image_obj_key', sa.String(length=255), nullable=True),
     sa.Column('ogp_image_obj_key', sa.String(length=255), nullable=True),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -130,6 +140,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('uid')
     )
     op.create_index(op.f('ix_entire_trees_censorship_status'), 'entire_trees', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_entire_trees_photo_date'), 'entire_trees', ['photo_date'], unique=False)
     op.create_index(op.f('ix_entire_trees_vitality'), 'entire_trees', ['vitality'], unique=False)
     op.create_table('kobus',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
@@ -141,6 +152,7 @@ def upgrade() -> None:
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),
     sa.Column('thumb_obj_key', sa.String(length=255), nullable=False),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -149,6 +161,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('uid')
     )
     op.create_index(op.f('ix_kobus_censorship_status'), 'kobus', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_kobus_photo_date'), 'kobus', ['photo_date'], unique=False)
     op.create_table('mushrooms',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('uid', sa.String(length=36), nullable=False),
@@ -159,6 +172,7 @@ def upgrade() -> None:
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),
     sa.Column('thumb_obj_key', sa.String(length=255), nullable=False),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -167,6 +181,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('uid')
     )
     op.create_index(op.f('ix_mushrooms_censorship_status'), 'mushrooms', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_mushrooms_photo_date'), 'mushrooms', ['photo_date'], unique=False)
     op.create_table('stem_holes',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('uid', sa.String(length=36), nullable=False),
@@ -177,6 +192,7 @@ def upgrade() -> None:
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),
     sa.Column('thumb_obj_key', sa.String(length=255), nullable=False),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -185,6 +201,7 @@ def upgrade() -> None:
     sa.UniqueConstraint('uid')
     )
     op.create_index(op.f('ix_stem_holes_censorship_status'), 'stem_holes', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_stem_holes_photo_date'), 'stem_holes', ['photo_date'], unique=False)
     op.create_table('stems',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('uid', sa.String(length=36), nullable=False),
@@ -199,6 +216,7 @@ def upgrade() -> None:
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),
     sa.Column('thumb_obj_key', sa.String(length=255), nullable=False),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -208,6 +226,7 @@ def upgrade() -> None:
     )
     op.create_index(op.f('ix_stems_age'), 'stems', ['age'], unique=False)
     op.create_index(op.f('ix_stems_censorship_status'), 'stems', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_stems_photo_date'), 'stems', ['photo_date'], unique=False)
     op.create_table('tengus',
     sa.Column('id', sa.Integer(), autoincrement=True, nullable=False),
     sa.Column('uid', sa.String(length=36), nullable=False),
@@ -218,6 +237,7 @@ def upgrade() -> None:
     sa.Column('image_obj_key', sa.String(length=255), nullable=False),
     sa.Column('thumb_obj_key', sa.String(length=255), nullable=False),
     sa.Column('censorship_status', sa.Integer(), nullable=False),
+    sa.Column('photo_date', sa.DateTime(), nullable=False),
     sa.Column('created_at', sa.DateTime(), nullable=False),
     sa.Column('updated_at', sa.DateTime(), nullable=False),
     sa.ForeignKeyConstraint(['tree_id'], ['trees.id'], ),
@@ -226,30 +246,43 @@ def upgrade() -> None:
     sa.UniqueConstraint('uid')
     )
     op.create_index(op.f('ix_tengus_censorship_status'), 'tengus', ['censorship_status'], unique=False)
+    op.create_index(op.f('ix_tengus_photo_date'), 'tengus', ['photo_date'], unique=False)
     # ### end Alembic commands ###
 
 
 def downgrade() -> None:
     # ### commands auto generated by Alembic - please adjust! ###
+    op.drop_index(op.f('ix_tengus_photo_date'), table_name='tengus')
     op.drop_index(op.f('ix_tengus_censorship_status'), table_name='tengus')
     op.drop_table('tengus')
+    op.drop_index(op.f('ix_stems_photo_date'), table_name='stems')
     op.drop_index(op.f('ix_stems_censorship_status'), table_name='stems')
     op.drop_index(op.f('ix_stems_age'), table_name='stems')
     op.drop_table('stems')
+    op.drop_index(op.f('ix_stem_holes_photo_date'), table_name='stem_holes')
     op.drop_index(op.f('ix_stem_holes_censorship_status'), table_name='stem_holes')
     op.drop_table('stem_holes')
+    op.drop_index(op.f('ix_mushrooms_photo_date'), table_name='mushrooms')
     op.drop_index(op.f('ix_mushrooms_censorship_status'), table_name='mushrooms')
     op.drop_table('mushrooms')
+    op.drop_index(op.f('ix_kobus_photo_date'), table_name='kobus')
     op.drop_index(op.f('ix_kobus_censorship_status'), table_name='kobus')
     op.drop_table('kobus')
     op.drop_index(op.f('ix_entire_trees_vitality'), table_name='entire_trees')
+    op.drop_index(op.f('ix_entire_trees_photo_date'), table_name='entire_trees')
     op.drop_index(op.f('ix_entire_trees_censorship_status'), table_name='entire_trees')
     op.drop_table('entire_trees')
     op.drop_index(op.f('ix_trees_prefecture_code'), table_name='trees')
+    op.drop_index(op.f('ix_trees_photo_time'), table_name='trees')
+    op.drop_index(op.f('ix_trees_photo_date'), table_name='trees')
     op.drop_index(op.f('ix_trees_municipality_code'), table_name='trees')
     op.drop_index(op.f('ix_trees_created_at'), table_name='trees')
     op.drop_index(op.f('ix_trees_censorship_status'), table_name='trees')
+    op.drop_index(op.f('ix_trees_block'), table_name='trees')
     op.drop_geospatial_index('idx_trees_position', table_name='trees', postgresql_using='gist', column_name='position')
+    op.drop_index('idx_tree_prefecture_status', table_name='trees')
+    op.drop_index('idx_tree_municipality_status', table_name='trees')
+    op.drop_index('idx_tree_block_status_date_time', table_name='trees')
     op.drop_geospatial_table('trees')
     op.drop_table('users')
     op.drop_geospatial_index('idx_prefecture_stats_position', table_name='prefecture_stats', postgresql_using='gist', column_name='position')

@@ -126,6 +126,7 @@ def create_tree(
             location=address.detail,
             prefecture_code=address.prefecture_code,
             municipality_code=address.municipality_code,
+            block=address.block,
             photo_date=parsed_photo_date
         )
         logger.info(f"木の登録が完了: ツリーUID={tree_uid}, 元気度={vitality}")
@@ -142,6 +143,6 @@ def create_tree(
         location=tree.location,
         prefecture_code=tree.prefecture_code,
         municipality_code=tree.municipality_code,
-        vitality=tree.vitality,
+        vitality=vitality,
         created_at=tree.photo_date
     )

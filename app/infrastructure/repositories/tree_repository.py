@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
-from datetime import datetime
-from typing import List, Optional, Tuple
+from datetime import datetime, time, timedelta
+from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
-from sqlalchemy import case, func
+from sqlalchemy import and_, case, func, or_
 from sqlalchemy.orm import Session
 
 from app.domain.models.area_stats import AreaStats
@@ -55,6 +55,7 @@ class TreeRepository:
         location: Optional[str] = None,
         prefecture_code: Optional[str] = None,
         municipality_code: Optional[str] = None,
+        block: Optional[str] = None,
         photo_date: Optional[datetime] = None
     ) -> Tree:
         """
@@ -71,7 +72,8 @@ class TreeRepository:
             vitality_real: 元気度の実数値
             location: 場所の名前
             prefecture_code: 都道府県コード
-            municipality_code: 自治体コード
+            municipality_code: 市区町村コード
+            block: ブロック（A, B, C）
             photo_date: 撮影日時
 
         Returns:
@@ -87,11 +89,14 @@ class TreeRepository:
             location=location,
             prefecture_code=prefecture_code,
             municipality_code=municipality_code,
-            photo_date=photo_date
+            block=block,
+            photo_date=photo_date,
+            photo_time=photo_date.time() if photo_date else None
         )
         self.db.add(tree)
         self.db.flush()  # DBに反映してIDを取得
 
+        # 全体写真を作成
         entire_tree = EntireTree(
             user_id=user_id,
             tree_id=tree.id,
@@ -637,3 +642,70 @@ class TreeRepository:
         if status is not None:
             query = query.filter(Tree.censorship_status == status)
         return query.count()
+
+    def find_trees_by_time_range_block(
+        self,
+        db: Session,
+        reference_time: time,
+        start_date: datetime,
+        blocks: List[str],
+        per_block_limit: int,
+        censorship_status: int = CensorshipStatus.APPROVED
+    ) -> Dict[str, List["Tree"]]:
+        """
+        指定された時間帯の範囲内で各ブロックごとの樹木を取得する
+
+        Args:
+            db (Session): DBセッション
+            reference_time (time): 基準時刻
+            start_date (datetime): 検索開始日時
+            blocks (List[str]): 検索対象のブロック
+            per_block_limit (int): ブロックごとの最大取得件数
+            censorship_status (int): 検閲ステータス
+
+        Returns:
+            Dict[str, Tuple[List["Tree"], int]]: ブロックごとの樹木リストと総数
+        """
+        # 時間範囲の計算
+        # reference_timeから1時間前までを検索範囲とする
+        end_time = reference_time
+        start_time = (datetime.combine(datetime.today(),
+                      end_time) - timedelta(hours=1)).time()
+
+        # 結果を格納する辞書
+        results = {}
+
+        # 各ブロックに対して検索を実行
+        for block in blocks:
+            # サブクエリの条件：指定されたブロックと時刻の条件
+            subquery = (
+                db.query(Tree)
+                .filter(Tree.block == block)
+                .filter(Tree.censorship_status == censorship_status)
+                .filter(Tree.photo_date >= start_date)
+            )
+
+            # 時間範囲の条件
+            if start_time < end_time:
+                # 日付をまたがない場合: 開始時刻から終了時刻まで
+                time_condition = and_(
+                    Tree.photo_time >= start_time,
+                    Tree.photo_time <= end_time
+                )
+            else:
+                # 日付をまたぐ場合: 開始時刻から翌日の終了時刻まで
+                time_condition = or_(
+                    Tree.photo_time >= start_time,
+                    Tree.photo_time <= end_time
+                )
+
+            subquery = subquery.filter(time_condition)
+
+            # 最大件数を制限して取得
+            items = subquery.order_by(
+                Tree.photo_date.desc()).limit(per_block_limit).all()
+
+            # 結果を保存
+            results[block] = items
+
+        return results

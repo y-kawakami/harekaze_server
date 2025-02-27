@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, time
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -312,3 +312,28 @@ class FloweringDateResponse(BaseModel):
 class TreeTotalCountResponse(BaseModel):
     """承認済みの木の総数のレスポンス"""
     total_count: int
+
+
+class TimeRangeTreeItem(BaseModel):
+    """時間帯別木一覧の項目"""
+    uid: str = Field(..., description="木のUID")
+    latitude: float = Field(..., description="緯度")
+    longitude: float = Field(..., description="経度")
+    location: Optional[str] = Field(None, description="地名")
+    prefecture_code: Optional[str] = Field(None, description="都道府県コード")
+    municipality_code: Optional[str] = Field(None, description="市区町村コード")
+    block: Optional[str] = Field(None, description="ブロック（A, B, C）")
+    photo_date: datetime = Field(..., description="撮影日時")
+    photo_time: time = Field(..., description="撮影時間")
+    image_url: str = Field(..., description="画像URL")
+    thumb_url: str = Field(..., description="サムネイルURL")
+
+
+class TimeRangeTreesResponse(BaseModel):
+    """時間帯別木一覧のレスポンス"""
+    a_block: List[TimeRangeTreeItem] = Field(..., description="Aブロックの木一覧")
+    b_block: List[TimeRangeTreeItem] = Field(..., description="Bブロックの木一覧")
+    c_block: List[TimeRangeTreeItem] = Field(..., description="Cブロックの木一覧")
+    reference_time: time = Field(..., description="検索基準時刻")
+    start_time: time = Field(..., description="検索開始時刻")
+    end_time: time = Field(..., description="検索終了時刻")

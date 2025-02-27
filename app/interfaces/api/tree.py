@@ -1,3 +1,5 @@
+from datetime import datetime, time
+
 from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
 
@@ -19,6 +21,8 @@ from app.application.tree.get_total_count import \
 from app.application.tree.get_tree_detail import \
     get_tree_detail as get_tree_detail_app
 from app.application.tree.search_trees import search_trees as search_trees_app
+from app.application.tree.search_trees_by_time_block import \
+    search_trees_by_time_block as search_trees_by_time_block_app
 from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
@@ -31,6 +35,7 @@ from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
                                          StemInfo, TengusuInfo,
+                                         TimeRangeTreesResponse,
                                          TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
                                          TreeSearchResponse,
@@ -298,6 +303,49 @@ async def get_area_stats(
         municipality_code=municipality_code,
         image_service=image_service,
         municipality_service=municipality_service
+    )
+
+
+@router.get("/tree/time_block", response_model=TimeRangeTreesResponse)
+async def search_trees_by_time_block(
+    per_block_limit: int = Query(
+        10,
+        description="ブロックごとの最大取得件数",
+        ge=1,
+        le=100
+    ),
+    db: Session = Depends(get_db),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service, use_cache=True)
+):
+    """
+    直近1ヶ月の投稿から、現在時刻と同じ時間帯（過去1時間内）の投稿をブロックごとに取得する。
+
+    各ブロックにおける最大取得件数を指定できる。
+
+    ブロックの定義：
+    - ブロックA: 北海道・東北・関東
+    - ブロックB: 中部・近畿
+    - ブロックC: 中国・四国・九州・沖縄
+
+    Args:
+        per_block_limit (int): ブロックごとの最大取得件数
+
+    Returns:
+        TimeRangeTreesResponse: 時間帯別ブロック別の投稿一覧
+    """
+    # 現在時刻を取得
+    now = datetime.now()
+    reference_time = time(now.hour, now.minute)
+
+    # アプリケーションロジックを呼び出す
+    return search_trees_by_time_block_app(
+        db=db,
+        image_service=image_service,
+        municipality_service=municipality_service,
+        reference_time=reference_time,
+        per_block_limit=per_block_limit
     )
 
 

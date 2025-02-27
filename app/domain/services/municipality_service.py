@@ -8,6 +8,62 @@ from app.domain.constants.prefecture import PREFECTURE_CODE_MAP
 from app.domain.models.municipality import Municipality
 from app.domain.models.prefecture import Prefecture
 
+# 都道府県ブロックの定義
+PREFECTURE_BLOCK_MAP = {
+    # ブロックA: 北海道・東北・関東
+    "01": "A",  # 北海道
+    "02": "A",  # 青森県
+    "03": "A",  # 岩手県
+    "04": "A",  # 宮城県
+    "05": "A",  # 秋田県
+    "06": "A",  # 山形県
+    "07": "A",  # 福島県
+    "08": "A",  # 茨城県
+    "09": "A",  # 栃木県
+    "10": "A",  # 群馬県
+    "11": "A",  # 埼玉県
+    "12": "A",  # 千葉県
+    "13": "A",  # 東京都
+    "14": "A",  # 神奈川県
+
+    # ブロックB: 中部・近畿
+    "15": "B",  # 新潟県
+    "16": "B",  # 富山県
+    "17": "B",  # 石川県
+    "18": "B",  # 福井県
+    "19": "B",  # 山梨県
+    "20": "B",  # 長野県
+    "21": "B",  # 岐阜県
+    "22": "B",  # 静岡県
+    "23": "B",  # 愛知県
+    "24": "B",  # 三重県
+    "25": "B",  # 滋賀県
+    "26": "B",  # 京都府
+    "27": "B",  # 大阪府
+    "28": "B",  # 兵庫県
+    "29": "B",  # 奈良県
+    "30": "B",  # 和歌山県
+
+    # ブロックC: 中国・四国・九州・沖縄
+    "31": "C",  # 鳥取県
+    "32": "C",  # 島根県
+    "33": "C",  # 岡山県
+    "34": "C",  # 広島県
+    "35": "C",  # 山口県
+    "36": "C",  # 徳島県
+    "37": "C",  # 香川県
+    "38": "C",  # 愛媛県
+    "39": "C",  # 高知県
+    "40": "C",  # 福岡県
+    "41": "C",  # 佐賀県
+    "42": "C",  # 長崎県
+    "43": "C",  # 熊本県
+    "44": "C",  # 大分県
+    "45": "C",  # 宮崎県
+    "46": "C",  # 鹿児島県
+    "47": "C",  # 沖縄県
+}
+
 
 class MunicipalityService:
     """自治体関連のサービスクラス"""
@@ -244,6 +300,30 @@ class MunicipalityService:
             Optional[Prefecture]: 取得した都道府県情報
         """
         return self.prefecture_by_code.get(code)
+
+    def get_prefecture_block(self, prefecture_code: str) -> Optional[str]:
+        """
+        都道府県コードからブロック（A, B, C）を取得する
+
+        Args:
+            prefecture_code (str): 都道府県コード
+
+        Returns:
+            Optional[str]: ブロック（A, B, C）
+        """
+        return PREFECTURE_BLOCK_MAP.get(prefecture_code)
+
+    def get_prefectures_in_block(self, block: str) -> List[str]:
+        """
+        指定されたブロックに属する都道府県コードのリストを取得する
+
+        Args:
+            block (str): ブロック（A, B, C）
+
+        Returns:
+            List[str]: 都道府県コードのリスト
+        """
+        return [code for code, b in PREFECTURE_BLOCK_MAP.items() if b == block]
 
 
 def get_municipality_service() -> MunicipalityService:
