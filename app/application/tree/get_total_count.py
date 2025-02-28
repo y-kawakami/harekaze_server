@@ -1,10 +1,13 @@
+from typing import Optional
+
 from sqlalchemy.orm import Session
 
 # from app.domain.models.models import CensorshipStatus
+from app.domain.models.models import CensorshipStatus
 from app.infrastructure.repositories.tree_repository import TreeRepository
 
 
-def get_total_count(db: Session) -> int:
+def get_total_count(db: Session, approved: Optional[bool]) -> int:
     """
     承認済みの木の総数を取得する
 
@@ -17,4 +20,4 @@ def get_total_count(db: Session) -> int:
     tree_repository = TreeRepository(db)
     # return tree_repository.count_trees_by_status(CensorshipStatus.APPROVED)
     # TODO: 検閲済みの木の総数を取得する
-    return tree_repository.count_trees_by_status()
+    return tree_repository.count_trees_by_status(CensorshipStatus.APPROVED if approved else None)

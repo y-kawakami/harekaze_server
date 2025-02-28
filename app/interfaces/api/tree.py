@@ -189,12 +189,13 @@ async def search_trees(
 
 @router.get("/tree/total_count", response_model=TreeTotalCountResponse)
 async def get_total_count(
+    approved: bool | None = Query(None, description="検閲後の投稿のみを対象とするか"),
     db: Session = Depends(get_db)
 ):
     """
     承認済みの桜の木の総数を取得する。
     """
-    total_count = get_total_count_app(db=db)
+    total_count = get_total_count_app(db=db, approved=approved)
     return TreeTotalCountResponse(total_count=total_count)
 
 
