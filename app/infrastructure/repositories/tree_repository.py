@@ -56,7 +56,9 @@ class TreeRepository:
         prefecture_code: Optional[str] = None,
         municipality_code: Optional[str] = None,
         block: Optional[str] = None,
-        photo_date: Optional[datetime] = None
+        photo_date: Optional[datetime] = None,
+        debug_image_obj_key: Optional[str] = None,
+        debug_image_obj2_key: Optional[str] = None,
     ) -> Tree:
         """
         新しい木を作成する
@@ -91,7 +93,7 @@ class TreeRepository:
             municipality_code=municipality_code,
             block=block,
             photo_date=photo_date,
-            photo_time=photo_date.time() if photo_date else None
+            photo_time=photo_date.time() if photo_date else None,
         )
         self.db.add(tree)
         self.db.flush()  # DBに反映してIDを取得
@@ -106,7 +108,9 @@ class TreeRepository:
             longitude=longitude,
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
-            photo_date=photo_date
+            photo_date=photo_date,
+            debug_image_obj_key=debug_image_obj_key,
+            debug_image_obj2_key=debug_image_obj2_key,
         )
         self.db.add(entire_tree)
         self.db.commit()

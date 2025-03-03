@@ -112,6 +112,8 @@ class EntireTree(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
+    debug_image_obj2_key: Mapped[Optional[str]] = mapped_column(String(255))
     decorated_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
@@ -145,11 +147,15 @@ class Stem(Base):
         Boolean, default=False)
     circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     texture: Mapped[Optional[int]] = mapped_column(Integer)
+    texture_real: Mapped[Optional[float]] = mapped_column(Float)
     age: Mapped[Optional[int]] = mapped_column(Integer, index=True)
+    age_texture: Mapped[Optional[int]] = mapped_column(Integer)
+    age_circumference: Mapped[Optional[int]] = mapped_column(Integer)
     latitude: Mapped[float] = mapped_column(Float)
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     photo_date: Mapped[datetime] = mapped_column(
@@ -181,6 +187,7 @@ class StemHole(Base):
     longitude: Mapped[float] = mapped_column(Float)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
+    debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     photo_date: Mapped[datetime] = mapped_column(

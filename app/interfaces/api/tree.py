@@ -1,4 +1,5 @@
 from datetime import datetime, time, timedelta, timezone
+from typing import Optional
 
 from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
@@ -27,10 +28,14 @@ from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
 from app.domain.services.image_service import ImageService, get_image_service
+from app.domain.services.lambda_service import (LambdaService,
+                                                get_lambda_service)
 from app.domain.services.municipality_service import (MunicipalityService,
                                                       get_municipality_service)
 from app.infrastructure.database.database import get_db
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
+from app.infrastructure.images.label_detector import (LabelDetector,
+                                                      get_label_detector)
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
@@ -81,7 +86,10 @@ async def create_tree(
     current_user: User = Depends(get_current_user),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     geocoding_service: GeocodingService = Depends(
-        get_geocoding_service_dependency, use_cache=True)
+        get_geocoding_service_dependency, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+    lambda_service: LambdaService = Depends(get_lambda_service, use_cache=True)
 ):
     """
     桜の木全体の写真を登録する。
@@ -96,6 +104,8 @@ async def create_tree(
         contributor=contributor,
         image_service=image_service,
         geocoding_service=geocoding_service,
+        label_detector=label_detector,
+        lambda_service=lambda_service,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )
@@ -361,6 +371,10 @@ async def get_tree_detail(
         ...,
         description="取得したい桜の木のUID"
     ),
+    is_debug_hrkz_wdobqcztdarm: Optional[bool] = Query(
+        None,
+        description="デバッグ用: デバッグ情報を含めるか"
+    ),
     db: Session = Depends(get_db),
     image_service: ImageService = Depends(get_image_service, use_cache=True)
 ):
@@ -370,7 +384,8 @@ async def get_tree_detail(
     return get_tree_detail_app(
         db=db,
         tree_id=tree_id,
-        image_service=image_service
+        image_service=image_service,
+        is_debug=is_debug_hrkz_wdobqcztdarm or False
     )
 
 
@@ -402,7 +417,10 @@ async def create_stem(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+    lambda_service: LambdaService = Depends(get_lambda_service, use_cache=True)
 ):
     """
     幹の写真を登録する。
@@ -416,6 +434,8 @@ async def create_stem(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
+        label_detector=label_detector,
+        lambda_service=lambda_service,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )
@@ -449,7 +469,9 @@ async def create_stem_hole(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
 ):
     """
     幹の穴の写真を登録する。
@@ -463,6 +485,7 @@ async def create_stem_hole(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
+        label_detector=label_detector,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )
@@ -496,7 +519,9 @@ async def create_tengusu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
 ):
     """
     テングス病の写真を登録する。
@@ -510,6 +535,7 @@ async def create_tengusu(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
+        label_detector=label_detector,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )
@@ -543,7 +569,10 @@ async def create_mushroom(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+
 ):
     """
     キノコの写真を登録する。
@@ -557,6 +586,7 @@ async def create_mushroom(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
+        label_detector=label_detector,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )
@@ -590,7 +620,9 @@ async def create_kobu(
     ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    image_service: ImageService = Depends(get_image_service, use_cache=True)
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
 ):
     """
     こぶ状の枝の写真を登録する。
@@ -604,6 +636,7 @@ async def create_kobu(
         latitude=latitude,
         longitude=longitude,
         image_service=image_service,
+        label_detector=label_detector,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )

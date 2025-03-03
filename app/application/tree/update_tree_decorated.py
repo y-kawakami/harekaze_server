@@ -79,7 +79,8 @@ def update_tree_decorated_image(
     # DBを更新
     tree.decorated_image_obj_key = image_key
     tree.ogp_image_obj_key = ogp_image_key
-    tree.contributor = contributor
+    if contributor:
+        tree.contributor = contributor
     repository.update_tree(tree)
     logger.info(f"木の装飾画像の更新が完了: tree_id={tree_id}")
 

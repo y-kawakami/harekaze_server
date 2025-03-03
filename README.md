@@ -181,3 +181,10 @@ pytest --cov=app --cov-report=html
 - `tests/interfaces/`: インターフェース層のテスト
   - APIエンドポイントのテスト
   - リクエスト/レスポンスの検証
+
+
+## 樹齢計算式
+
+```bash
+python -m app.domain.models.tree_age_plot
+```

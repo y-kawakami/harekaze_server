@@ -3,12 +3,21 @@ from datetime import datetime
 from typing import Optional
 
 from loguru import logger
+from PIL import ImageOps
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ForbiddenError,
-                                        ImageUploadError, TreeNotFoundError)
+from app.application.exceptions import (DatabaseError, ImageUploadError,
+                                        TreeNotDetectedError,
+                                        TreeNotFoundError)
+from app.domain.models.bounding_box import BoundingBox
 from app.domain.models.models import CensorshipStatus, User
+from app.domain.models.tree_age import (estimate_tree_age,
+                                        estimate_tree_age_from_texture,
+                                        estimate_tree_age_with_prefecture)
 from app.domain.services.image_service import ImageService
+from app.domain.services.lambda_service import LambdaService
+from app.domain.utils import blur
+from app.infrastructure.images.label_detector import LabelDetector
 from app.infrastructure.repositories.stem_repository import StemRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import StemInfo
@@ -22,8 +31,10 @@ def create_stem(
     latitude: float,
     longitude: float,
     image_service: ImageService,
+    label_detector: LabelDetector,
+    lambda_service: LambdaService,
     photo_date: Optional[str] = None,
-    is_approved_debug: bool = False
+    is_approved_debug: bool = False,
 ) -> StemInfo:
     """
     幹の写真を登録する。既存の幹の写真がある場合は削除して新規登録する。
@@ -55,22 +66,73 @@ def create_stem(
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
 
+    '''
     if tree.user_id != current_user.id:
         logger.warning(f"木の所有者ではないユーザーが幹の写真を登録しようとしました: tree_id={tree_id}")
         raise ForbiddenError("この木に対して写真を登録することはできません")
+    '''
+
+    image = image_service.bytes_to_pil(image_data)
+    rotated_image = ImageOps.exif_transpose(
+        image, in_place=True)  # EXIF情報に基づいて適切に回転
+    if rotated_image is not None:
+        image = rotated_image
+
+    labels = label_detector.detect(image, ['Tree', 'Person', 'Can'])
+    if "Tree" not in labels:
+        logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
+        raise TreeNotDetectedError()
+
+    can_bboxes = labels.get("Can", [])
+    # 一番confidenceの高い缶を取得
+    most_confident_can: Optional[BoundingBox] = None
+    max_confidence = 0.0
+    for bbox in can_bboxes:
+        if bbox.confidence > max_confidence:
+            max_confidence = bbox.confidence
+            most_confident_can = bbox
+
+    # Lambda入力画像をアップロード
+    orig_suffix = str(uuid.uuid4())
+    orig_image_key = f"{tree_id}/stem_orig_{orig_suffix}.jpg"
+    try:
+        image_service.upload_image(image_data, orig_image_key)
+    except Exception as e:
+        logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
+        raise ImageUploadError(tree_id) from e
 
     # 画像の解析
-    texture, can_detected, circumference, age = image_service.analyze_stem_image(
-        image_data)
+    logger.debug("画像解析を開始")
+    bucket_name = image_service.get_contents_bucket_name()
+    debug_key = f"{tree_id}/stem_debug_{orig_suffix}.jpg"
+    result = lambda_service.analyze_stem(s3_bucket=bucket_name,
+                                         s3_key=image_service.get_full_object_key(
+                                             orig_image_key),
+                                         can_bbox=most_confident_can,
+                                         output_bucket=bucket_name,
+                                         output_key=image_service.get_full_object_key(
+                                             debug_key)
+                                         )
+    print(result)
+
+    # 人物をぼかす
+    logger.debug("ぼかしを開始")
+    person_labels = labels.get('Person', [])
+    if len(person_labels) > 0:
+        logger.debug("人物が検出されたためぼかしを適用")
+        blurred_image = blur.apply_blur_to_bbox(
+            image, person_labels)
+        image_data = image_service.pil_to_bytes(blurred_image, 'jpeg')
+        image = blurred_image
 
     # サムネイル作成
+    logger.debug("サムネイル作成を開始")
     thumb_data = image_service.create_thumbnail(image_data)
 
     # 画像をアップロード
     random_suffix = str(uuid.uuid4())
     image_key = f"{tree_id}/stem_{random_suffix}.jpg"
     thumb_key = f"{tree_id}/stem_thumb_{random_suffix}.jpg"
-
     try:
         image_service.upload_image(image_data, image_key)
         image_service.upload_image(thumb_data, thumb_key)
@@ -94,6 +156,21 @@ def create_stem(
         # 既存の記録があれば削除
         stem_repository.delete_stem_for_tree(tree.id)
 
+        age = 0
+        age_texture = round(
+            estimate_tree_age_from_texture(result.smoothness_real))
+        age_circumference: Optional[int] = None
+        diameter = result.diameter_mm * 0.1 if result.diameter_mm else None
+        if diameter:
+            if tree.prefecture_code:
+                age = round(estimate_tree_age_with_prefecture(
+                    diameter, tree.prefecture_code))
+            else:
+                age = round(estimate_tree_age(diameter))
+            age_circumference = age
+        else:
+            age = age_texture
+
         # 新規作成
         stem = stem_repository.create_stem(
             user_id=current_user.id,
@@ -102,11 +179,15 @@ def create_stem(
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
-            can_detected=can_detected,
-            circumference=circumference if can_detected else None,
-            texture=texture,
+            can_detected=most_confident_can is not None,
+            circumference=result.diameter_mm * 0.1 if result.diameter_mm else None,
+            texture=result.smoothness,
+            texture_real=result.smoothness_real,
             age=age,
-            photo_date=parsed_photo_date
+            age_texture=age_texture,
+            age_circumference=age_circumference,
+            photo_date=parsed_photo_date,
+            debug_image_obj_key=debug_key
         )
 
         # デバッグモードでの自動承認
@@ -125,11 +206,15 @@ def create_stem(
             image_url=image_url,
             image_thumb_url=thumb_url,
             texture=stem.texture,
+            texture_real=stem.texture_real,
             can_detected=stem.can_detected,
             circumference=stem.circumference,
             age=stem.age,
+            age_texture=stem.age_texture,
+            age_circumference=stem.age_circumference,
             censorship_status=stem.censorship_status,
-            created_at=stem.photo_date
+            created_at=stem.photo_date,
+            analysis_image_url=None
         )
     except Exception as e:
         logger.exception(f"幹の情報保存中にエラー発生: {str(e)}")

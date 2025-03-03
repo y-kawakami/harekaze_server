@@ -6,7 +6,7 @@ from fastapi import Depends, FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from app.interfaces.api import auth, info, ping, tree
+from app.interfaces.api import auth, debug, info, ping, tree
 from app.interfaces.api.error_handlers import register_error_handlers
 
 load_dotenv()
@@ -98,6 +98,7 @@ app.include_router(auth.router, prefix="/sakura_camera/api", tags=["auth"])
 app.include_router(tree.router, prefix="/sakura_camera/api", tags=["tree"])
 app.include_router(info.router, prefix="/sakura_camera/api", tags=["info"])
 app.include_router(ping.router, prefix="/sakura_camera/api", tags=["ping"])
+app.include_router(debug.router, prefix="/sakura_camera/api", tags=["debug"])
 
 # カスタムSwagger UIエンドポイントを追加
 

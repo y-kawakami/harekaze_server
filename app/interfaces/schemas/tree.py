@@ -48,10 +48,17 @@ class StemInfo(TreeImageInfo):
     """幹の情報"""
     texture: Optional[int] = Field(
         None, description="幹の模様（1:滑らか~5:ガサガサ）", ge=1, le=5)
+    texture_real: Optional[float] = Field(
+        None, description="幹の模様（実数値）", ge=1, le=5)
     can_detected: bool = Field(..., description="350ml缶の検出有無（樹齢推定に使用）")
     circumference: Optional[float] = Field(None, description="幹周（cm）（樹齢推定に使用）")
     age: Optional[int] = Field(None, description="推定樹齢（年）")
+    age_texture: Optional[int] = Field(None, description="推定樹齢（幹の模様を使用）")
+    age_circumference: Optional[int] = Field(
+        None, description="推定樹齢（幹径を使用）")
     created_at: datetime = Field(..., description="投稿日時")
+    analysis_image_url: Optional[str] = Field(
+        None, description="解析結果画像のURL（デバッグ用）")
 
 
 class StemHoleInfo(TreeImageInfo):
@@ -181,6 +188,10 @@ class TreeDetailResponse(TreeResponse):
         None, description="キノコの情報（存在する場合のみ）")
     kobu: Optional[KobuInfo] = Field(
         None, description="こぶ状の枝の情報（存在する場合のみ）")
+    analysis_image_url: Optional[str] = Field(
+        None, description="解析結果画像のURL（デバッグ用）")
+    analysis_image_url2: Optional[str] = Field(
+        None, description="解析結果画像のURL（デバッグ用）")
 
     class Config:
         from_attributes = True

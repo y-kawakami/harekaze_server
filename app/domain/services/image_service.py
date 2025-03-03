@@ -35,13 +35,32 @@ class ImageService:
                 "S3_CONTENTS_BUCKET environment variable is not set")
         self.app_host = app_host
 
+    def create_thumbnail_from_pil(self, image: Image.Image) -> bytes:
+        # アスペクト比を保持しながらリサイズ
+        thumb = image.copy()
+        thumb.thumbnail((540, 960))
+        thumb_io = io.BytesIO()
+        thumb.save(thumb_io, format=image.format if image.format else 'JPEG')
+        return thumb_io.getvalue()
+
+    def bytes_to_pil(self, image_data: bytes) -> Image.Image:
+        """バイナリデータをPILの画像に変換する"""
+        return Image.open(io.BytesIO
+                          (image_data))
+
+    def pil_to_bytes(self, image: Image.Image, format: Optional[str]) -> bytes:
+        """PILの画像をバイナリデータに変換する"""
+        image_io = io.BytesIO()
+        image.save(image_io, format=format if format else image.format)
+        return image_io.getvalue()
+
     def create_thumbnail(self, image_data: bytes) -> bytes:
         """画像データからサムネイルを作成する"""
         image = Image.open(io.BytesIO(image_data))
         # アスペクト比を保持しながらリサイズ
         image.thumbnail((540, 960))
         thumb_io = io.BytesIO()
-        image.save(thumb_io, format=image.format)
+        image.save(thumb_io, format=image.format if image.format else 'JPEG')
         return thumb_io.getvalue()
 
     def upload_image(self, image_data: bytes, object_key: str) -> bool:
@@ -59,6 +78,12 @@ class ImageService:
             logger.error(f"Upload Image Client Error: {e}")
             logger.exception(e)
             return False
+
+    def get_contents_bucket_name(self) -> str:
+        return self.bucket_name
+
+    def get_full_object_key(self, object_key: str) -> str:
+        return f'{TREE_IMAGE_PREFIX}/{object_key}'
 
     def get_image_url(self, object_key: str) -> str:
         """画像のURLを取得する"""

@@ -12,6 +12,7 @@ wheels/
 # Environment variables
 .env
 .env.staging
+.env.production
 *_imagedefinitions.json
 
 # Test and coverage tools

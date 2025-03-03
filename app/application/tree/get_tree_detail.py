@@ -17,6 +17,7 @@ def get_tree_detail(
     tree_id: str,
     image_service: ImageService,
     current_user_id: Optional[int] = None,
+    is_debug: bool = False,
 ) -> TreeDetailResponse:
     """
     各木の詳細情報を取得する。
@@ -47,6 +48,8 @@ def get_tree_detail(
     image_thumb_url = ""
     decorated_image_url = None
     ogp_image_url = None
+    debug_image_url = None
+    debug_image_url2 = None
 
     if tree.entire_tree:
         vitality = tree.entire_tree.vitality
@@ -60,6 +63,13 @@ def get_tree_detail(
         if tree.entire_tree.ogp_image_obj_key:
             ogp_image_url = image_service.get_image_url(
                 tree.entire_tree.ogp_image_obj_key)
+        if is_debug:
+            if tree.entire_tree.debug_image_obj_key:
+                debug_image_url = image_service.get_image_url(
+                    tree.entire_tree.debug_image_obj_key)
+            if tree.entire_tree.debug_image_obj2_key:
+                debug_image_url2 = image_service.get_image_url(
+                    tree.entire_tree.debug_image_obj2_key)
 
     response = TreeDetailResponse(
         id=tree.uid,
@@ -82,6 +92,8 @@ def get_tree_detail(
         mushroom=None,
         kobu=None,
         created_at=tree.photo_date,
+        analysis_image_url=debug_image_url,
+        analysis_image_url2=debug_image_url2,
     )
 
     # 幹の情報を追加
@@ -92,11 +104,16 @@ def get_tree_detail(
             image_thumb_url=image_service.get_image_url(
                 str(tree.stem.thumb_obj_key)),
             texture=tree.stem.texture,
+            texture_real=tree.stem.texture_real,
             can_detected=tree.stem.can_detected,
             circumference=tree.stem.circumference,
             age=tree.stem.age,
+            age_texture=tree.stem.age_texture,
+            age_circumference=tree.stem.age_circumference,
             created_at=tree.stem.photo_date,
-            censorship_status=tree.stem.censorship_status
+            censorship_status=tree.stem.censorship_status,
+            analysis_image_url=image_service.get_image_url(
+                str(tree.stem.debug_image_obj_key)) if is_debug else None
         )
 
     # 幹の穴の情報を追加

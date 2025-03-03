@@ -2,14 +2,18 @@ import uuid
 from typing import Optional
 
 from loguru import logger
+from PIL import ImageOps
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ForbiddenError,
-                                        ImageUploadError, InvalidParamError,
+from app.application.exceptions import (DatabaseError, ImageUploadError,
+                                        InvalidParamError,
+                                        TreeNotDetectedError,
                                         TreeNotFoundError)
 from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
+from app.domain.utils import blur
 from app.domain.utils.date_utils import DateUtils
+from app.infrastructure.images.label_detector import LabelDetector
 from app.infrastructure.repositories.kobu_repository import KobuRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import KobuInfo
@@ -23,6 +27,7 @@ def create_kobu(
     latitude: float,
     longitude: float,
     image_service: ImageService,
+    label_detector: LabelDetector,
     photo_date: Optional[str] = None,
     is_approved_debug: bool = False
 ) -> KobuInfo:
@@ -58,9 +63,11 @@ def create_kobu(
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
 
+    '''
     if tree.user_id != current_user.id:
         logger.warning(f"木の所有者ではないユーザーが幹の写真を登録しようとしました: tree_id={tree_id}")
         raise ForbiddenError("この木に対して写真を登録することはできません")
+    '''
 
     # 日時の解析
     parsed_photo_date = None
@@ -72,6 +79,27 @@ def create_kobu(
                 reason=f"不正な日時形式です: {photo_date}",
                 param_name="photo_date"
             )
+
+    image = image_service.bytes_to_pil(image_data)
+    rotated_image = ImageOps.exif_transpose(
+        image, in_place=True)  # EXIF情報に基づいて適切に回転
+    if rotated_image is not None:
+        image = rotated_image
+
+    labels = label_detector.detect(image, ['Tree', 'Person'])
+    if "Tree" not in labels:
+        logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
+        raise TreeNotDetectedError()
+
+    # 人物をぼかす
+    logger.debug("ぼかしを開始")
+    person_labels = labels.get('Person', [])
+    if len(person_labels) > 0:
+        logger.debug("人物が検出されたためぼかしを適用")
+        blurred_image = blur.apply_blur_to_bbox(
+            image, person_labels)
+        image_data = image_service.pil_to_bytes(blurred_image, 'jpeg')
+        image = blurred_image
 
     # 既存のこぶ状の枝の写真があれば削除
     kobu_repository = KobuRepository(db)
@@ -139,7 +167,7 @@ def create_kobu(
             image_url=image_url,
             image_thumb_url=thumb_url,
             created_at=kobu.photo_date,
-            censorship_status=kobu.censorship_status
+            censorship_status=kobu.censorship_status,
         )
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")

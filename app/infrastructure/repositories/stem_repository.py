@@ -44,10 +44,14 @@ class StemRepository:
         image_obj_key: str,
         thumb_obj_key: str,
         texture: int,
+        texture_real: Optional[float],
         can_detected: bool,
         circumference: Optional[float],
         age: int,
-        photo_date: Optional[datetime] = None
+        age_texture: Optional[int],
+        age_circumference: Optional[int],
+        photo_date: Optional[datetime] = None,
+        debug_image_obj_key: Optional[str] = None
     ) -> Stem:
         """
         幹の情報を保存する
@@ -76,10 +80,14 @@ class StemRepository:
             image_obj_key=image_obj_key,
             thumb_obj_key=thumb_obj_key,
             texture=texture,
+            texture_real=texture_real,
             can_detected=can_detected,
             circumference=circumference,
             age=age,
-            photo_date=photo_date
+            age_texture=age_texture,
+            age_circumference=age_circumference,
+            photo_date=photo_date,
+            debug_image_obj_key=debug_image_obj_key
         )
         self.db.add(stem)
         self.db.commit()
