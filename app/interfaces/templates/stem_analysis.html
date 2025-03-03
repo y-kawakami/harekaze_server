@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>幹の画像解析デバッグツール</title>
+    <style>
+        body {
+            font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 10px;
+        }
+
+        .form-container {
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input[type="file"] {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        .result-container {
+            margin-top: 30px;
+
+                {
+                % if not result %
+            }
+
+            display: none;
+
+                {
+                % endif %
+            }
+        }
+
+        .result-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .result-table th,
+        .result-table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: left;
+        }
+
+        .result-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+
+        .result-image {
+            max-width: 100%;
+            margin-top: 20px;
+            border: 1px solid #ddd;
+        }
+
+        .alert {
+            padding: 15px;
+            background-color: #f8d7da;
+            color: #721c24;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>幹の画像解析デバッグツール</h1>
+
+    {% if error %}
+    <div class="alert">{{ error }}</div>
+    {% endif %}
+
+    <div class="form-container">
+        <form action="/sakura_camera/api/debug/analyze_stem_html" method="post" enctype="multipart/form-data">
+            <div class="form-group">
+                <label for="image">幹の写真をアップロード</label>
+                <input type="file" id="image" name="image" accept="image/*" required>
+            </div>
+            <button type="submit">解析する</button>
+        </form>
+    </div>
+
+    <div class="result-container">
+        {% if result %}
+        <h2>解析結果</h2>
+        <table class="result-table">
+            <tr>
+                <th>項目</th>
+                <th>値</th>
+                <th>説明</th>
+            </tr>
+            <tr>
+                <td>幹の模様（1-5）</td>
+                <td>{{ result.texture if result.texture is not none else "検出できませんでした" }}</td>
+                <td>1: 滑らか 〜 5: ガサガサ</td>
+            </tr>
+            <tr>
+                <td>幹の模様（実数値）</td>
+                <td>{{ "%.2f"|format(result.texture_real) if result.texture_real is not none else "検出できませんでした" }}</td>
+                <td>1: 滑らか 〜 5: ガサガサ（実数値）</td>
+            </tr>
+            <tr>
+                <td>350ml缶の検出</td>
+                <td>{{ "検出しました" if result.can_detected else "検出できませんでした" }}</td>
+                <td>樹齢推定の精度向上のため使用</td>
+            </tr>
+            <tr>
+                <td>幹周（cm）</td>
+                <td>{{ "%.1f"|format(result.circumference) if result.circumference is not none else "検出できませんでした" }}</td>
+                <td>樹齢推定に使用</td>
+            </tr>
+            <tr>
+                <td>推定樹齢（幹の模様を使用）</td>
+                <td>{{ result.age_texture if result.age_texture is not none else "推定できませんでした" }}</td>
+                <td>幹の模様から推定した樹齢</td>
+            </tr>
+            <tr>
+                <td>推定樹齢（幹周を使用）</td>
+                <td>{{ result.age_circumference if result.age_circumference is not none else "推定できませんでした" }}</td>
+                <td>幹周から推定した樹齢</td>
+            </tr>
+        </table>
+
+        {% if result.analysis_image_url %}
+        <h3>解析画像</h3>
+        <img src="{{ result.analysis_image_url }}" alt="解析結果画像" class="result-image">
+        {% endif %}
+        {% endif %}
+    </div>
+</body>
+
+</html>
