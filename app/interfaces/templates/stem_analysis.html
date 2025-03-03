@@ -6,110 +6,193 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>幹の画像解析デバッグツール</title>
     <style>
+        :root {
+            --primary-color: #2196F3;
+            --primary-hover: #1976D2;
+            --background-color: #F5F5F5;
+            --border-color: #E0E0E0;
+            --text-color: #333333;
+            --error-color: #D32F2F;
+            --success-color: #388E3C;
+            --button-text: #FFFFFF;
+        }
+
         body {
             font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", "Hiragino Sans", Meiryo, sans-serif;
             line-height: 1.6;
-            color: #333;
+            color: var(--text-color);
             max-width: 1000px;
             margin: 0 auto;
             padding: 20px;
+            background-color: var(--background-color);
         }
 
         h1 {
-            margin-bottom: 20px;
-            border-bottom: 1px solid #ddd;
-            padding-bottom: 10px;
+            margin-bottom: 30px;
+            padding: 15px 0;
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+            font-size: 28px;
+        }
+
+        h2 {
+            color: var(--primary-color);
+            margin: 30px 0 20px;
+            font-size: 24px;
         }
 
         .form-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-bottom: 30px;
-            padding: 20px;
-            background-color: #f9f9f9;
-            border-radius: 5px;
         }
 
         .form-group {
-            margin-bottom: 15px;
+            margin-bottom: 25px;
         }
 
         label {
             display: block;
-            margin-bottom: 5px;
+            margin-bottom: 10px;
             font-weight: bold;
+            color: var(--text-color);
+            font-size: 16px;
+        }
+
+        .help-text {
+            margin-top: 8px;
+            color: #666;
+            font-size: 14px;
         }
 
         input[type="file"] {
             display: block;
             width: 100%;
-            padding: 10px;
-            background-color: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            padding: 12px;
+            background-color: white;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
         }
 
-        button {
-            padding: 10px 20px;
-            background-color: #4CAF50;
-            color: white;
+        input[type="file"]:hover {
+            border-color: var(--primary-color);
+        }
+
+        .form-container form button[type="submit"] {
+            display: inline-block;
+            padding: 12px 30px;
+            background-color: #2196F3;
+            color: #FFFFFF;
             border: none;
-            border-radius: 4px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+            text-align: center;
+            min-width: 120px;
+            margin: 10px 0;
+            position: relative;
+            overflow: hidden;
         }
 
-        button:hover {
-            background-color: #45a049;
+        .form-container form button[type="submit"]:hover {
+            background-color: #1976D2;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .form-container form button[type="submit"]:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-container form button[type="submit"]:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.3);
+        }
+
+        .form-container form button[type="submit"]:disabled {
+            background-color: #E0E0E0;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .result-container {
+            background-color: white;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             margin-top: 30px;
-
-                {
-                % if not result %
-            }
-
-            display: none;
-
-                {
-                % endif %
-            }
         }
 
         .result-table {
             width: 100%;
-            border-collapse: collapse;
-            margin-bottom: 20px;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin: 20px 0;
+            border-radius: 8px;
+            overflow: hidden;
         }
 
         .result-table th,
         .result-table td {
-            border: 1px solid #ddd;
-            padding: 12px;
+            padding: 15px;
             text-align: left;
+            border: 1px solid var(--border-color);
         }
 
         .result-table th {
-            background-color: #f2f2f2;
+            background-color: var(--primary-color);
+            color: white;
             font-weight: bold;
+        }
+
+        .result-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+
+        .result-table tr:hover {
+            background-color: #f1f3f5;
         }
 
         .result-image {
             max-width: 100%;
             margin-top: 20px;
-            border: 1px solid #ddd;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .alert {
-            padding: 15px;
-            background-color: #f8d7da;
-            color: #721c24;
-            border-radius: 4px;
+            padding: 15px 20px;
+            border-radius: 6px;
             margin-bottom: 20px;
+            background-color: #FFEBEE;
+            color: var(--error-color);
+            border: 1px solid #FFCDD2;
+            font-weight: bold;
         }
 
         .success {
-            background-color: #d4edda;
-            color: #155724;
+            background-color: #E8F5E9;
+            color: var(--success-color);
+            border: 1px solid #C8E6C9;
+        }
+
+        .value-detected {
+            color: var(--success-color);
+            font-weight: bold;
+        }
+
+        .value-not-detected {
+            color: var(--error-color);
+            font-style: italic;
         }
     </style>
 </head>
@@ -126,13 +209,14 @@
             <div class="form-group">
                 <label for="image">幹の写真をアップロード</label>
                 <input type="file" id="image" name="image" accept="image/*" required>
+                <p class="help-text">※樹齢推定の精度向上のため、缶（350ml）を幹の横に置いて撮影することをおすすめします</p>
             </div>
             <button type="submit">解析する</button>
         </form>
     </div>
 
+    {% if result %}
     <div class="result-container">
-        {% if result %}
         <h2>解析結果</h2>
         <table class="result-table">
             <tr>
@@ -142,32 +226,44 @@
             </tr>
             <tr>
                 <td>幹の模様（1-5）</td>
-                <td>{{ result.texture if result.texture is not none else "検出できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.texture is not none else 'value-not-detected' }}">
+                    {{ result.texture if result.texture is not none else "検出できませんでした" }}
+                </td>
                 <td>1: 滑らか 〜 5: ガサガサ</td>
             </tr>
             <tr>
                 <td>幹の模様（実数値）</td>
-                <td>{{ "%.2f"|format(result.texture_real) if result.texture_real is not none else "検出できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.texture_real is not none else 'value-not-detected' }}">
+                    {{ "%.2f"|format(result.texture_real) if result.texture_real is not none else "検出できませんでした" }}
+                </td>
                 <td>1: 滑らか 〜 5: ガサガサ（実数値）</td>
             </tr>
             <tr>
                 <td>350ml缶の検出</td>
-                <td>{{ "検出しました" if result.can_detected else "検出できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.can_detected else 'value-not-detected' }}">
+                    {{ "検出しました" if result.can_detected else "検出できませんでした" }}
+                </td>
                 <td>樹齢推定の精度向上のため使用</td>
             </tr>
             <tr>
                 <td>幹周（cm）</td>
-                <td>{{ "%.1f"|format(result.circumference) if result.circumference is not none else "検出できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.circumference is not none else 'value-not-detected' }}">
+                    {{ "%.1f"|format(result.circumference) if result.circumference is not none else "検出できませんでした" }}
+                </td>
                 <td>樹齢推定に使用</td>
             </tr>
             <tr>
                 <td>推定樹齢（幹の模様を使用）</td>
-                <td>{{ result.age_texture if result.age_texture is not none else "推定できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.age_texture is not none else 'value-not-detected' }}">
+                    {{ result.age_texture if result.age_texture is not none else "推定できませんでした" }}
+                </td>
                 <td>幹の模様から推定した樹齢</td>
             </tr>
             <tr>
                 <td>推定樹齢（幹周を使用）</td>
-                <td>{{ result.age_circumference if result.age_circumference is not none else "推定できませんでした" }}</td>
+                <td class="{{ 'value-detected' if result.age_circumference is not none else 'value-not-detected' }}">
+                    {{ result.age_circumference if result.age_circumference is not none else "推定できませんでした" }}
+                </td>
                 <td>幹周から推定した樹齢</td>
             </tr>
         </table>
@@ -176,8 +272,8 @@
         <h3>解析画像</h3>
         <img src="{{ result.analysis_image_url }}" alt="解析結果画像" class="result-image">
         {% endif %}
-        {% endif %}
     </div>
+    {% endif %}
 </body>
 
 </html>
