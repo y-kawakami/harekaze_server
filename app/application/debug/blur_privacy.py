@@ -9,7 +9,7 @@ from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import BlurPrivacyResponse
 
 
-def blur_privacy_app(
+async def blur_privacy_app(
     image_data: bytes,
     image_service: ImageService,
     label_detector: LabelDetector,
@@ -39,7 +39,7 @@ def blur_privacy_app(
     image_key = f"debug/privacy/blurred_{random_suffix}.jpg"
 
     try:
-        if not (image_service.upload_image(blurred_image_data, image_key)):
+        if not (await image_service.upload_image(blurred_image_data, image_key)):
             logger.error("画像アップロード失敗")
             raise ImageUploadError()
         logger.debug("画像アップロード成功")
@@ -48,5 +48,6 @@ def blur_privacy_app(
         raise ImageUploadError() from e
 
     return BlurPrivacyResponse(
-        image_url=image_service.get_image_url(image_key)
+        image_url=image_service.get_image_url(image_key),
+        thumb_url=image_service.get_image_url(image_key),
     )

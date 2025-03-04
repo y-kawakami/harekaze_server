@@ -106,8 +106,6 @@ async def analyze_stem_html_post(
             lambda_service=lambda_service,
         )
 
-        print(result)
-
         return templates.TemplateResponse(
             "stem_analysis.html",
             {"request": request, "result": result}
@@ -178,8 +176,6 @@ async def analyze_tree_html_post(
             label_detector=label_detector,
             lambda_service=lambda_service,
         )
-
-        print(result)
 
         return templates.TemplateResponse(
             "tree_analysis.html",

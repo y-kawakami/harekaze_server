@@ -144,7 +144,7 @@ async def update_tree_decorated_image(
     image_data = await image.read()
     ogp_image_data = await ogp_image.read()
 
-    return update_tree_decorated_app(
+    return await update_tree_decorated_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,
@@ -482,7 +482,7 @@ async def create_stem_hole(
     幹の穴の写真を登録する。
     """
     image_data = await image.read()
-    return create_stem_hole_app(
+    return await create_stem_hole_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,
@@ -532,7 +532,7 @@ async def create_tengusu(
     テングス病の写真を登録する。
     """
     image_data = await image.read()
-    return create_tengusu_app(
+    return await create_tengusu_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,
@@ -583,7 +583,7 @@ async def create_mushroom(
     キノコの写真を登録する。
     """
     image_data = await image.read()
-    return create_mushroom_app(
+    return await create_mushroom_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,
@@ -633,7 +633,7 @@ async def create_kobu(
     こぶ状の枝の写真を登録する。
     """
     image_data = await image.read()
-    return create_kobu_app(
+    return await create_kobu_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,

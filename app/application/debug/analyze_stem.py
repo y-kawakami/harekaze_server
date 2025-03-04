@@ -64,7 +64,7 @@ async def analyze_stem_app(
     # Lambda入力画像をアップロード
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"debug/stem_orig_{orig_suffix}.jpg"
-    image_service.upload_image(image_data, orig_image_key)
+    await image_service.upload_image(image_data, orig_image_key)
 
     # 画像の解析
     logger.debug("画像解析を開始")

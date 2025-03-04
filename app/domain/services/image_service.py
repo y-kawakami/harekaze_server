@@ -3,6 +3,7 @@ import os
 import random
 from typing import Optional, Tuple
 
+import aioboto3
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -30,10 +31,23 @@ class ImageService:
             endpoint_url=endpoint_url
         )
         self.bucket_name = bucket_name
+        self.region_name = region_name
+        self.endpoint_url = endpoint_url
         if not self.bucket_name:
             raise ValueError(
                 "S3_CONTENTS_BUCKET environment variable is not set")
         self.app_host = app_host
+        self._async_s3_client = None
+
+    async def get_async_s3_client(self):
+        """非同期S3クライアントを取得する（遅延初期化）"""
+        if self._async_s3_client is None:
+            self._async_s3_client = aioboto3.Session().client(
+                's3',
+                region_name=self.region_name,
+                endpoint_url=self.endpoint_url
+            )
+        return self._async_s3_client
 
     def create_thumbnail_from_pil(self, image: Image.Image) -> bytes:
         # アスペクト比を保持しながらリサイズ
@@ -63,19 +77,24 @@ class ImageService:
         image.save(thumb_io, format=image.format if image.format else 'JPEG')
         return thumb_io.getvalue()
 
-    def upload_image(self, image_data: bytes, object_key: str) -> bool:
-        """画像をS3にアップロードする"""
+    async def upload_image(self, image_data: bytes, object_key: str) -> bool:
+        """画像をS3にアップロードする（非同期版）"""
         try:
-            self.s3_client.put_object(
-                Bucket=self.bucket_name,
-                Key=f'{TREE_IMAGE_PREFIX}/{object_key}',
-                Body=image_data,
-                ContentType='image/jpeg',
-                # ACL='public-read'
-            )
+            async with aioboto3.Session().client(
+                's3',
+                region_name=self.region_name,
+                endpoint_url=self.endpoint_url
+            ) as s3_client:
+                await s3_client.put_object(
+                    Bucket=self.bucket_name,
+                    Key=f'{TREE_IMAGE_PREFIX}/{object_key}',
+                    Body=image_data,
+                    ContentType='image/jpeg',
+                    # ACL='public-read'
+                )
             return True
         except ClientError as e:
-            logger.error(f"Upload Image Client Error: {e}")
+            logger.error(f"Upload Image Client Error (Async): {e}")
             logger.exception(e)
             return False
 
@@ -140,36 +159,29 @@ class ImageService:
     #    return True, 3, True, 45.0
 
     def analyze_stem_image(self, image_data: bytes) -> Tuple[int, bool, Optional[float], int]:
-        """
-        幹の写真を解析し、幹の模様、缶の検出有無、幹周、樹齢を返す
-        現時点ではモック実装
-        """
-        # モック実装: 実際にはここで画像解析を行う
-        texture = random.randint(1, 5)  # 1:滑らか~5:ガサガサ
-        can_detected = True
-        circumference = random.uniform(50.0, 300.0)  # cm
-        age = random.randint(2, 80)  # 年
+        """幹の写真を解析する"""
+        # TODO: 解析処理を実装する
+        smoothness = random.randint(1, 5)
+        can_detected = bool(random.getrandbits(1))
+        diameter_mm = random.uniform(10, 40) if can_detected else None
+        age = random.randint(10, 100)
+        return smoothness, can_detected, diameter_mm, age
 
-        return texture, can_detected, circumference, age
-
-    def delete_image(self, object_key: str) -> bool:
-        """
-        S3から画像を削除する
-
-        Args:
-            object_key (str): 削除する画像のオブジェクトキー
-
-        Returns:
-            bool: 削除に成功したかどうか
-        """
+    async def delete_image(self, object_key: str) -> bool:
+        """S3から画像を削除する（非同期版）"""
         try:
-            self.s3_client.delete_object(
-                Bucket=self.bucket_name,
-                Key=f'{TREE_IMAGE_PREFIX}/{object_key}'
-            )
+            async with aioboto3.Session().client(
+                's3',
+                region_name=self.region_name,
+                endpoint_url=self.endpoint_url
+            ) as s3_client:
+                await s3_client.delete_object(
+                    Bucket=self.bucket_name,
+                    Key=f'{TREE_IMAGE_PREFIX}/{object_key}'
+                )
             return True
         except ClientError as e:
-            logger.error(f"Delete Image Client Error: {e}")
+            logger.error(f"Delete Image Client Error (Async): {e}")
             logger.exception(e)
             return False
 

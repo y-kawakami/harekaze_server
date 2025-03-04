@@ -13,7 +13,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeDecoratedResponse
 
 
-def update_tree_decorated_image(
+async def update_tree_decorated_image(
     db: Session,
     current_user: User,
     tree_id: str,
@@ -61,12 +61,12 @@ def update_tree_decorated_image(
 
     try:
         # 装飾画像をアップロード
-        if not image_service.upload_image(image_data, image_key):
+        if not await image_service.upload_image(image_data, image_key):
             logger.error(f"装飾画像のアップロード失敗: tree_id={tree_id}")
             raise ImageUploadError(tree_uid=tree_id)
 
         # OGP画像をアップロード
-        if not image_service.upload_image(ogp_image_data, ogp_image_key):
+        if not await image_service.upload_image(ogp_image_data, ogp_image_key):
             logger.error(f"OGP画像のアップロード失敗: tree_id={tree_id}")
             raise ImageUploadError(tree_uid=tree_id)
 

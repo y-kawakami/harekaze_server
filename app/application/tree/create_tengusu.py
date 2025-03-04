@@ -19,7 +19,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TengusuInfo
 
 
-def create_tengusu(
+async def create_tengusu(
     db: Session,
     current_user: User,
     tree_id: str,
@@ -110,9 +110,9 @@ def create_tengusu(
             try:
                 # S3から画像を削除
                 if tengus.image_obj_key:
-                    image_service.delete_image(tengus.image_obj_key)
+                    await image_service.delete_image(tengus.image_obj_key)
                 if tengus.thumb_obj_key:
-                    image_service.delete_image(tengus.thumb_obj_key)
+                    await image_service.delete_image(tengus.thumb_obj_key)
 
                 # DBから削除
                 tengus_repository.delete_tengus(tengus.id)
@@ -130,8 +130,8 @@ def create_tengusu(
     thumb_key = f"trees/{tree.id}/tengusu_thumb_{random_suffix}.jpg"
 
     try:
-        if not (image_service.upload_image(image_data, image_key) and
-                image_service.upload_image(thumb_data, thumb_key)):
+        if not (await image_service.upload_image(image_data, image_key) and
+                await image_service.upload_image(thumb_data, thumb_key)):
             logger.error(f"画像アップロード失敗: tree_id={tree_id}")
             raise ImageUploadError(tree_uid=tree_id)
         logger.debug(f"画像アップロード成功: image_key={image_key}")

@@ -96,7 +96,7 @@ async def create_stem(
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/stem_orig_{orig_suffix}.jpg"
     try:
-        image_service.upload_image(image_data, orig_image_key)
+        await image_service.upload_image(image_data, orig_image_key)
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_id) from e
@@ -132,8 +132,8 @@ async def create_stem(
     image_key = f"{tree_id}/stem_{random_suffix}.jpg"
     thumb_key = f"{tree_id}/stem_thumb_{random_suffix}.jpg"
     try:
-        image_service.upload_image(image_data, image_key)
-        image_service.upload_image(thumb_data, thumb_key)
+        await image_service.upload_image(image_data, image_key)
+        await image_service.upload_image(thumb_data, thumb_key)
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_id) from e

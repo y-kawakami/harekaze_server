@@ -38,7 +38,7 @@ async def analyze_tree_app(
 
     try:
         # 元画像をアップロード
-        if not image_service.upload_image(image_data, orig_image_key):
+        if not await image_service.upload_image(image_data, orig_image_key):
             logger.error("元画像のアップロードに失敗しました")
             raise Exception("元画像のアップロードに失敗しました")
 

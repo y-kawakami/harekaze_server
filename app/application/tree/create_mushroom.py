@@ -20,7 +20,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import MushroomInfo
 
 
-def create_mushroom(
+async def create_mushroom(
     db: Session,
     current_user: User,
     tree_id: str,
@@ -111,9 +111,9 @@ def create_mushroom(
             try:
                 # S3から画像を削除
                 if mushroom.image_obj_key:
-                    image_service.delete_image(mushroom.image_obj_key)
+                    await image_service.delete_image(mushroom.image_obj_key)
                 if mushroom.thumb_obj_key:
-                    image_service.delete_image(mushroom.thumb_obj_key)
+                    await image_service.delete_image(mushroom.thumb_obj_key)
 
                 # DBから削除
                 mushroom_repository.delete_mushroom(mushroom.id)
@@ -131,8 +131,8 @@ def create_mushroom(
     thumb_key = f"trees/{tree.id}/mushroom_thumb_{random_suffix}.jpg"
 
     try:
-        if not (image_service.upload_image(image_data, image_key) and
-                image_service.upload_image(thumb_data, thumb_key)):
+        if not (await image_service.upload_image(image_data, image_key) and
+                await image_service.upload_image(thumb_data, thumb_key)):
             logger.error(f"画像アップロード失敗: tree_id={tree_id}")
             raise ImageUploadError(tree_uid=tree_id)
         logger.debug(f"画像アップロード成功: image_key={image_key}")
