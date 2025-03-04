@@ -1,7 +1,7 @@
 import concurrent.futures
 import datetime
 import uuid
-from typing import Optional, final
+from typing import Optional
 
 from loguru import logger
 from PIL import ImageOps

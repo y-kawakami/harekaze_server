@@ -68,7 +68,7 @@ class FloweringDateSpot:
 
         # 開花前
         if time_to_flowering > 0:
-            return (100, 0)
+            return (1.0, 0)
 
         # 開花～満開
         elif time_to_flowering <= 0 and time_to_full_bloom > 0:
@@ -76,11 +76,11 @@ class FloweringDateSpot:
             total_bloom_time = (full_bloom_dt - flowering_dt).total_seconds()
             progress = 1.0 - (time_to_full_bloom / total_bloom_time)
             progress = max(0.0, min(1.0, progress))  # 0.0 ~ 1.0 に制限
-            return self._linear_interpolate((100, 0), (0, 100), progress)
+            return self._linear_interpolate((1.0, 0), (0, 1.0), progress)
 
         # 満開
         elif time_to_full_bloom <= 0 and time_to_end_bloom > 0:
-            return (0, 100)
+            return (0, 1.0)
 
         # 散り始め～葉桜
         elif time_to_end_bloom <= 0 and time_to_leaf > 0:
@@ -88,8 +88,8 @@ class FloweringDateSpot:
             total_fall_time = (leaf_dt - full_bloom_end_dt).total_seconds()
             progress = 1.0 - (time_to_leaf / total_fall_time)
             progress = max(0.0, min(1.0, progress))  # 0.0 ~ 1.0 に制限
-            return self._linear_interpolate((50, 50), (100, 0), progress)
+            return self._linear_interpolate((0.5, 0.5), (1.0, 0), progress)
 
         # 葉桜
         else:
-            return (100, 0)
+            return (1.0, 0)
