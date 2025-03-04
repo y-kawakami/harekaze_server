@@ -12,7 +12,7 @@ from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import StemAnalysisResponse
 
 
-def analyze_stem_app(
+async def analyze_stem_app(
     image_data: bytes,
     image_service: ImageService,
     label_detector: LabelDetector,
@@ -70,7 +70,7 @@ def analyze_stem_app(
     logger.debug("画像解析を開始")
     bucket_name = image_service.get_contents_bucket_name()
     debug_key = f"debug/stem_debug_{orig_suffix}.jpg"
-    result = lambda_service.analyze_stem(
+    result = await lambda_service.analyze_stem(
         s3_bucket=bucket_name,
         s3_key=image_service.get_full_object_key(orig_image_key),
         can_bbox=most_confident_can,

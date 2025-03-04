@@ -63,7 +63,7 @@ async def analyze_stem(
     幹の写真を解析する
     """
     image_data = await image.read()
-    return app.application.debug.analyze_stem.analyze_stem_app(
+    return await app.application.debug.analyze_stem.analyze_stem_app(
         image_data=image_data,
         image_service=image_service,
         label_detector=label_detector,
@@ -99,7 +99,7 @@ async def analyze_stem_html_post(
     """
     try:
         image_data = await image.read()
-        result = app.application.debug.analyze_stem.analyze_stem_app(
+        result = await app.application.debug.analyze_stem.analyze_stem_app(
             image_data=image_data,
             image_service=image_service,
             label_detector=label_detector,
@@ -136,7 +136,7 @@ async def analyze_tree(
     桜の木全体の写真を解析する
     """
     image_data = await image.read()
-    return app.application.debug.analyze_tree.analyze_tree_app(
+    return await app.application.debug.analyze_tree.analyze_tree_app(
         image_data=image_data,
         image_service=image_service,
         label_detector=label_detector,
@@ -172,7 +172,7 @@ async def analyze_tree_html_post(
     """
     try:
         image_data = await image.read()
-        result = app.application.debug.analyze_tree.analyze_tree_app(
+        result = await app.application.debug.analyze_tree.analyze_tree_app(
             image_data=image_data,
             image_service=image_service,
             label_detector=label_detector,

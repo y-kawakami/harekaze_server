@@ -99,7 +99,7 @@ async def create_tree(
     桜の木全体の写真を登録する。
     """
     image_data = await image.read()
-    return create_tree_app(
+    return await create_tree_app(
         db=db,
         current_user=current_user,
         latitude=latitude,
@@ -431,7 +431,7 @@ async def create_stem(
     幹の写真を登録する。
     """
     image_data = await image.read()
-    return create_stem_app(
+    return await create_stem_app(
         db=db,
         current_user=current_user,
         tree_id=tree_id,

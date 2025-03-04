@@ -14,7 +14,7 @@ dependencies = [
     "python-multipart==0.0.20",
     "pillow==11.1.0",
     "python-jose==3.3.0",
-    "boto3==1.36.6",
+    "boto3>=1.36.0",
     "pydantic==2.6.1",
     "python-dotenv==1.0.1",
     "GeoAlchemy2==0.17.0",
@@ -23,6 +23,7 @@ dependencies = [
     "pymysql[rsa]>=1.1.1",
     "mysql-connector-python>=9.2.0",
     "jinja2>=3.1.5",
+    "aioboto3==13.4.0",
 ]
 
 [tool.uv]

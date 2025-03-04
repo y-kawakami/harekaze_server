@@ -3,6 +3,7 @@ import os
 from dataclasses import dataclass
 from typing import List, Optional
 
+import aioboto3
 import boto3
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
@@ -59,11 +60,23 @@ class LambdaService:
             region_name=region_name,
             endpoint_url=endpoint_url
         )
+        self.region_name = region_name
+        self.endpoint_url = endpoint_url
         self.analyze_stem_function_name = analyze_stem_function_name
         self.analyze_tree_vitality_bloom_function_name = analyze_tree_vitality_bloom_function_name
         self.analyze_tree_vitality_noleaf_function_name = analyze_tree_vitality_noleaf_function_name
+        self._async_lambda_client = None  # 遅延初期化用
 
-    def analyze_stem(
+    async def get_async_lambda_client(self):
+        if self._async_lambda_client is None:
+            self._async_lambda_client = aioboto3.Session().client(
+                'lambda',
+                region_name=self.region_name,
+                endpoint_url=self.endpoint_url
+            )
+        return self._async_lambda_client
+
+    async def analyze_stem(
         self,
         s3_bucket: str,
         s3_key: str,
@@ -72,7 +85,7 @@ class LambdaService:
         output_key: str
     ) -> StemAnalysisResult:
         """
-        茎分析用のLambda関数を呼び出し、結果を処理する
+        茎分析用のLambda関数を非同期で呼び出し、結果を処理する
 
         Args:
             s3_bucket: 入力画像が格納されているS3バケット名
@@ -115,8 +128,8 @@ class LambdaService:
             'output_key': output_key
         }
 
-        # Lambda関数を呼び出す
-        response = self.invoke_lambda(self.analyze_stem_function_name, payload)
+        # Lambda関数を非同期で呼び出す
+        response = await self.invoke_lambda_async(self.analyze_stem_function_name, payload)
 
         # レスポンスを処理
         if response.get('StatusCode') != 200:
@@ -128,7 +141,7 @@ class LambdaService:
         if payload is None:
             raise ValueError("Lambda関数からペイロードが返されませんでした")
 
-        payload_bytes = payload.read()
+        payload_bytes = await payload.read()
         result = json.loads(payload_bytes.decode('utf-8'))
 
         # エラーがあれば例外を発生
@@ -148,7 +161,7 @@ class LambdaService:
             debug_image_key=result_body.get('debug_image_key')
         )
 
-    def analyze_tree_vitality_bloom(
+    async def analyze_tree_vitality_bloom(
         self,
         s3_bucket: str,
         s3_key: str,
@@ -156,7 +169,7 @@ class LambdaService:
         output_key: str
     ) -> TreeVitalityBloomResult:
         """
-        木の活力（開花時）分析用のLambda関数を呼び出し、結果を処理する
+        木の活力（開花時）分析用のLambda関数を非同期で呼び出し、結果を処理する
 
         Args:
             s3_bucket: 入力画像が格納されているS3バケット名
@@ -184,8 +197,8 @@ class LambdaService:
             'output_key': output_key
         }
 
-        # Lambda関数を呼び出す
-        response = self.invoke_lambda(
+        # Lambda関数を非同期で呼び出す
+        response = await self.invoke_lambda_async(
             self.analyze_tree_vitality_bloom_function_name, payload)
 
         # レスポンスを処理
@@ -198,7 +211,7 @@ class LambdaService:
         if payload is None:
             raise ValueError("Lambda関数からペイロードが返されませんでした")
 
-        payload_bytes = payload.read()
+        payload_bytes = await payload.read()
         result = json.loads(payload_bytes.decode('utf-8'))
 
         print(result)
@@ -219,7 +232,7 @@ class LambdaService:
             debug_image_key=result_body.get('debug_image_key')
         )
 
-    def analyze_tree_vitality_noleaf(
+    async def analyze_tree_vitality_noleaf(
         self,
         s3_bucket: str,
         s3_key: str,
@@ -227,7 +240,7 @@ class LambdaService:
         output_key: str
     ) -> TreeVitalityNoleafResult:
         """
-        木の活力（葉無し時期）分析用のLambda関数を呼び出し、結果を処理する
+        木の活力（葉無し時期）分析用のLambda関数を非同期で呼び出し、結果を処理する
 
         Args:
             s3_bucket: 入力画像が格納されているS3バケット名
@@ -255,8 +268,8 @@ class LambdaService:
             'output_key': output_key
         }
 
-        # Lambda関数を呼び出す
-        response = self.invoke_lambda(
+        # Lambda関数を非同期で呼び出す
+        response = await self.invoke_lambda_async(
             self.analyze_tree_vitality_noleaf_function_name, payload)
 
         # レスポンスを処理
@@ -269,7 +282,7 @@ class LambdaService:
         if payload is None:
             raise ValueError("Lambda関数からペイロードが返されませんでした")
 
-        payload_bytes = payload.read()
+        payload_bytes = await payload.read()
         result = json.loads(payload_bytes.decode('utf-8'))
 
         # エラーがあれば例外を発生
@@ -288,23 +301,27 @@ class LambdaService:
             debug_image_key=result_body.get('debug_image_key')
         )
 
-    def invoke_lambda(
+    async def invoke_lambda_async(
         self,
         function_name: str,
         payload: dict
     ) -> dict:
-        """Lambda関数を呼び出す"""
-        try:
-            response = self.lambda_client.invoke(
-                FunctionName=function_name,
-                InvocationType='RequestResponse',
-                Payload=json.dumps(payload)
-            )
-        except ClientError as e:
-            logger.error(f"Lambda関数の呼び出しに失敗しました: {e}")
-            raise e
-        else:
-            return response
+        """Lambda関数を非同期で呼び出す"""
+        async with aioboto3.Session().client(
+            'lambda',
+            region_name=self.region_name,
+            endpoint_url=self.endpoint_url
+        ) as lambda_client:
+            try:
+                response = await lambda_client.invoke(
+                    FunctionName=function_name,
+                    InvocationType='RequestResponse',
+                    Payload=json.dumps(payload)
+                )
+                return response
+            except ClientError as e:
+                logger.error(f"Lambda関数の非同期呼び出しに失敗しました: {e}")
+                raise e
 
 
 def get_lambda_service() -> LambdaService:

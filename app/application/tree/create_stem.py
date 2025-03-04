@@ -23,7 +23,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import StemInfo
 
 
-def create_stem(
+async def create_stem(
     db: Session,
     current_user: User,
     tree_id: str,
@@ -105,14 +105,13 @@ def create_stem(
     logger.debug("画像解析を開始")
     bucket_name = image_service.get_contents_bucket_name()
     debug_key = f"{tree_id}/stem_debug_{orig_suffix}.jpg"
-    result = lambda_service.analyze_stem(s3_bucket=bucket_name,
-                                         s3_key=image_service.get_full_object_key(
-                                             orig_image_key),
-                                         can_bbox=most_confident_can,
-                                         output_bucket=bucket_name,
-                                         output_key=image_service.get_full_object_key(
-                                             debug_key)
-                                         )
+    result = await lambda_service.analyze_stem(
+        s3_bucket=bucket_name,
+        s3_key=image_service.get_full_object_key(orig_image_key),
+        can_bbox=most_confident_can,
+        output_bucket=bucket_name,
+        output_key=image_service.get_full_object_key(debug_key)
+    )
 
     # 人物をぼかす
     logger.debug("ぼかしを開始")

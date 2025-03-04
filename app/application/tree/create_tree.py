@@ -1,4 +1,4 @@
-import concurrent.futures
+import asyncio
 import datetime
 import uuid
 from typing import Optional
@@ -26,7 +26,7 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
 
 
-def create_tree(
+async def create_tree(
     db: Session,
     current_user: User,
     latitude: float,
@@ -125,32 +125,28 @@ def create_tree(
     debug_bloom_key = f"{tree_id}/entire_debug_bloom_{orig_suffix}.jpg"
     debug_noleaf_key = f"{tree_id}/entire_debug_noleaf_{orig_suffix}.jpg"
 
-    # 並列でLambda関数を実行
-
-    def run_bloom_analysis():
-        return lambda_service.analyze_tree_vitality_bloom(
+    # 非同期関数として定義
+    async def run_bloom_analysis():
+        return await lambda_service.analyze_tree_vitality_bloom(
             s3_bucket=bucket_name,
             s3_key=image_service.get_full_object_key(orig_image_key),
             output_bucket=bucket_name,
             output_key=image_service.get_full_object_key(debug_bloom_key)
         )
 
-    def run_noleaf_analysis():
-        return lambda_service.analyze_tree_vitality_noleaf(
+    async def run_noleaf_analysis():
+        return await lambda_service.analyze_tree_vitality_noleaf(
             s3_bucket=bucket_name,
             s3_key=image_service.get_full_object_key(orig_image_key),
             output_bucket=bucket_name,
             output_key=image_service.get_full_object_key(debug_noleaf_key)
         )
 
-    # 並列実行
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        future_bloom = executor.submit(run_bloom_analysis)
-        future_noleaf = executor.submit(run_noleaf_analysis)
-
-        # 結果を取得
-        bloom_result = future_bloom.result()
-        noleaf_result = future_noleaf.result()
+    # 非同期で並列実行
+    bloom_result, noleaf_result = await asyncio.gather(
+        run_bloom_analysis(),
+        run_noleaf_analysis()
+    )
 
     logger.debug(f"ブルーム分析結果: {bloom_result}")
     logger.debug(f"葉なし分析結果: {noleaf_result}")

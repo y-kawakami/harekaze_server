@@ -1,17 +1,15 @@
+import asyncio
 import uuid
-from concurrent.futures import ThreadPoolExecutor
 
 from loguru import logger
 
 from app.domain.services.image_service import ImageService
-from app.domain.services.lambda_service import (LambdaService,
-                                                TreeVitalityBloomResult,
-                                                TreeVitalityNoleafResult)
+from app.domain.services.lambda_service import LambdaService
 from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import TreeVitalityResponse
 
 
-def analyze_tree_app(
+async def analyze_tree_app(
     image_data: bytes,
     image_service: ImageService,
     label_detector: LabelDetector,
@@ -45,16 +43,16 @@ def analyze_tree_app(
             raise Exception("元画像のアップロードに失敗しました")
 
         # 並列でLambda関数を実行
-        def run_bloom_analysis():
-            return lambda_service.analyze_tree_vitality_bloom(
+        async def run_bloom_analysis():
+            return await lambda_service.analyze_tree_vitality_bloom(
                 s3_bucket=bucket_name,
                 s3_key=image_service.get_full_object_key(orig_image_key),
                 output_bucket=bucket_name,
                 output_key=image_service.get_full_object_key(debug_bloom_key)
             )
 
-        def run_noleaf_analysis():
-            return lambda_service.analyze_tree_vitality_noleaf(
+        async def run_noleaf_analysis():
+            return await lambda_service.analyze_tree_vitality_noleaf(
                 s3_bucket=bucket_name,
                 s3_key=image_service.get_full_object_key(orig_image_key),
                 output_bucket=bucket_name,
@@ -62,13 +60,10 @@ def analyze_tree_app(
             )
 
         # 並列実行
-        with ThreadPoolExecutor() as executor:
-            future_bloom = executor.submit(run_bloom_analysis)
-            future_noleaf = executor.submit(run_noleaf_analysis)
-
-            # 結果を取得
-            bloom_result: TreeVitalityBloomResult = future_bloom.result()
-            noleaf_result: TreeVitalityNoleafResult = future_noleaf.result()
+        bloom_result, noleaf_result = await asyncio.gather(
+            run_bloom_analysis(),
+            run_noleaf_analysis()
+        )
 
         logger.debug(f"ブルーム分析結果: {bloom_result}")
         logger.debug(f"葉なし分析結果: {noleaf_result}")
