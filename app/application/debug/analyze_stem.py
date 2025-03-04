@@ -1,4 +1,5 @@
 import uuid
+from tkinter import N
 
 from loguru import logger
 from PIL import ImageOps
@@ -39,6 +40,17 @@ def analyze_stem_app(
         image = rotated_image
 
     labels = label_detector.detect(image, ['Tree', 'Can'])
+    if "Tree" not in labels:
+        logger.warning(f"木が検出できません")
+        return StemAnalysisResponse(
+            texture=None,
+            texture_real=None,
+            can_detected=False,
+            circumference=None,
+            age_texture=None,
+            age_circumference=None,
+            analysis_image_url=None
+        )
 
     can_bboxes = labels.get("Can", [])
     # 一番confidenceの高い缶を取得

@@ -453,46 +453,63 @@ class TreeRepository:
         Raises:
             ValueError: prefecture_codeとmunicipality_codeの両方がNoneの場合
         """
-        # 基本となるツリーのクエリを作成（検閲ステータスがAPPROVEDのみ）
-        tree_query = self.db.query(Tree.id).filter(
-            Tree.censorship_status == CensorshipStatus.APPROVED)
-
-        if municipality_code:
-            tree_query = tree_query.filter(
-                Tree.municipality_code == municipality_code)
-        elif prefecture_code:
-            tree_query = tree_query.filter(
-                Tree.prefecture_code == prefecture_code)
-        else:
+        if not municipality_code and not prefecture_code:
             raise ValueError(
                 "prefecture_code または municipality_code のいずれかを指定する必要があります")
 
-        # 対象の木のIDを取得
-        tree_ids = [tree_id for (tree_id,) in tree_query.all()]
-
-        if not tree_ids:
-            return TreeRelatedEntities()
-
-        # 各エンティティを取得（最大30件、検閲ステータスがAPPROVEDのみ）
-        stem_holes = self.db.query(StemHole).filter(
-            StemHole.tree_id.in_(tree_ids),
+        # 直接エンティティごとにクエリを実行
+        stem_hole_query = self.db.query(StemHole).filter(
             StemHole.censorship_status == CensorshipStatus.APPROVED
-        ).limit(30).all()
+        )
 
-        tengus = self.db.query(Tengus).filter(
-            Tengus.tree_id.in_(tree_ids),
+        tengus_query = self.db.query(Tengus).filter(
             Tengus.censorship_status == CensorshipStatus.APPROVED
-        ).limit(30).all()
+        )
 
-        mushrooms = self.db.query(Mushroom).filter(
-            Mushroom.tree_id.in_(tree_ids),
+        mushroom_query = self.db.query(Mushroom).filter(
             Mushroom.censorship_status == CensorshipStatus.APPROVED
-        ).limit(30).all()
+        )
 
-        kobus = self.db.query(Kobu).filter(
-            Kobu.tree_id.in_(tree_ids),
+        kobu_query = self.db.query(Kobu).filter(
             Kobu.censorship_status == CensorshipStatus.APPROVED
-        ).limit(30).all()
+        )
+
+        # 地域フィルターを適用
+        if municipality_code:
+            stem_hole_query = stem_hole_query.join(Tree).filter(
+                Tree.municipality_code == municipality_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            tengus_query = tengus_query.join(Tree).filter(
+                Tree.municipality_code == municipality_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            mushroom_query = mushroom_query.join(Tree).filter(
+                Tree.municipality_code == municipality_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            kobu_query = kobu_query.join(Tree).filter(
+                Tree.municipality_code == municipality_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+        elif prefecture_code:
+            stem_hole_query = stem_hole_query.join(Tree).filter(
+                Tree.prefecture_code == prefecture_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            tengus_query = tengus_query.join(Tree).filter(
+                Tree.prefecture_code == prefecture_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            mushroom_query = mushroom_query.join(Tree).filter(
+                Tree.prefecture_code == prefecture_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+            kobu_query = kobu_query.join(Tree).filter(
+                Tree.prefecture_code == prefecture_code,
+                Tree.censorship_status == CensorshipStatus.APPROVED)
+
+        # 各エンティティを取得（最大30件）
+        stem_holes = stem_hole_query.order_by(
+            StemHole.photo_date.desc()).limit(30).all()
+        tengus = tengus_query.order_by(
+            Tengus.photo_date.desc()).limit(30).all()
+        mushrooms = mushroom_query.order_by(
+            Mushroom.photo_date.desc()).limit(30).all()
+        kobus = kobu_query.order_by(Kobu.photo_date.desc()).limit(30).all()
 
         return TreeRelatedEntities(
             stem_holes=stem_holes,

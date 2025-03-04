@@ -194,10 +194,74 @@
             color: var(--error-color);
             font-style: italic;
         }
+
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid var(--border-color);
+            border-top: 5px solid var(--primary-color);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        .loading-text {
+            color: var(--primary-color);
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* ボタンのローディング状態 */
+        .form-container form button[type="submit"].loading {
+            position: relative;
+            color: transparent;
+        }
+
+        .form-container form button[type="submit"].loading::after {
+            content: "解析中...";
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+        }
     </style>
 </head>
 
 <body>
+    <div class="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">画像を解析中...</div>
+    </div>
+
     <h1>幹の画像解析デバッグツール</h1>
 
     {% if error %}
@@ -205,13 +269,14 @@
     {% endif %}
 
     <div class="form-container">
-        <form action="/sakura_camera/api/debug/analyze_stem_html" method="post" enctype="multipart/form-data">
+        <form id="analyzeForm" action="/sakura_camera/api/debug/analyze_stem_html" method="post"
+            enctype="multipart/form-data">
             <div class="form-group">
                 <label for="image">幹の写真をアップロード</label>
                 <input type="file" id="image" name="image" accept="image/*" required>
                 <p class="help-text">※樹齢推定の精度向上のため、缶（350ml）を幹の横に置いて撮影することをおすすめします</p>
             </div>
-            <button type="submit">解析する</button>
+            <button type="submit" id="submitButton">解析する</button>
         </form>
     </div>
 
@@ -246,7 +311,7 @@
                 <td>樹齢推定の精度向上のため使用</td>
             </tr>
             <tr>
-                <td>幹周（cm）</td>
+                <td>幹径（cm）</td>
                 <td class="{{ 'value-detected' if result.circumference is not none else 'value-not-detected' }}">
                     {{ "%.1f"|format(result.circumference) if result.circumference is not none else "検出できませんでした" }}
                 </td>
@@ -274,6 +339,34 @@
         {% endif %}
     </div>
     {% endif %}
+
+    <script>
+        document.getElementById('analyzeForm').addEventListener('submit', function (e) {
+            const button = document.getElementById('submitButton');
+            const loadingOverlay = document.querySelector('.loading-overlay');
+
+            // ボタンをローディング状態に
+            button.classList.add('loading');
+            button.disabled = true;
+
+            // オーバーレイを表示
+            loadingOverlay.classList.add('active');
+
+            // フォームの送信は通常通り行う（e.preventDefault()は不要）
+        });
+
+        // ページバック時にローディング状態をリセット
+        window.addEventListener('pageshow', function (event) {
+            if (event.persisted) {
+                const button = document.getElementById('submitButton');
+                const loadingOverlay = document.querySelector('.loading-overlay');
+
+                button.classList.remove('loading');
+                button.disabled = false;
+                loadingOverlay.classList.remove('active');
+            }
+        });
+    </script>
 </body>
 
 </html>

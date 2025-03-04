@@ -113,7 +113,6 @@ def create_stem(
                                          output_key=image_service.get_full_object_key(
                                              debug_key)
                                          )
-    print(result)
 
     # 人物をぼかす
     logger.debug("ぼかしを開始")

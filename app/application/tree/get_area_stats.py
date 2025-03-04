@@ -111,6 +111,7 @@ def get_area_stats(
     hole_images = [
         AreaStatsImage(
             id=str(hole.uid),
+            tree_number=f"#{hole.tree.id}",
             image_url=image_service.get_image_url(str(hole.image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(hole.thumb_obj_key))
@@ -121,6 +122,7 @@ def get_area_stats(
     tengusu_images = [
         AreaStatsImage(
             id=str(tengu.uid),
+            tree_number=f"#{tengu.tree.id}",
             image_url=image_service.get_image_url(str(tengu.image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(tengu.thumb_obj_key))
@@ -131,6 +133,7 @@ def get_area_stats(
     mushroom_images = [
         AreaStatsImage(
             id=str(mushroom.uid),
+            tree_number=f"#{mushroom.tree_id}",
             image_url=image_service.get_image_url(str(mushroom.image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(mushroom.thumb_obj_key))
@@ -141,6 +144,7 @@ def get_area_stats(
     kobu_images = [
         AreaStatsImage(
             id=str(kobu.uid),
+            tree_number=f"#{kobu.tree.id}",
             image_url=image_service.get_image_url(str(kobu.image_obj_key)),
             image_thumb_url=image_service.get_image_url(
                 str(kobu.thumb_obj_key))

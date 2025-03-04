@@ -240,6 +240,7 @@ class TreeStatsResponse(BaseModel):
 class AreaStatsImage(BaseModel):
     """地域の統計情報の画像情報"""
     id: str = Field(..., description="登録した桜に付与されるID")
+    tree_number: str = Field(..., description="表示用の番号（例: #23493）")
     image_url: str = Field(..., description="地域の統計情報の画像のURL")
     image_thumb_url: str = Field(..., description="地域の統計情報の画像のサムネイルURL")
 
