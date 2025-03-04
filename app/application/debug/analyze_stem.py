@@ -1,5 +1,4 @@
 import uuid
-from tkinter import N
 
 from loguru import logger
 from PIL import ImageOps
@@ -41,12 +40,13 @@ def analyze_stem_app(
 
     labels = label_detector.detect(image, ['Tree', 'Can'])
     if "Tree" not in labels:
-        logger.warning(f"木が検出できません")
+        logger.warning("木が検出できません")
         return StemAnalysisResponse(
             texture=None,
             texture_real=None,
             can_detected=False,
             circumference=None,
+            age=None,
             age_texture=None,
             age_circumference=None,
             analysis_image_url=None
@@ -79,11 +79,16 @@ def analyze_stem_app(
     )
 
     # 樹齢の推定
-    age_texture = round(estimate_tree_age_from_texture(result.smoothness_real))
+    age_texture = estimate_tree_age_from_texture(result.smoothness_real)
     age_circumference = None
+    age = 0.0
     diameter = result.diameter_mm * 0.1 if result.diameter_mm else None
     if diameter:
-        age_circumference = round(estimate_tree_age(diameter))
+        age_c = estimate_tree_age(diameter)
+        age_circumference = round(age_c)
+        age = round((age_texture + age_c) / 2)
+    else:
+        age = round(age_texture)
 
     # 解析結果画像のURL
     analysis_image_url = image_service.get_image_url(debug_key)
@@ -93,7 +98,8 @@ def analyze_stem_app(
         texture_real=result.smoothness_real,
         can_detected=most_confident_can is not None,
         circumference=result.diameter_mm * 0.1 if result.diameter_mm else None,
-        age_texture=age_texture,
+        age=age,
+        age_texture=round(age_texture),
         age_circumference=age_circumference,
         analysis_image_url=analysis_image_url
     )

@@ -27,6 +27,8 @@ from app.application.tree.search_trees_by_time_block import \
 from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
+from app.domain.services.flowering_date_service import (
+    FloweringDateService, get_flowering_date_service)
 from app.domain.services.image_service import ImageService, get_image_service
 from app.domain.services.lambda_service import (LambdaService,
                                                 get_lambda_service)
@@ -89,6 +91,8 @@ async def create_tree(
         get_geocoding_service_dependency, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
+    flowering_date_service: FloweringDateService = Depends(
+        get_flowering_date_service, use_cache=True),
     lambda_service: LambdaService = Depends(get_lambda_service, use_cache=True)
 ):
     """
@@ -106,6 +110,7 @@ async def create_tree(
         geocoding_service=geocoding_service,
         label_detector=label_detector,
         lambda_service=lambda_service,
+        flowering_date_service=flowering_date_service,
         photo_date=date,
         is_approved_debug=is_approved_debug
     )

@@ -36,7 +36,7 @@ class TreeVitalityBloomResult:
 @dataclass
 class TreeVitalityNoleafResult:
     """木の活力（葉無し時期）分析の結果を表すデータクラス"""
-    vitality: str
+    vitality: int
     vitality_real: float
     vitality_probs: List[float]
     debug_image_key: str

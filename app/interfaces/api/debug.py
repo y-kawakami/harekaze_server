@@ -4,6 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 import app.application.debug.analyze_stem
+import app.application.debug.analyze_tree
 import app.application.debug.blur_privacy
 from app.domain.services.image_service import ImageService, get_image_service
 from app.domain.services.lambda_service import (LambdaService,
@@ -12,7 +13,8 @@ from app.infrastructure.database.database import get_db
 from app.infrastructure.images.label_detector import (LabelDetector,
                                                       get_label_detector)
 from app.interfaces.schemas.debug import (BlurPrivacyResponse,
-                                          StemAnalysisResponse)
+                                          StemAnalysisResponse,
+                                          TreeVitalityResponse)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/interfaces/templates")
@@ -113,6 +115,79 @@ async def analyze_stem_html_post(
     except Exception as e:
         return templates.TemplateResponse(
             "stem_analysis.html",
+            {"request": request, "result": None,
+                "error": f"エラーが発生しました: {str(e)}"}
+        )
+
+
+@router.post("/debug/analyze_tree", response_model=TreeVitalityResponse)
+async def analyze_tree(
+    image: UploadFile = File(
+        ...,
+        description="桜の木全体の写真"
+    ),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+    lambda_service: LambdaService = Depends(
+        get_lambda_service, use_cache=True),
+):
+    """
+    桜の木全体の写真を解析する
+    """
+    image_data = await image.read()
+    return app.application.debug.analyze_tree.analyze_tree_app(
+        image_data=image_data,
+        image_service=image_service,
+        label_detector=label_detector,
+        lambda_service=lambda_service,
+    )
+
+
+@router.get("/debug/analyze_tree_html", response_class=HTMLResponse)
+async def analyze_tree_html_get(
+    request: Request,
+):
+    """
+    桜の木全体の写真を解析するHTMLフォームを表示する
+    """
+    return templates.TemplateResponse(
+        "tree_analysis.html",
+        {"request": request, "result": None}
+    )
+
+
+@router.post("/debug/analyze_tree_html", response_class=HTMLResponse)
+async def analyze_tree_html_post(
+    request: Request,
+    image: UploadFile = File(...),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+    lambda_service: LambdaService = Depends(
+        get_lambda_service, use_cache=True),
+):
+    """
+    桜の木全体の写真を解析し、結果をHTMLで表示する
+    """
+    try:
+        image_data = await image.read()
+        result = app.application.debug.analyze_tree.analyze_tree_app(
+            image_data=image_data,
+            image_service=image_service,
+            label_detector=label_detector,
+            lambda_service=lambda_service,
+        )
+
+        print(result)
+
+        return templates.TemplateResponse(
+            "tree_analysis.html",
+            {"request": request, "result": result}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "tree_analysis.html",
             {"request": request, "result": None,
                 "error": f"エラーが発生しました: {str(e)}"}
         )

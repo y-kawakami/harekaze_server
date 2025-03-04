@@ -156,19 +156,20 @@ def create_stem(
         stem_repository.delete_stem_for_tree(tree.id)
 
         age = 0
-        age_texture = round(
-            estimate_tree_age_from_texture(result.smoothness_real))
+        age_texture = estimate_tree_age_from_texture(result.smoothness_real)
         age_circumference: Optional[int] = None
         diameter = result.diameter_mm * 0.1 if result.diameter_mm else None
         if diameter:
+            age_c = 0
             if tree.prefecture_code:
-                age = round(estimate_tree_age_with_prefecture(
-                    diameter, tree.prefecture_code))
+                age_c = estimate_tree_age_with_prefecture(
+                    diameter, tree.prefecture_code)
             else:
-                age = round(estimate_tree_age(diameter))
-            age_circumference = age
+                age_c = round(estimate_tree_age(diameter))
+            age_circumference = round(age_c)
+            age = round((age_texture + age_c) / 2.0)
         else:
-            age = age_texture
+            age = round(age_texture)
 
         # 新規作成
         stem = stem_repository.create_stem(
@@ -183,7 +184,7 @@ def create_stem(
             texture=result.smoothness,
             texture_real=result.smoothness_real,
             age=age,
-            age_texture=age_texture,
+            age_texture=round(age_texture),
             age_circumference=age_circumference,
             photo_date=parsed_photo_date,
             debug_image_obj_key=debug_key

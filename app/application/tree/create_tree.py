@@ -1,5 +1,7 @@
+import concurrent.futures
+import datetime
 import uuid
-from typing import Optional
+from typing import Optional, final
 
 from loguru import logger
 from PIL import ImageOps
@@ -13,6 +15,7 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
 from app.domain.constants.anonymous import filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
+from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.image_service import ImageService
 from app.domain.services.lambda_service import LambdaService
 from app.domain.utils import blur
@@ -33,6 +36,7 @@ def create_tree(
     image_service: ImageService,
     geocoding_service: GeocodingService,
     label_detector: LabelDetector,
+    flowering_date_service: FloweringDateService,
     lambda_service: LambdaService,
     photo_date: Optional[str] = None,
     is_approved_debug: bool = False,
@@ -118,14 +122,52 @@ def create_tree(
     # 画像を解析
     logger.debug("画像解析を開始")
     bucket_name = image_service.get_contents_bucket_name()
-    debug_key = f"{tree_id}/entire_debug_{orig_suffix}.jpg"
-    result = lambda_service.analyze_tree_vitality_bloom(s3_bucket=bucket_name,
-                                                        s3_key=image_service.get_full_object_key(
-                                                            orig_image_key),
-                                                        output_bucket=bucket_name,
-                                                        output_key=image_service.get_full_object_key(
-                                                            debug_key)
-                                                        )
+    debug_bloom_key = f"{tree_id}/entire_debug_bloom_{orig_suffix}.jpg"
+    debug_noleaf_key = f"{tree_id}/entire_debug_noleaf_{orig_suffix}.jpg"
+
+    # 並列でLambda関数を実行
+
+    def run_bloom_analysis():
+        return lambda_service.analyze_tree_vitality_bloom(
+            s3_bucket=bucket_name,
+            s3_key=image_service.get_full_object_key(orig_image_key),
+            output_bucket=bucket_name,
+            output_key=image_service.get_full_object_key(debug_bloom_key)
+        )
+
+    def run_noleaf_analysis():
+        return lambda_service.analyze_tree_vitality_noleaf(
+            s3_bucket=bucket_name,
+            s3_key=image_service.get_full_object_key(orig_image_key),
+            output_bucket=bucket_name,
+            output_key=image_service.get_full_object_key(debug_noleaf_key)
+        )
+
+    # 並列実行
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_bloom = executor.submit(run_bloom_analysis)
+        future_noleaf = executor.submit(run_noleaf_analysis)
+
+        # 結果を取得
+        bloom_result = future_bloom.result()
+        noleaf_result = future_noleaf.result()
+
+    logger.debug(f"ブルーム分析結果: {bloom_result}")
+    logger.debug(f"葉なし分析結果: {noleaf_result}")
+
+    spot = flowering_date_service.find_nearest_spot(latitude, longitude)
+    if spot is None:
+        logger.warning(f"最寄りの観測地点が見つかりません: ({latitude}, {longitude})")
+        raise LocationNotFoundError(latitude=latitude, longitude=longitude)
+
+    # 最寄りの観測地点から桜の元気度を推定
+    target_datetime = parsed_photo_date or datetime.datetime.now()
+    noleaf_weight, bloom_weight = spot.estimate_vitality(target_datetime)
+    logger.debug(
+        f"比率: 花なし {noleaf_weight}, 花あり {bloom_weight} (対象日時: {target_datetime})")
+    final_vitality_real = noleaf_result.vitality_real * noleaf_weight + \
+        bloom_result.vitality_real * bloom_weight
+    final_vitality = round(final_vitality_real)
 
     # 人物をぼかす
     logger.debug("ぼかしを開始")
@@ -167,14 +209,20 @@ def create_tree(
             longitude=longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
-            vitality=result.vitality if result.vitality else 0,
-            vitality_real=result.vitality_real if result.vitality_real else 0,
+            vitality=final_vitality,
+            vitality_real=final_vitality_real,
+            vitality_noleaf=noleaf_result.vitality,
+            vitality_noleaf_real=noleaf_result.vitality_real,
+            vitality_noleaf_weight=noleaf_weight,
+            vitality_bloom=bloom_result.vitality,
+            vitality_bloom_real=bloom_result.vitality_real,
+            vitality_bloom_weight=bloom_weight,
             location=address.detail,
             prefecture_code=address.prefecture_code,
             municipality_code=address.municipality_code,
             block=address.block,
             photo_date=parsed_photo_date,
-            debug_image_obj_key=debug_key
+            debug_image_obj_key=debug_bloom_key
         )
 
         # デバッグモードでの自動承認
@@ -185,7 +233,7 @@ def create_tree(
                 tree.entire_tree.censorship_status = CensorshipStatus.APPROVED
             repository.update_tree(tree)
 
-        logger.info(f"木の登録が完了: ツリーUID={tree.uid}, 元気度={result.vitality}")
+        logger.info(f"木の登録が完了: ツリーUID={tree.uid}, 元気度={bloom_result.vitality}")
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")
         raise DatabaseError(message=str(e)) from e
@@ -199,6 +247,6 @@ def create_tree(
         location=tree.location,
         prefecture_code=tree.prefecture_code,
         municipality_code=tree.municipality_code,
-        vitality=result.vitality,
+        vitality=bloom_result.vitality,
         created_at=tree.photo_date,
     )
