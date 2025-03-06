@@ -252,6 +252,6 @@ async def create_tree(
         location=tree.location,
         prefecture_code=tree.prefecture_code,
         municipality_code=tree.municipality_code,
-        vitality=bloom_result.vitality,
+        vitality=final_vitality,
         created_at=tree.photo_date,
     )

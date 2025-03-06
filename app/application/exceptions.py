@@ -132,6 +132,17 @@ class ForbiddenError(ApplicationError):
         )
 
 
+class CanNotDetectedError(ApplicationError):
+    """缶が検出されなかった場合の例外"""
+
+    def __init__(self, reason: str):
+        super().__init__(
+            reason=reason,
+            error_code=113,
+            status=400
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 

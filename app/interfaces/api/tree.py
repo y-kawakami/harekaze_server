@@ -417,6 +417,10 @@ async def create_stem(
         None,
         description="撮影日時（ISO8601形式、例: 2024-04-01T12:34:56Z）（省略時は現在時刻）"
     ),
+    is_can_required: bool = Form(
+        False,
+        description="缶を検出する場合は true"
+    ),
     is_approved_debug: bool = Form(
         True,
         description="デバッグ用: 投稿を承認済みとしてマークする"
@@ -443,6 +447,7 @@ async def create_stem(
         label_detector=label_detector,
         lambda_service=lambda_service,
         photo_date=date,
+        is_can_rquired=is_can_required,
         is_approved_debug=is_approved_debug
     )
 

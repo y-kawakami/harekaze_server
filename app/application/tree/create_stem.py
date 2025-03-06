@@ -6,8 +6,8 @@ from loguru import logger
 from PIL import ImageOps
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ImageUploadError,
-                                        TreeNotDetectedError,
+from app.application.exceptions import (CanNotDetectedError, DatabaseError,
+                                        ImageUploadError, TreeNotDetectedError,
                                         TreeNotFoundError)
 from app.domain.models.bounding_box import BoundingBox
 from app.domain.models.models import CensorshipStatus, User
@@ -34,6 +34,7 @@ async def create_stem(
     label_detector: LabelDetector,
     lambda_service: LambdaService,
     photo_date: Optional[str] = None,
+    is_can_rquired: bool = False,
     is_approved_debug: bool = False,
 ) -> StemInfo:
     """
@@ -91,6 +92,8 @@ async def create_stem(
         if bbox.confidence > max_confidence:
             max_confidence = bbox.confidence
             most_confident_can = bbox
+    if is_can_rquired and most_confident_can is None:
+        raise CanNotDetectedError("缶が検出できません")
 
     # Lambda入力画像をアップロード
     orig_suffix = str(uuid.uuid4())
