@@ -109,26 +109,52 @@ def search_trees(
     logger.info(f"検索完了: {total}件中{len(trees)}件を取得")
 
     # レスポンスの作成
-    return TreeSearchResponse(
-        total=total,  # 全体の件数は変更しない
-        trees=[TreeSearchResult(
+    # 検索結果の木のリストを作成
+    tree_results = []
+    for tree in trees:
+        # 元気度の取得（検閲ステータスと値のチェック）
+        vitality = None
+        entire_tree = tree.entire_tree
+        if (entire_tree is not None and
+            entire_tree.censorship_status == CensorshipStatus.APPROVED and
+            entire_tree.vitality is not None and
+                entire_tree.vitality >= 1 and entire_tree.vitality <= 5):
+            vitality = entire_tree.vitality
+
+        # サムネイル画像URLの取得
+        thumb_obj_key = ""
+        if tree.entire_tree and tree.entire_tree.censorship_status == CensorshipStatus.APPROVED:
+            thumb_obj_key = tree.entire_tree.thumb_obj_key or ""
+        image_thumb_url = image_service.get_image_url(thumb_obj_key)
+
+        # 樹齢の取得
+        age = None
+        if tree.stem and tree.stem.censorship_status == CensorshipStatus.APPROVED:
+            age = tree.stem.age
+
+        # 投稿者情報の取得
+        contributor = None
+        if tree.contributor:
+            contributor = filter_anonymous(tree.contributor)
+
+        # 検索結果オブジェクトの作成
+        tree_result = TreeSearchResult(
             id=tree.uid,
             tree_number=f"#{tree.id}",
-            contributor=filter_anonymous(
-                tree.contributor) if tree.contributor else None,
-            # 注: 以下の検閲ステータスチェックは二重チェックのように見えますが必要です
-            # 木全体(Tree)は承認済みでも関連エンティティ(EntireTreeなど)が未承認の場合があります
-            # リポジトリで返される木自体は検索基準を満たしているが、表示対象の詳細情報は個別に判断する必要があります
-            # これにより、木自体は表示しつつ、未承認の画像やデータは非表示にするという柔軟な対応が可能になります
-            vitality=tree.entire_tree.vitality if tree.entire_tree and tree.entire_tree.censorship_status == CensorshipStatus.APPROVED else None,
-            image_thumb_url=image_service.get_image_url(
-                tree.entire_tree.thumb_obj_key if tree.entire_tree and tree.entire_tree.censorship_status == CensorshipStatus.APPROVED else ""),
+            contributor=contributor,
+            vitality=vitality,
+            image_thumb_url=image_thumb_url,
             latitude=tree.latitude,
             longitude=tree.longitude,
             location=tree.location,
             prefecture_code=tree.prefecture_code or None,
             municipality_code=tree.municipality_code or None,
             created_at=tree.photo_date,
-            age=tree.stem.age if tree.stem and tree.stem.censorship_status == CensorshipStatus.APPROVED else None
-        ) for tree in trees]
+            age=age
+        )
+        tree_results.append(tree_result)
+
+    return TreeSearchResponse(
+        total=total,  # 全体の件数は変更しない
+        trees=tree_results
     )

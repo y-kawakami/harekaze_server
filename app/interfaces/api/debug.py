@@ -12,6 +12,7 @@ from app.domain.services.lambda_service import (LambdaService,
 from app.infrastructure.database.database import get_db
 from app.infrastructure.images.label_detector import (LabelDetector,
                                                       get_label_detector)
+from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.schemas.debug import (BlurPrivacyResponse,
                                           StemAnalysisResponse,
                                           TreeVitalityResponse)
@@ -74,6 +75,7 @@ async def analyze_stem(
 @router.get("/debug/analyze_stem_html", response_class=HTMLResponse)
 async def analyze_stem_html_get(
     request: Request,
+    username: str = Depends(get_current_username),
 ):
     """
     幹の写真を解析するHTMLフォームを表示する
@@ -88,6 +90,7 @@ async def analyze_stem_html_get(
 async def analyze_stem_html_post(
     request: Request,
     image: UploadFile = File(...),
+    username: str = Depends(get_current_username),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
@@ -145,6 +148,7 @@ async def analyze_tree(
 @router.get("/debug/analyze_tree_html", response_class=HTMLResponse)
 async def analyze_tree_html_get(
     request: Request,
+    username: str = Depends(get_current_username),
 ):
     """
     桜の木全体の写真を解析するHTMLフォームを表示する
@@ -159,6 +163,7 @@ async def analyze_tree_html_get(
 async def analyze_tree_html_post(
     request: Request,
     image: UploadFile = File(...),
+    username: str = Depends(get_current_username),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),

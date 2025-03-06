@@ -1,31 +1,19 @@
 import os
-import secrets
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from fastapi.security import HTTPBasic
 
 from app.interfaces.api import auth, debug, info, ping, tree
+from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.api.error_handlers import register_error_handlers
 
 load_dotenv()
+STAGE = os.getenv("STAGE", "dev")
+
 
 security = HTTPBasic()
-
-
-def get_current_username(credentials: HTTPBasicCredentials = Depends(security)):
-    correct_username = secrets.compare_digest(
-        credentials.username, os.getenv("SWAGGER_USERNAME", "harekaze"))
-    correct_password = secrets.compare_digest(
-        credentials.password, os.getenv("SWAGGER_PASSWORD", "hrkz2025"))
-    if not (correct_username and correct_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="認証に失敗しました",
-            headers={"WWW-Authenticate": "Basic"},
-        )
-    return credentials.username
 
 
 def swagger_ui_auth(username: str = Depends(get_current_username)):
@@ -73,25 +61,38 @@ app = FastAPI(
 # エラーハンドラの登録
 register_error_handlers(app)
 
-# CORS設定
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[],  # 以下のドメインを許可していた
-    # allow_origins=[
-    #     "https://develop.d2t1gkpzg4f6i0.amplifyapp.com",
-    #     "https://release-dev-inner.d2t1gkpzg4f6i0.amplifyapp.com",
-    #     "http://localhost:3000",
-    #     "http://localhost:8000",
-    #     "http://localhost:8080"
-    #     "https://localhost:3000",
-    #     "https://localhost:8000",
-    #     "https://localhost:8080"
-    # ],
-    allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if STAGE == "dev":
+    # CORS設定
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "https://kb6rvv06ctr2.com"
+        ],  # 以下のドメインを許可していた
+        # allow_origins=[
+        #     "https://develop.d2t1gkpzg4f6i0.amplifyapp.com",
+        #     "https://release-dev-inner.d2t1gkpzg4f6i0.amplifyapp.com",
+        #     "http://localhost:3000",
+        #     "http://localhost:8000",
+        #     "http://localhost:8080"
+        #     "https://localhost:3000",
+        #     "https://localhost:8000",
+        #     "https://localhost:8080"
+        # ],
+        # allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # CORS設定
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 
 # ルーターの登録
 app.include_router(auth.router, prefix="/sakura_camera/api", tags=["auth"])

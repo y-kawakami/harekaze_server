@@ -1,3 +1,4 @@
+import os
 import uuid
 
 from fastapi import APIRouter, Cookie, Depends, Request, Response
@@ -17,6 +18,8 @@ router = APIRouter()
 # 本番環境では __Host- プレフィックスを使用し、開発環境では省略する
 # SESSION_TOKEN_KEY = "__Host-uiv19ekikv"
 SESSION_TOKEN_KEY = "uiv19ekikv"
+
+STAGE = os.getenv("stage", "dev")
 
 
 @router.post("/auth/session")
@@ -39,14 +42,15 @@ async def create_session(
     # JWTトークンを生成
     jwt_token = auth_service.create_session(user.uid)
 
+    samesite = "none" if STAGE == "dev" else "lax"
+
     # Cookieを設定
     response.set_cookie(
         key=SESSION_TOKEN_KEY,
         value=jwt_token,
         httponly=True,  # JavaScriptからのアクセスを防ぐ
         secure=True,    # HTTPS接続でのみ送信
-        # samesite="lax",  # CSRF対策
-        samesite="none",  # クロスサイトリクエストを許可
+        samesite=samesite,
         max_age=60 * 60 * 24 * 30  # 30日間有効
     )
 
