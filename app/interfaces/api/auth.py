@@ -94,12 +94,14 @@ async def get_current_user(
 
     # 新しいJWTトークンを生成してCookieに設定
     jwt_token = auth_service.create_session(user.uid)
+    samesite = "none" if STAGE == "dev" else "lax"
+
     response.set_cookie(
         key=SESSION_TOKEN_KEY,
         value=jwt_token,
         httponly=True,
         secure=True,
-        samesite="none",
+        samesite=samesite,
         max_age=60 * 60 * 24 * 30  # 30日間有効
     )
 
