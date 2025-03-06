@@ -126,8 +126,8 @@ async def create_kobu(
 
     # 画像をアップロード
     random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/kobu_{random_suffix}.jpg"
-    thumb_key = f"trees/{tree.id}/kobu_thumb_{random_suffix}.jpg"
+    image_key = f"{tree.uid}/kobu_{random_suffix}.jpg"
+    thumb_key = f"{tree.uid}/kobu_thumb_{random_suffix}.jpg"
 
     try:
         if not (await image_service.upload_image(image_data, image_key) and

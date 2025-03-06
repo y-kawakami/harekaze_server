@@ -56,8 +56,8 @@ async def update_tree_decorated_image(
 
     # 画像をアップロード
     random_suffix = str(uuid.uuid4())
-    image_key = f"trees/{tree.id}/decorated_{random_suffix}.jpg"
-    ogp_image_key = f"trees/{tree.id}/ogp_{random_suffix}.jpg"
+    image_key = f"{tree.uid}/decorated_{random_suffix}.jpg"
+    ogp_image_key = f"{tree.uid}/ogp_{random_suffix}.jpg"
 
     try:
         # 装飾画像をアップロード
