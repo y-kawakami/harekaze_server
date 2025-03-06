@@ -24,6 +24,7 @@ from app.application.tree.get_tree_detail import \
 from app.application.tree.search_trees import search_trees as search_trees_app
 from app.application.tree.search_trees_by_time_block import \
     search_trees_by_time_block as search_trees_by_time_block_app
+from app.application.tree.update_stem_og import update_stem_og_app
 from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
@@ -41,7 +42,7 @@ from app.infrastructure.images.label_detector import (LabelDetector,
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
-                                         StemInfo, TengusuInfo,
+                                         StemInfo, StemOgInfo, TengusuInfo,
                                          TimeRangeTreesResponse,
                                          TreeDecoratedResponse,
                                          TreeDetailResponse, TreeResponse,
@@ -443,6 +444,34 @@ async def create_stem(
         lambda_service=lambda_service,
         photo_date=date,
         is_approved_debug=is_approved_debug
+    )
+
+
+@router.post("/tree/{tree_id}/stem/og", response_model=StemOgInfo)
+async def update_stem_og(
+    tree_id: str = Path(
+        ...,
+        description="木のUID"
+    ),
+    ogp_image: UploadFile = File(
+        ...,
+        description="OGP用の画像"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    image_service: ImageService = Depends(get_image_service, use_cache=True)
+):
+    """
+    幹の写真に、OG画像を送信する。
+    """
+    ogp_image_data = await ogp_image.read()
+
+    return await update_stem_og_app(
+        db=db,
+        current_user=current_user,
+        tree_id=tree_id,
+        ogp_image_data=ogp_image_data,
+        image_service=image_service
     )
 
 

@@ -35,6 +35,10 @@ class StemRepository:
         """
         return self.db.query(Stem).filter(Stem.id == stem_id).first()
 
+    def update_stem(self, stem: Stem) -> bool:
+        self.db.commit()
+        return True
+
     def create_stem(
         self,
         tree_id: int,

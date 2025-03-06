@@ -61,6 +61,10 @@ class StemInfo(TreeImageInfo):
         None, description="解析結果画像のURL（デバッグ用）")
 
 
+class StemOgInfo(BaseModel):
+    ogp_image_url: str = Field(..., description="OGP画像のURL")
+
+
 class StemHoleInfo(TreeImageInfo):
     """幹の穴の情報"""
     created_at: datetime = Field(..., description="投稿日時")
