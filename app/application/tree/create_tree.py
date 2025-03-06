@@ -159,6 +159,11 @@ async def create_tree(
     # 最寄りの観測地点から桜の元気度を推定
     target_datetime = parsed_photo_date or datetime.datetime.now()
     noleaf_weight, bloom_weight = spot.estimate_vitality(target_datetime)
+
+    # for debug.
+    # noleaf_weight = 0.0
+    # bloom_weight = 1.0
+
     logger.debug(
         f"比率: 花なし {noleaf_weight}, 花あり {bloom_weight} (対象日時: {target_datetime})")
     final_vitality_real = noleaf_result.vitality_real * noleaf_weight + \

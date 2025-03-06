@@ -10,7 +10,7 @@ from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.api.error_handlers import register_error_handlers
 
 load_dotenv()
-STAGE = os.getenv("STAGE", "dev")
+STAGE = os.getenv("stage", "dev")
 
 
 security = HTTPBasic()
@@ -65,6 +65,15 @@ if STAGE == "dev":
     # CORS設定
     app.add_middleware(
         CORSMiddleware,
+        allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    # CORS設定
+    app.add_middleware(
+        CORSMiddleware,
         allow_origins=[
             "https://kb6rvv06ctr2.com"
         ],  # 以下のドメインを許可していた
@@ -79,15 +88,6 @@ if STAGE == "dev":
         #     "https://localhost:8080"
         # ],
         # allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
-else:
-    # CORS設定
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origin_regex=r'.*',  # すべてのドメインを許可（セキュリティ上非推奨）
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
