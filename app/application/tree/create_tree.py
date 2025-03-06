@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import os
 import uuid
 from typing import Optional
 
@@ -24,6 +25,8 @@ from app.infrastructure.geocoding.geocoding_service import GeocodingService
 from app.infrastructure.images.label_detector import LabelDetector
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
+
+STAGE = os.getenv("stage", "dev")
 
 
 async def create_tree(
@@ -161,8 +164,9 @@ async def create_tree(
     noleaf_weight, bloom_weight = spot.estimate_vitality(target_datetime)
 
     # for debug.
-    # noleaf_weight = 0.0
-    # bloom_weight = 1.0
+    if STAGE == 'prd':
+        noleaf_weight = 0.0
+        bloom_weight = 1.0
 
     logger.debug(
         f"比率: 花なし {noleaf_weight}, 花あり {bloom_weight} (対象日時: {target_datetime})")
