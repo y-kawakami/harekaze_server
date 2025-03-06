@@ -8,6 +8,7 @@ from fastapi.security import HTTPBasic
 from app.interfaces.api import auth, debug, info, ping, tree
 from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.api.error_handlers import register_error_handlers
+from app.interfaces.share import share
 
 load_dotenv()
 STAGE = os.getenv("stage", "dev")
@@ -100,6 +101,7 @@ app.include_router(tree.router, prefix="/sakura_camera/api", tags=["tree"])
 app.include_router(info.router, prefix="/sakura_camera/api", tags=["info"])
 app.include_router(ping.router, prefix="/sakura_camera/api", tags=["ping"])
 app.include_router(debug.router, prefix="/sakura_camera/api", tags=["debug"])
+app.include_router(share.router, prefix="/sakura_camera", tags=["share"])
 
 # カスタムSwagger UIエンドポイントを追加
 

@@ -162,6 +162,7 @@ class Stem(Base):
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
+    ogp_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     photo_date: Mapped[datetime] = mapped_column(

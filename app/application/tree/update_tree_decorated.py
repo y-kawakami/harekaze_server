@@ -49,9 +49,13 @@ async def update_tree_decorated_image(
 
     # 木の取得
     repository = TreeRepository(db)
-    tree = repository.get_tree(tree_id)
+    tree = repository.get_tree_with_entire_tree(tree_id)
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
+        raise TreeNotFoundError(tree_id=tree_id)
+    entire_tree = tree.entire_tree
+    if not entire_tree:
+        logger.warning(f"木全体の画像が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
 
     # 画像をアップロード
@@ -77,8 +81,8 @@ async def update_tree_decorated_image(
         raise ImageUploadError(tree_uid=tree_id) from e
 
     # DBを更新
-    tree.decorated_image_obj_key = image_key
-    tree.ogp_image_obj_key = ogp_image_key
+    entire_tree.decorated_image_obj_key = image_key
+    entire_tree.ogp_image_obj_key = ogp_image_key
     if contributor:
         tree.contributor = contributor
     repository.update_tree(tree)

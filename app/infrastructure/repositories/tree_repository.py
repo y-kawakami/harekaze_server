@@ -4,7 +4,7 @@ from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 from sqlalchemy import and_, case, func, or_
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.domain.models.area_stats import AreaStats
 from app.domain.models.models import (CensorshipStatus, EntireTree, Kobu,
@@ -236,6 +236,14 @@ class TreeRepository:
     def get_tree(self, tree_uid: str) -> Optional[Tree]:
         """UIDを使用してツリーを取得する"""
         return self.db.query(Tree).filter(Tree.uid == tree_uid).first()
+
+    def get_tree_with_entire_tree(self, tree_uid: str) -> Optional[Tree]:
+        """UIDを使用してツリーを取得する"""
+        return self.db.query(Tree).options(joinedload(Tree.entire_tree)).filter(Tree.uid == tree_uid).first()
+
+    def get_tree_with_stem(self, tree_uid: str) -> Optional[Tree]:
+        """UIDを使用してツリーを取得する"""
+        return self.db.query(Tree).options(joinedload(Tree.stem)).filter(Tree.uid == tree_uid).first()
 
     def get_tree_by_id(self, tree_id: int) -> Optional[Tree]:
         """内部IDを使用してツリーを取得する（内部処理用）"""
