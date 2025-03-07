@@ -192,3 +192,52 @@ async def analyze_tree_html_post(
             {"request": request, "result": None,
                 "error": f"エラーが発生しました: {str(e)}"}
         )
+
+
+@router.get("/debug/blur_privacy_html", response_class=HTMLResponse)
+async def blur_privacy_html_get(
+    request: Request,
+    username: str = Depends(get_current_username),
+):
+    """
+    人物ぼかしデバッグページを表示する
+    """
+    return templates.TemplateResponse(
+        "blur_privacy.html",
+        {"request": request, "blur_strength": "1.0"}
+    )
+
+
+@router.post("/debug/blur_privacy_html", response_class=HTMLResponse)
+async def blur_privacy_html_post(
+    request: Request,
+    image: UploadFile = File(...),
+    blur_strength: float = Form(1.0),
+    username: str = Depends(get_current_username),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    label_detector: LabelDetector = Depends(
+        get_label_detector, use_cache=True),
+):
+    """
+    人物ぼかし処理を行い、結果をHTMLで表示する
+    """
+    try:
+        image_data = await image.read()
+        result = await app.application.debug.blur_privacy.blur_privacy_app(
+            image_data=image_data,
+            image_service=image_service,
+            label_detector=label_detector,
+            blur_strength=blur_strength,
+        )
+
+        return templates.TemplateResponse(
+            "blur_privacy.html",
+            {"request": request, "result": result,
+                "blur_strength": str(blur_strength)}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "blur_privacy.html",
+            {"request": request, "result": None, "blur_strength": str(blur_strength),
+                "error": f"エラーが発生しました: {str(e)}"}
+        )
