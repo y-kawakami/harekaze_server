@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import os
+import time as time_module  # 時間計測用にtimeモジュールをインポート
 import uuid
 from typing import Optional
 
@@ -68,13 +69,15 @@ async def create_tree(
         ImageUploadError: 画像のアップロードに失敗した場合
         DatabaseError: データベースの操作に失敗した場合
     """
-
+    start_time_total = time_module.time()
     if contributor is not None and is_ng_word(contributor):
         raise NgWordError(contributor)
 
     logger.info(
         f"新しい木の登録を開始: ユーザーID={current_user.id}, 位置={latitude},{longitude}")
 
+    # 住所情報の取得
+    start_time = time_module.time()
     address = geocoding_service.get_address(latitude, longitude)
     if address.country is None:
         logger.warning(f"指定された場所が見つかりません: ({latitude}, {longitude})")
@@ -85,8 +88,11 @@ async def create_tree(
     if address.detail is None or address.prefecture_code is None or address.municipality_code is None:
         logger.warning(f"住所情報が不足しています: ({latitude}, {longitude})")
         raise LocationNotFoundError(latitude=latitude, longitude=longitude)
+    end_time = time_module.time()
+    logger.info(f"住所情報の取得処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 日時の解析
+    start_time = time_module.time()
     parsed_photo_date = None
     if photo_date:
         parsed_photo_date = DateUtils.parse_iso_date(photo_date)
@@ -96,24 +102,35 @@ async def create_tree(
                 reason=f"不正な日時形式です: {photo_date}",
                 param_name="photo_date"
             )
+    end_time = time_module.time()
+    logger.info(f"日時解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
+    # 画像の前処理
+    start_time = time_module.time()
     image = image_service.bytes_to_pil(image_data)
     rotated_image = ImageOps.exif_transpose(
         image, in_place=True)  # EXIF情報に基づいて適切に回転
     if rotated_image is not None:
         image = rotated_image
+    end_time = time_module.time()
+    logger.info(f"画像の前処理: {(end_time - start_time) * 1000:.2f}ms")
 
+    # ラベル検出
+    start_time = time_module.time()
     labels = label_detector.detect(image, ['Tree', 'Person'])
     print(labels)
     if "Tree" not in labels:
         logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
         raise TreeNotDetectedError()
+    end_time = time_module.time()
+    logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # UIDを生成
     tree_id = str(uuid.uuid4())
     logger.debug(f"生成されたツリーUID: {tree_id}")
 
     # Lambda入力画像をアップロード
+    start_time = time_module.time()
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/entire_orig_{orig_suffix}.jpg"
     try:
@@ -121,8 +138,11 @@ async def create_tree(
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_id) from e
+    end_time = time_module.time()
+    logger.info(f"Lambda入力画像のアップロード: {(end_time - start_time) * 1000:.2f}ms")
 
     # 画像を解析
+    start_time = time_module.time()
     logger.debug("画像解析を開始")
     bucket_name = image_service.get_contents_bucket_name()
     debug_bloom_key = f"{tree_id}/entire_debug_bloom_{orig_suffix}.jpg"
@@ -153,7 +173,11 @@ async def create_tree(
 
     logger.debug(f"ブルーム分析結果: {bloom_result}")
     logger.debug(f"葉なし分析結果: {noleaf_result}")
+    end_time = time_module.time()
+    logger.info(f"画像解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
+    # 桜の元気度推定
+    start_time = time_module.time()
     spot = flowering_date_service.find_nearest_spot(latitude, longitude)
     if spot is None:
         logger.warning(f"最寄りの観測地点が見つかりません: ({latitude}, {longitude})")
@@ -173,8 +197,11 @@ async def create_tree(
     final_vitality_real = noleaf_result.vitality_real * noleaf_weight + \
         bloom_result.vitality_real * bloom_weight
     final_vitality = round(final_vitality_real)
+    end_time = time_module.time()
+    logger.info(f"桜の元気度推定処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 人物をぼかす
+    start_time = time_module.time()
     logger.debug("ぼかしを開始")
     person_labels = labels.get('Person', [])
     if len(person_labels) > 0:
@@ -183,12 +210,18 @@ async def create_tree(
             image, person_labels)
         image_data = image_service.pil_to_bytes(blurred_image, 'jpeg')
         image = blurred_image
+    end_time = time_module.time()
+    logger.info(f"人物ぼかし処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # サムネイル作成
+    start_time = time_module.time()
     logger.debug("サムネイル作成を開始")
     thumb_data = image_service.create_thumbnail(image_data)
+    end_time = time_module.time()
+    logger.info(f"サムネイル作成: {(end_time - start_time) * 1000:.2f}ms")
 
     # 画像をアップロード
+    start_time = time_module.time()
     random_suffix = str(uuid.uuid4())
     image_key = f"{tree_id}/entire_{random_suffix}.jpg"
     thumb_key = f"{tree_id}/entire_thumb_{random_suffix}.jpg"
@@ -202,8 +235,11 @@ async def create_tree(
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_uid=tree_id) from e
+    end_time = time_module.time()
+    logger.info(f"画像とサムネイルのアップロード: {(end_time - start_time) * 1000:.2f}ms")
 
     # DBに登録
+    start_time = time_module.time()
     try:
         repository = TreeRepository(db)
         tree = repository.create_tree(
@@ -242,6 +278,12 @@ async def create_tree(
     except Exception as e:
         logger.exception(f"DB登録中にエラー発生: {str(e)}")
         raise DatabaseError(message=str(e)) from e
+    end_time = time_module.time()
+    logger.info(f"DB登録処理: {(end_time - start_time) * 1000:.2f}ms")
+
+    end_time_total = time_module.time()
+    logger.info(
+        f"木の登録処理全体: {(end_time_total - start_time_total) * 1000:.2f}ms")
 
     return TreeResponse(
         id=tree.uid,

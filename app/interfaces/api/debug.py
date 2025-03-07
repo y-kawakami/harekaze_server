@@ -40,7 +40,7 @@ async def blur_privacy(
     人物にぼかしをかける
     """
     image_data = await image.read()
-    return app.application.debug.blur_privacy.blur_privacy_app(
+    return await app.application.debug.blur_privacy.blur_privacy_app(
         image_data=image_data,
         image_service=image_service,
         label_detector=label_detector,

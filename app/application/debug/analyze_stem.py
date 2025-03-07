@@ -3,6 +3,7 @@ import uuid
 from loguru import logger
 from PIL import ImageOps
 
+from app.application.common.constants import CAN_WIDTH_MM
 from app.domain.models.bounding_box import BoundingBox
 from app.domain.models.tree_age import (estimate_tree_age,
                                         estimate_tree_age_from_texture)
@@ -74,6 +75,7 @@ async def analyze_stem_app(
         s3_bucket=bucket_name,
         s3_key=image_service.get_full_object_key(orig_image_key),
         can_bbox=most_confident_can,
+        can_width_mm=CAN_WIDTH_MM,
         output_bucket=bucket_name,
         output_key=image_service.get_full_object_key(debug_key)
     )

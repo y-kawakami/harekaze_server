@@ -1,0 +1,1 @@
+CAN_WIDTH_MM = 96.5

@@ -1,3 +1,4 @@
+import time as time_module  # 時間計測用にtimeモジュールをインポート
 import uuid
 from datetime import datetime
 from typing import Optional
@@ -6,6 +7,7 @@ from loguru import logger
 from PIL import ImageOps
 from sqlalchemy.orm import Session
 
+from app.application.common.constants import CAN_WIDTH_MM
 from app.application.exceptions import (CanNotDetectedError, DatabaseError,
                                         ImageUploadError, TreeNotDetectedError,
                                         TreeNotFoundError)
@@ -21,8 +23,6 @@ from app.infrastructure.images.label_detector import LabelDetector
 from app.infrastructure.repositories.stem_repository import StemRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import StemInfo
-
-CAN_WIDTH_MM = 96.5
 
 
 async def create_stem(
@@ -60,14 +60,18 @@ async def create_stem(
         TreeNotFoundError: 指定された木が見つからない場合
         ImageUploadError: 画像のアップロードに失敗した場合
     """
+    start_time_total = time_module.time()
     logger.info(f"幹の写真登録開始: tree_id={tree_id}")
 
     # 木の取得
+    start_time = time_module.time()
     tree_repository = TreeRepository(db)
     tree = tree_repository.get_tree(tree_id)
     if not tree:
         logger.warning(f"木が見つかりません: tree_id={tree_id}")
         raise TreeNotFoundError(tree_id=tree_id)
+    end_time = time_module.time()
+    logger.info(f"木の取得処理: {(end_time - start_time) * 1000:.2f}ms")
 
     '''
     if tree.user_id != current_user.id:
@@ -75,12 +79,18 @@ async def create_stem(
         raise ForbiddenError("この木に対して写真を登録することはできません")
     '''
 
+    # 画像の前処理
+    start_time = time_module.time()
     image = image_service.bytes_to_pil(image_data)
     rotated_image = ImageOps.exif_transpose(
         image, in_place=True)  # EXIF情報に基づいて適切に回転
     if rotated_image is not None:
         image = rotated_image
+    end_time = time_module.time()
+    logger.info(f"画像の前処理: {(end_time - start_time) * 1000:.2f}ms")
 
+    # ラベル検出
+    start_time = time_module.time()
     labels = label_detector.detect(image, ['Tree', 'Person', 'Can'])
     if "Tree" not in labels:
         logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
@@ -96,8 +106,11 @@ async def create_stem(
             most_confident_can = bbox
     if is_can_rquired and most_confident_can is None:
         raise CanNotDetectedError("缶が検出できません")
+    end_time = time_module.time()
+    logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # Lambda入力画像をアップロード
+    start_time = time_module.time()
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/stem_orig_{orig_suffix}.jpg"
     try:
@@ -105,8 +118,11 @@ async def create_stem(
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_id) from e
+    end_time = time_module.time()
+    logger.info(f"Lambda入力画像のアップロード: {(end_time - start_time) * 1000:.2f}ms")
 
     # 画像の解析
+    start_time = time_module.time()
     logger.debug("画像解析を開始")
     bucket_name = image_service.get_contents_bucket_name()
     debug_key = f"{tree_id}/stem_debug_{orig_suffix}.jpg"
@@ -118,8 +134,11 @@ async def create_stem(
         output_bucket=bucket_name,
         output_key=image_service.get_full_object_key(debug_key)
     )
+    end_time = time_module.time()
+    logger.info(f"画像解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 人物をぼかす
+    start_time = time_module.time()
     logger.debug("ぼかしを開始")
     person_labels = labels.get('Person', [])
     if len(person_labels) > 0:
@@ -128,12 +147,18 @@ async def create_stem(
             image, person_labels)
         image_data = image_service.pil_to_bytes(blurred_image, 'jpeg')
         image = blurred_image
+    end_time = time_module.time()
+    logger.info(f"人物ぼかし処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # サムネイル作成
+    start_time = time_module.time()
     logger.debug("サムネイル作成を開始")
     thumb_data = image_service.create_thumbnail(image_data)
+    end_time = time_module.time()
+    logger.info(f"サムネイル作成: {(end_time - start_time) * 1000:.2f}ms")
 
     # 画像をアップロード
+    start_time = time_module.time()
     random_suffix = str(uuid.uuid4())
     image_key = f"{tree_id}/stem_{random_suffix}.jpg"
     thumb_key = f"{tree_id}/stem_thumb_{random_suffix}.jpg"
@@ -143,8 +168,11 @@ async def create_stem(
     except Exception as e:
         logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
         raise ImageUploadError(tree_id) from e
+    end_time = time_module.time()
+    logger.info(f"画像とサムネイルのアップロード: {(end_time - start_time) * 1000:.2f}ms")
 
     # 日時の解析
+    start_time = time_module.time()
     parsed_photo_date = None
     if photo_date:
         try:
@@ -153,8 +181,11 @@ async def create_stem(
         except ValueError:
             logger.warning(
                 f"Invalid date format: {photo_date}, using current time instead")
+    end_time = time_module.time()
+    logger.info(f"日時解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 幹の情報を保存
+    start_time = time_module.time()
     stem_repository = StemRepository(db)
     try:
         # 既存の記録があれば削除
@@ -203,10 +234,19 @@ async def create_stem(
             db.commit()
 
         logger.info(f"幹の写真登録完了: stem_id={stem.id}")
+        end_time = time_module.time()
+        logger.info(f"幹情報の保存処理: {(end_time - start_time) * 1000:.2f}ms")
 
         # レスポンス用情報取得
+        start_time = time_module.time()
         image_url = image_service.get_image_url(stem.image_obj_key)
         thumb_url = image_service.get_image_url(stem.thumb_obj_key)
+        end_time = time_module.time()
+        logger.info(f"URL取得処理: {(end_time - start_time) * 1000:.2f}ms")
+
+        end_time_total = time_module.time()
+        logger.info(
+            f"幹の写真登録処理全体: {(end_time_total - start_time_total) * 1000:.2f}ms")
 
         return StemInfo(
             image_url=image_url,
