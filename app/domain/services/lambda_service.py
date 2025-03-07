@@ -81,6 +81,7 @@ class LambdaService:
         s3_bucket: str,
         s3_key: str,
         can_bbox: Optional[BoundingBox],
+        can_width_mm: Optional[float],
         output_bucket: str,
         output_key: str
     ) -> StemAnalysisResult:
@@ -124,6 +125,7 @@ class LambdaService:
             's3_bucket': s3_bucket,
             's3_key': s3_key,
             'can_bbox': can_bbox_payload,
+            'can_width_mm': can_width_mm,
             'output_bucket': output_bucket,
             'output_key': output_key
         }

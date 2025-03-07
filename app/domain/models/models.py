@@ -151,6 +151,7 @@ class Stem(Base):
         Integer, ForeignKey('trees.id'))
     can_detected: Mapped[bool] = mapped_column(
         Boolean, default=False)
+    can_width_mm: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     texture: Mapped[Optional[int]] = mapped_column(Integer)
     texture_real: Mapped[Optional[float]] = mapped_column(Float)

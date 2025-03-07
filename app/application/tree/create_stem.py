@@ -22,6 +22,8 @@ from app.infrastructure.repositories.stem_repository import StemRepository
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import StemInfo
 
+CAN_WIDTH_MM = 96.5
+
 
 async def create_stem(
     db: Session,
@@ -112,6 +114,7 @@ async def create_stem(
         s3_bucket=bucket_name,
         s3_key=image_service.get_full_object_key(orig_image_key),
         can_bbox=most_confident_can,
+        can_width_mm=CAN_WIDTH_MM,
         output_bucket=bucket_name,
         output_key=image_service.get_full_object_key(debug_key)
     )
@@ -182,6 +185,7 @@ async def create_stem(
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             can_detected=most_confident_can is not None,
+            can_width_mm=CAN_WIDTH_MM if most_confident_can else None,
             circumference=result.diameter_mm * 0.1 if result.diameter_mm else None,
             texture=result.smoothness,
             texture_real=result.smoothness_real,
