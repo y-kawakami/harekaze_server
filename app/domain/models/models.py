@@ -366,3 +366,22 @@ class MunicipalityStats(Base):
         DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(timezone.utc),
                                                  onupdate=lambda: datetime.now(timezone.utc))
+
+
+class Admin(Base):
+    """管理者アカウント"""
+    __tablename__ = "admins"
+
+    id: Mapped[int] = mapped_column(
+        Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(
+        String(50), unique=True, nullable=False)
+    hashed_password: Mapped[str] = mapped_column(
+        String(255), nullable=False)
+    last_login: Mapped[Optional[datetime]] = mapped_column(
+        DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc))

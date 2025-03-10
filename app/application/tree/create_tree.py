@@ -188,9 +188,9 @@ async def create_tree(
     noleaf_weight, bloom_weight = spot.estimate_vitality(target_datetime)
 
     # for debug.
-    if STAGE == 'prd':
-        noleaf_weight = 0.0
-        bloom_weight = 1.0
+    # if STAGE == 'prd':
+    #     noleaf_weight = 0.0
+    #     bloom_weight = 1.0
 
     logger.debug(
         f"比率: 花なし {noleaf_weight}, 花あり {bloom_weight} (対象日時: {target_datetime})")
