@@ -110,6 +110,7 @@ def _create_block_response(
             block=tree.block,
             photo_date=tree.photo_date,
             photo_time=tree.photo_time,
+            contributor=tree.contributor,
             image_url=image_url,
             thumb_url=thumb_url
         )

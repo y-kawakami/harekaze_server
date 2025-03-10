@@ -341,6 +341,7 @@ class TimeRangeTreeItem(BaseModel):
     block: Optional[str] = Field(None, description="ブロック（A, B, C）")
     photo_date: datetime = Field(..., description="撮影日時")
     photo_time: time = Field(..., description="撮影時間")
+    contributor: Optional[str] = Field(None, description="投稿者名")
     image_url: str = Field(..., description="画像URL")
     thumb_url: str = Field(..., description="サムネイルURL")
 
