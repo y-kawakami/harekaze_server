@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import List, Optional
 
 from pydantic import BaseModel, Field
 
@@ -36,3 +36,55 @@ class AdminCreate(BaseModel):
 class AdminUpdate(BaseModel):
     """管理者更新リクエスト"""
     password: Optional[str] = Field(None, description="管理者パスワード", min_length=8)
+
+
+class ImageCensorInfo(BaseModel):
+    """画像の検閲情報"""
+    image_thumb_url: Optional[str] = Field(None, description="サムネイル画像のURL")
+    censorship_status: int = Field(...,
+                                   description="検閲ステータス（0:未検閲, 1:OK, 2:NG, 3:エスカレーション）")
+
+
+class TreeCensorItem(BaseModel):
+    """検閲対象の投稿情報"""
+    tree_id: int = Field(..., description="投稿ID")
+    entire_tree: Optional[ImageCensorInfo] = Field(None, description="桜の全体画像")
+    stem: Optional[ImageCensorInfo] = Field(None, description="幹の画像")
+    stem_hole: Optional[ImageCensorInfo] = Field(None, description="幹の穴の画像")
+    mushroom: Optional[ImageCensorInfo] = Field(None, description="キノコの画像")
+    tengusu: Optional[ImageCensorInfo] = Field(None, description="テングス病の画像")
+    kobu: Optional[ImageCensorInfo] = Field(None, description="こぶの画像")
+    contributor: Optional[str] = Field(None, description="投稿者名")
+    contributor_censorship_status: int = Field(..., description="投稿者名の検閲ステータス")
+    location: Optional[str] = Field(None, description="撮影場所")
+    censorship_status: int = Field(..., description="投稿全体の検閲ステータス")
+    created_at: datetime = Field(..., description="投稿日時")
+
+    class Config:
+        from_attributes = True
+
+
+class TreeCensorListResponse(BaseModel):
+    """投稿一覧レスポンス"""
+    total: int = Field(..., description="総件数")
+    items: List[TreeCensorItem] = Field(..., description="投稿一覧")
+
+
+class TreeCensorListRequest(BaseModel):
+    """投稿一覧リクエスト"""
+    begin_date: Optional[datetime] = Field(None, description="検索開始日時")
+    end_date: Optional[datetime] = Field(None, description="検索終了日時")
+    tree_censorship_status: Optional[List[int]] = Field(
+        None, description="全体の検閲ステータスリスト")
+    detail_censorship_status: Optional[List[int]] = Field(
+        None, description="詳細の検閲ステータスリスト")
+    page: int = Field(1, description="ページ番号", ge=1)
+    per_page: int = Field(20, description="1ページあたりの件数", ge=1, le=100)
+
+
+class TreeCensorDetailResponse(TreeCensorItem):
+    """検閲対象の投稿詳細情報"""
+    censorship_ng_reason: Optional[str] = Field(None, description="NG理由")
+
+    class Config:
+        from_attributes = True

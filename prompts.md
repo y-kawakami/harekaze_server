@@ -400,3 +400,61 @@ MySQLのテーブル構成です。　
 画像解析のモデルは別途実装するので、
 現状はモック実装としてください。
 それ以外は完全な実装を行なってください。
+
+
+
+
+次に管理者用の検閲を行うためのAPIを追加します。
+管理者用APIは /admin_api のパスに作成され、先ほど実装した認証も行います。
+
+まず投稿一覧APIを追加します。GET /admin_api/trees です。
+このAPIはユーザからの投稿(Treeテーブルの内容)を一覧で返します。
+投稿内容は以下です。　
+
+- 投稿ID(tree_id)
+  - Tree.id に相当
+- 桜画像()
+  - EntireTree のサムネイル画像URL
+  - 検閲結果
+    - OK, NG, ESC, 未判定のいずれか
+    - EntireTree.censorship_status を返す
+- 幹画像
+  - Stem のサムネイル画像URL
+  - 検閲結果
+    - OK, NG, ESC, 未判定のいずれか
+    - EntireTree.censorship_status を返す
+- 幹の穴
+  - StemHole のサムネイル画像URL
+  - 検閲結果
+    - OK, NG, ESC, 未判定のいずれか
+    - StemHole.censorship_status を返す
+- 以下、キノコ(Mushroom), テングス(Tengus), コブ(Kobu) も同様です。
+- ニックネーム
+  - Tree.contributor
+- 撮影場所
+  - Tree.location
+- 判定
+  - Tree.censorship_status を返す
+- 投稿日時
+  - Tree.created_at を返す
+
+
+パラメータは以下です。
+- 投稿日時
+  - begin_date
+  - end_date
+- 全体の検閲ステータスリスト(オプション)
+  - tree_censorship_status
+    - 配列
+  - Tree.censorship_status に基づきマッチング
+- 詳細の検閲ステータスリスト(オプション)
+  - default_censorship_status
+    - 配列
+  - Tree.contributor_censorship_status, Stem, StemHole, Mushroom, Tengus, Kobu のステータスにこれらが含まれていればマッチ
+
+
+
+次に、検閲一覧から、各レコードの詳細を取得するAPIを実装します。
+パスは　GET /admin_api/trees/{tree_id} です。
+このAPIは、一覧で取得したレコードの内容に加え、以下も追加します。
+Tree.censorship_ng_reason(NG理由)

@@ -5,7 +5,7 @@ from typing import List, Optional
 
 from geoalchemy2.types import Geometry
 from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Index, Integer,
-                        Numeric, String, Time)
+                        Numeric, String, Text, Time)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
@@ -54,6 +54,9 @@ class Tree(Base):
         String(1), index=True)  # ブロック（A, B, C）
     censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    contributor_censorship_status: Mapped[int] = mapped_column(
+        Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
+    censorship_ng_reason: Mapped[Optional[str]] = mapped_column(Text)
     photo_date: Mapped[datetime] = mapped_column(
         # 撮影日時
         DateTime, default=lambda: datetime.now(timezone.utc), index=True)
