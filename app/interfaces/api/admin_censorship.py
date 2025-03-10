@@ -1,15 +1,18 @@
 from datetime import datetime
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
+from fastapi import (APIRouter, Body, Depends, HTTPException, Path, Query,
+                     status)
 from sqlalchemy.orm import Session
 
 from app.application.admin.tree_detail import get_tree_detail
 from app.application.admin.tree_list import get_tree_list
+from app.application.admin.update_censorship import update_censorship
 from app.domain.models.models import Admin
 from app.infrastructure.database.database import get_db
 from app.interfaces.api.admin_auth import get_current_admin
-from app.interfaces.schemas.admin import (TreeCensorDetailResponse,
+from app.interfaces.schemas.admin import (CensorshipUpdateRequest,
+                                          TreeCensorDetailResponse,
                                           TreeCensorListResponse)
 
 router = APIRouter(
@@ -70,3 +73,26 @@ async def get_tree_detail_api(
         )
 
     return tree_detail
+
+
+@router.put("/trees/{tree_id}", response_model=TreeCensorDetailResponse)
+async def update_tree_censorship(
+    tree_id: int = Path(..., description="投稿ID"),
+    update_data: CensorshipUpdateRequest = Body(..., description="更新データ"),
+    current_admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    投稿の検閲状態を更新する（管理者用）
+    """
+    # 検閲状態を更新
+    updated_tree = update_censorship(
+        db=db, tree_id=tree_id, update_data=update_data)
+
+    if not updated_tree:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="指定された投稿が見つかりません"
+        )
+
+    return updated_tree

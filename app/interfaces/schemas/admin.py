@@ -88,3 +88,24 @@ class TreeCensorDetailResponse(TreeCensorItem):
 
     class Config:
         from_attributes = True
+
+
+class CensorshipUpdateRequest(BaseModel):
+    """検閲状態更新リクエスト"""
+    tree_censorship_status: Optional[int] = Field(
+        None, description="投稿全体の検閲ステータス")
+    contributor_censorship_status: Optional[int] = Field(
+        None, description="投稿者名の検閲ステータス")
+    entire_tree_censorship_status: Optional[int] = Field(
+        None, description="桜全体画像の検閲ステータス")
+    stem_censorship_status: Optional[int] = Field(
+        None, description="幹の検閲ステータス")
+    stem_hole_censorship_status: Optional[int] = Field(
+        None, description="幹の穴の検閲ステータス")
+    mushroom_censorship_status: Optional[int] = Field(
+        None, description="キノコの検閲ステータス")
+    tengusu_censorship_status: Optional[int] = Field(
+        None, description="テングス病の検閲ステータス")
+    kobu_censorship_status: Optional[int] = Field(
+        None, description="こぶの検閲ステータス")
+    censorship_ng_reason: Optional[str] = Field(None, description="NG理由")
