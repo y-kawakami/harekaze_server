@@ -5,13 +5,15 @@ from fastapi import (APIRouter, Body, Depends, HTTPException, Path, Query,
                      status)
 from sqlalchemy.orm import Session
 
+from app.application.admin.censorship_summary import get_censorship_summary
 from app.application.admin.tree_detail import get_tree_detail
 from app.application.admin.tree_list import get_tree_list
 from app.application.admin.update_censorship import update_censorship
 from app.domain.models.models import Admin
 from app.infrastructure.database.database import get_db
 from app.interfaces.api.admin_auth import get_current_admin
-from app.interfaces.schemas.admin import (CensorshipUpdateRequest,
+from app.interfaces.schemas.admin import (CensorshipSummaryResponse,
+                                          CensorshipUpdateRequest,
                                           TreeCensorDetailResponse,
                                           TreeCensorListResponse)
 
@@ -96,3 +98,18 @@ async def update_tree_censorship(
         )
 
     return updated_tree
+
+
+@router.get("/trees/summary", response_model=CensorshipSummaryResponse)
+async def get_censorship_summary_api(
+    month: str = Query(..., description="対象月（YYYY-MM形式）"),
+    current_admin: Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db)
+):
+    """
+    検閲サマリーを取得する（管理者用）
+
+    指定された月の各日について、投稿数と検閲ステータス別の数を集計します。
+    """
+    summary = get_censorship_summary(db=db, month=month)
+    return summary

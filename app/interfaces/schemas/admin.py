@@ -109,3 +109,19 @@ class CensorshipUpdateRequest(BaseModel):
     kobu_censorship_status: Optional[int] = Field(
         None, description="こぶの検閲ステータス")
     censorship_ng_reason: Optional[str] = Field(None, description="NG理由")
+
+
+class DailyCensorshipStat(BaseModel):
+    """日別検閲統計情報"""
+    date: str = Field(..., description="日付（YYYY-MM-DD形式）")
+    total_posts: int = Field(..., description="投稿総数")
+    approved_count: int = Field(..., description="承認済み数")
+    rejected_count: int = Field(..., description="拒否数")
+    escalated_count: int = Field(..., description="エスカレーション数")
+    uncensored_count: int = Field(..., description="未検閲数")
+
+
+class CensorshipSummaryResponse(BaseModel):
+    """検閲サマリーレスポンス"""
+    month: str = Field(..., description="対象月（YYYY-MM形式）")
+    days: List[DailyCensorshipStat] = Field(..., description="日別統計情報")
