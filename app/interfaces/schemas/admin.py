@@ -57,6 +57,8 @@ class TreeCensorItem(BaseModel):
     contributor: Optional[str] = Field(None, description="投稿者名")
     contributor_censorship_status: int = Field(..., description="投稿者名の検閲ステータス")
     location: Optional[str] = Field(None, description="撮影場所")
+    latitude: float = Field(..., description="緯度")
+    longitude: float = Field(..., description="経度")
     censorship_status: int = Field(..., description="投稿全体の検閲ステータス")
     created_at: datetime = Field(..., description="投稿日時")
 

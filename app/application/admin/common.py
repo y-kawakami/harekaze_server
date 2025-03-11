@@ -1,15 +1,21 @@
 from app.domain.models.models import Tree
 from app.domain.services.image_service import ImageService
+from app.domain.services.municipality_service import MunicipalityService
 from app.interfaces.schemas.admin import ImageCensorInfo, TreeCensorItem
 
 
-def create_tree_censor_item(tree: Tree, image_service: ImageService) -> TreeCensorItem:
+def create_tree_censor_item(
+    tree: Tree,
+    image_service: ImageService,
+    municipality_service: MunicipalityService
+) -> TreeCensorItem:
     """
     TreeオブジェクトからTreeCensorItemを作成する
 
     Args:
         tree: Treeオブジェクト
         image_service: 画像サービス
+        municipality_service: 自治体サービス
 
     Returns:
         TreeCensorItem: 検閲対象の投稿情報
@@ -70,6 +76,14 @@ def create_tree_censor_item(tree: Tree, image_service: ImageService) -> TreeCens
             censorship_status=kobu.censorship_status
         )
 
+    # 自治体名を取得
+    municipality = None
+    if tree.municipality_code:
+        municipality_obj = municipality_service.get_municipality_by_code(
+            tree.municipality_code)
+        if municipality_obj:
+            municipality = municipality_obj.jititai
+
     # 投稿情報の作成
     return TreeCensorItem(
         tree_id=tree.id,
@@ -81,7 +95,9 @@ def create_tree_censor_item(tree: Tree, image_service: ImageService) -> TreeCens
         kobu=kobu_info,
         contributor=tree.contributor,
         contributor_censorship_status=tree.contributor_censorship_status,
-        location=tree.location,
+        location=municipality,
+        latitude=tree.latitude,
+        longitude=tree.longitude,
         censorship_status=tree.censorship_status,
         created_at=tree.created_at
     )

@@ -70,6 +70,8 @@ async def list_trees(
 async def get_tree_detail_api(
     tree_id: int = Path(..., description="投稿ID"),
     current_admin: Admin = Depends(get_current_admin, use_cache=True),
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service, use_cache=True),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     db: Session = Depends(get_db)
 ):
@@ -78,7 +80,11 @@ async def get_tree_detail_api(
     """
     # 投稿詳細を取得
     tree_detail = get_tree_detail(
-        db=db, tree_id=tree_id, image_service=image_service)
+        db=db,
+        tree_id=tree_id,
+        image_service=image_service,
+        municipality_service=municipality_service
+    )
 
     if not tree_detail:
         raise HTTPException(
@@ -94,6 +100,8 @@ async def update_tree_censorship(
     tree_id: int = Path(..., description="投稿ID"),
     update_data: CensorshipUpdateRequest = Body(..., description="更新データ"),
     current_admin: Admin = Depends(get_current_admin, use_cache=True),
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service, use_cache=True),
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     db: Session = Depends(get_db)
 ):
@@ -102,7 +110,12 @@ async def update_tree_censorship(
     """
     # 検閲状態を更新
     updated_tree = update_censorship(
-        db=db, tree_id=tree_id, update_data=update_data, image_service=image_service)
+        db=db,
+        tree_id=tree_id,
+        update_data=update_data,
+        image_service=image_service,
+        municipality_service=municipality_service
+    )
 
     if not updated_tree:
         raise HTTPException(

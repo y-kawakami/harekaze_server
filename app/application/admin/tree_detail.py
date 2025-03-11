@@ -5,10 +5,16 @@ from sqlalchemy.orm import Session, joinedload
 from app.application.admin.common import create_tree_censor_item
 from app.domain.models.models import Tree
 from app.domain.services.image_service import ImageService
+from app.domain.services.municipality_service import MunicipalityService
 from app.interfaces.schemas.admin import TreeCensorDetailResponse
 
 
-def get_tree_detail(db: Session, tree_id: int, image_service: ImageService) -> Optional[TreeCensorDetailResponse]:
+def get_tree_detail(
+    db: Session,
+    tree_id: int,
+    image_service: ImageService,
+    municipality_service: MunicipalityService
+) -> Optional[TreeCensorDetailResponse]:
     """
     投稿詳細を取得する
 
@@ -16,6 +22,7 @@ def get_tree_detail(db: Session, tree_id: int, image_service: ImageService) -> O
         db: DBセッション
         tree_id: 投稿ID
         image_service: 画像サービス
+        municipality_service: 自治体サービス
 
     Returns:
         Optional[TreeCensorDetailResponse]: 投稿詳細情報（存在しない場合はNone）
@@ -34,7 +41,8 @@ def get_tree_detail(db: Session, tree_id: int, image_service: ImageService) -> O
         return None
 
     # TreeCensorItemを作成
-    tree_item = create_tree_censor_item(tree, image_service)
+    tree_item = create_tree_censor_item(
+        tree, image_service, municipality_service)
 
     # TreeCensorDetailResponseに変換
     detail_response = TreeCensorDetailResponse(

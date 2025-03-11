@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.application.admin.common import create_tree_censor_item
 from app.domain.models.models import Tree
 from app.domain.services.image_service import ImageService
+from app.domain.services.municipality_service import MunicipalityService
 from app.interfaces.schemas.admin import (CensorshipUpdateRequest,
                                           TreeCensorDetailResponse)
 
@@ -13,7 +14,8 @@ def update_censorship(
     db: Session,
     tree_id: int,
     update_data: CensorshipUpdateRequest,
-    image_service: ImageService
+    image_service: ImageService,
+    municipality_service: MunicipalityService
 ) -> Optional[TreeCensorDetailResponse]:
     """
     検閲状態を更新する
@@ -23,6 +25,7 @@ def update_censorship(
         tree_id: 投稿ID
         update_data: 更新データ
         image_service: 画像サービス
+        municipality_service: 自治体サービス
 
     Returns:
         Optional[TreeCensorDetailResponse]: 更新後の投稿詳細情報（存在しない場合はNone）
@@ -85,7 +88,8 @@ def update_censorship(
     db.refresh(tree)
 
     # 更新後の投稿詳細情報を作成
-    tree_item = create_tree_censor_item(tree, image_service)
+    tree_item = create_tree_censor_item(
+        tree, image_service, municipality_service)
     detail_response = TreeCensorDetailResponse(
         **tree_item.model_dump(),
         censorship_ng_reason=tree.censorship_ng_reason

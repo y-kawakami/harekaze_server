@@ -155,7 +155,8 @@ def get_tree_list(
     # レスポンスデータの作成
     items = []
     for tree in trees:
-        item = create_tree_censor_item(tree, image_service)
+        item = create_tree_censor_item(
+            tree, image_service, municipality_service)
         items.append(item)
 
     return total_count, items
