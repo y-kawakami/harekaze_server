@@ -20,6 +20,9 @@ def get_censorship_summary(db: Session, month: str) -> CensorshipSummaryResponse
     Returns:
         CensorshipSummaryResponse: 検閲サマリーレスポンス
     """
+    # 現在の日付を取得
+    now = datetime.now()
+
     # 対象期間を計算
     try:
         year, month_num = map(int, month.split('-'))
@@ -28,13 +31,27 @@ def get_censorship_summary(db: Session, month: str) -> CensorshipSummaryResponse
         # 月の最終日
         _, last_day = calendar.monthrange(year, month_num)
         end_date = datetime(year, month_num, last_day, 23, 59, 59)
+
+        # 未来の日付の場合は現在の日付までに制限
+        if end_date > now:
+            if start_date > now:
+                # 対象月が完全に未来の場合は現在の月を使用
+                year, month_num = now.year, now.month
+                start_date = datetime(year, month_num, 1)
+                _, last_day = calendar.monthrange(year, month_num)
+                end_date = datetime(year, month_num, last_day, 23, 59, 59)
+                month = f"{year}-{month_num:02d}"
+            else:
+                # 対象月が部分的に未来の場合は現在日までに制限
+                end_date = now
     except (ValueError, IndexError):
         # 無効な月形式の場合は現在の月を使用
-        now = datetime.now()
         year, month_num = now.year, now.month
         start_date = datetime(year, month_num, 1)
         _, last_day = calendar.monthrange(year, month_num)
         end_date = datetime(year, month_num, last_day, 23, 59, 59)
+        if end_date > now:
+            end_date = now
         month = f"{year}-{month_num:02d}"
 
     # SQLAlchemyで日付部分を抽出
