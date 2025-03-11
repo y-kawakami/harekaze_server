@@ -25,6 +25,7 @@ dependencies = [
     "jinja2>=3.1.5",
     "aioboto3==13.4.0",
     "passlib>=1.7.4",
+    "bcrypt>=4.3.0",
 ]
 
 [tool.uv]

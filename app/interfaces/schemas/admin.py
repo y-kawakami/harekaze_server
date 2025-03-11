@@ -74,6 +74,7 @@ class TreeCensorListRequest(BaseModel):
     """投稿一覧リクエスト"""
     begin_date: Optional[datetime] = Field(None, description="検索開始日時")
     end_date: Optional[datetime] = Field(None, description="検索終了日時")
+    municipality: Optional[str] = Field(None, description="自治体名（部分一致で検索）")
     tree_censorship_status: Optional[List[int]] = Field(
         None, description="全体の検閲ステータスリスト")
     detail_censorship_status: Optional[List[int]] = Field(

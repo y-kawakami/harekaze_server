@@ -7,13 +7,18 @@ from sqlalchemy.orm import Session, joinedload
 from app.application.admin.common import create_tree_censor_item
 from app.domain.models.models import (EntireTree, Kobu, Mushroom, Stem,
                                       StemHole, Tengus, Tree)
+from app.domain.services.image_service import ImageService
+from app.domain.services.municipality_service import MunicipalityService
 from app.interfaces.schemas.admin import TreeCensorItem
 
 
 def get_tree_list(
     db: Session,
+    municipality_service: MunicipalityService,
+    image_service: ImageService,
     begin_date: Optional[datetime] = None,
     end_date: Optional[datetime] = None,
+    municipality: Optional[str] = None,
     tree_censorship_status: Optional[List[int]] = None,
     detail_censorship_status: Optional[List[int]] = None,
     page: int = 1,
@@ -24,8 +29,11 @@ def get_tree_list(
 
     Args:
         db: DBセッション
+        municipality_service: 自治体サービス
+        image_service: 画像サービス
         begin_date: 検索開始日時
         end_date: 検索終了日時
+        municipality: 自治体名（部分一致で検索）
         tree_censorship_status: 全体の検閲ステータスリスト
         detail_censorship_status: 詳細の検閲ステータスリスト
         page: ページ番号
@@ -42,6 +50,16 @@ def get_tree_list(
         query = query.filter(Tree.created_at >= begin_date)
     if end_date:
         query = query.filter(Tree.created_at <= end_date)
+
+    # 自治体名によるフィルタ
+    if municipality:
+        # 自治体名のキーワードで部分一致検索を行い、自治体コードのリストを取得
+        municipality_codes = municipality_service.find_municipality_codes_by_keyword(
+            municipality)
+
+        if municipality_codes:
+            query = query.filter(
+                Tree.municipality_code.in_(municipality_codes))
 
     # 全体検閲ステータスフィルタ
     if tree_censorship_status:
@@ -137,7 +155,7 @@ def get_tree_list(
     # レスポンスデータの作成
     items = []
     for tree in trees:
-        item = create_tree_censor_item(tree)
+        item = create_tree_censor_item(tree, image_service)
         items.append(item)
 
     return total_count, items

@@ -1,13 +1,15 @@
 from app.domain.models.models import Tree
+from app.domain.services.image_service import ImageService
 from app.interfaces.schemas.admin import ImageCensorInfo, TreeCensorItem
 
 
-def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
+def create_tree_censor_item(tree: Tree, image_service: ImageService) -> TreeCensorItem:
     """
     TreeオブジェクトからTreeCensorItemを作成する
 
     Args:
         tree: Treeオブジェクト
+        image_service: 画像サービス
 
     Returns:
         TreeCensorItem: 検閲対象の投稿情報
@@ -16,7 +18,8 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     entire_tree_info = None
     if tree.entire_tree:
         entire_tree_info = ImageCensorInfo(
-            image_thumb_url=tree.entire_tree.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(
+                tree.entire_tree.thumb_obj_key),
             censorship_status=tree.entire_tree.censorship_status
         )
 
@@ -24,7 +27,8 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     stem_info = None
     if tree.stem:
         stem_info = ImageCensorInfo(
-            image_thumb_url=tree.stem.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(
+                tree.stem.thumb_obj_key),
             censorship_status=tree.stem.censorship_status
         )
 
@@ -33,7 +37,8 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     if tree.stem_holes and len(tree.stem_holes) > 0:
         stem_hole = tree.stem_holes[0]  # 最初の1つだけ使用
         stem_hole_info = ImageCensorInfo(
-            image_thumb_url=stem_hole.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(
+                stem_hole.thumb_obj_key),
             censorship_status=stem_hole.censorship_status
         )
 
@@ -42,7 +47,7 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     if tree.tengus and len(tree.tengus) > 0:
         tengusu = tree.tengus[0]  # 最初の1つだけ使用
         tengusu_info = ImageCensorInfo(
-            image_thumb_url=tengusu.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(tengusu.thumb_obj_key),
             censorship_status=tengusu.censorship_status
         )
 
@@ -51,7 +56,8 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     if tree.mushrooms and len(tree.mushrooms) > 0:
         mushroom = tree.mushrooms[0]  # 最初の1つだけ使用
         mushroom_info = ImageCensorInfo(
-            image_thumb_url=mushroom.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(
+                mushroom.thumb_obj_key),
             censorship_status=mushroom.censorship_status
         )
 
@@ -60,7 +66,7 @@ def create_tree_censor_item(tree: Tree) -> TreeCensorItem:
     if tree.kobus and len(tree.kobus) > 0:
         kobu = tree.kobus[0]  # 最初の1つだけ使用
         kobu_info = ImageCensorInfo(
-            image_thumb_url=kobu.thumb_obj_key,
+            image_thumb_url=image_service.get_image_url(kobu.thumb_obj_key),
             censorship_status=kobu.censorship_status
         )
 

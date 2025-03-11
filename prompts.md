@@ -458,3 +458,16 @@ MySQLのテーブル構成です。　
 パスは　GET /admin_api/trees/{tree_id} です。
 このAPIは、一覧で取得したレコードの内容に加え、以下も追加します。
 Tree.censorship_ng_reason(NG理由)
+
+
+次に、検閲詳細から、検閲状態を設定するAPIを実装します。
+パスは PUT /admin_apid/trees/{tree_id} です。
+パラメータは json で、各フィールドは以下の通りです。
+
+- 投稿全体の　censorship_status
+  - Tree.censorship_status に相当
+- 桜画像の censorship_status
+  - EntireTree.censorship_status に相当
+- Stem, StemHole, Mushroom, Tengus, Kobu, Tree.contributor_censorship_status も同様
+- NG理由
+  - Tree.censorship_ng_reason

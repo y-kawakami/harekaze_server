@@ -306,7 +306,7 @@ class MunicipalityService:
         都道府県コードからブロック（A, B, C）を取得する
 
         Args:
-            prefecture_code (str): 都道府県コード
+            prefecture_code: 都道府県コード
 
         Returns:
             Optional[str]: ブロック（A, B, C）
@@ -315,15 +315,35 @@ class MunicipalityService:
 
     def get_prefectures_in_block(self, block: str) -> List[str]:
         """
-        指定されたブロックに属する都道府県コードのリストを取得する
+        ブロック（A, B, C）に含まれる都道府県コードのリストを取得
 
         Args:
-            block (str): ブロック（A, B, C）
+            block: ブロック（A, B, C）
 
         Returns:
             List[str]: 都道府県コードのリスト
         """
         return [code for code, b in PREFECTURE_BLOCK_MAP.items() if b == block]
+
+    def find_municipality_codes_by_keyword(self, keyword: str) -> List[str]:
+        """
+        キーワードに一致する自治体のコードのリストを取得
+
+        Args:
+            keyword: 検索キーワード（自治体名の部分一致）
+
+        Returns:
+            List[str]: 自治体コードのリスト
+        """
+        if not keyword:
+            return []
+
+        matching_municipalities = []
+        for muni in self.municipalities:
+            if keyword in muni.jititai:
+                matching_municipalities.append(muni)
+
+        return [muni.code for muni in matching_municipalities]
 
 
 def get_municipality_service() -> MunicipalityService:
