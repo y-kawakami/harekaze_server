@@ -47,7 +47,6 @@ def get_tree_detail(
     # TreeCensorDetailResponseに変換
     detail_response = TreeCensorDetailResponse(
         **tree_item.model_dump(),
-        censorship_ng_reason=tree.censorship_ng_reason
     )
 
     return detail_response

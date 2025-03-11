@@ -60,6 +60,7 @@ class TreeCensorItem(BaseModel):
     latitude: float = Field(..., description="緯度")
     longitude: float = Field(..., description="経度")
     censorship_status: int = Field(..., description="投稿全体の検閲ステータス")
+    censorship_ng_reason: Optional[str] = Field(None, description="NG理由")
     created_at: datetime = Field(..., description="投稿日時")
 
     class Config:
@@ -87,7 +88,7 @@ class TreeCensorListRequest(BaseModel):
 
 class TreeCensorDetailResponse(TreeCensorItem):
     """検閲対象の投稿詳細情報"""
-    censorship_ng_reason: Optional[str] = Field(None, description="NG理由")
+    # censorship_ng_reasonフィールドは親クラスのTreeCensorItemから継承しているため、ここでは定義しない
 
     class Config:
         from_attributes = True
@@ -95,6 +96,7 @@ class TreeCensorDetailResponse(TreeCensorItem):
 
 class CensorshipUpdateRequest(BaseModel):
     """検閲状態更新リクエスト"""
+
     tree_censorship_status: Optional[int] = Field(
         None, description="投稿全体の検閲ステータス")
     contributor_censorship_status: Optional[int] = Field(

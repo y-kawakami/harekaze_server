@@ -48,6 +48,10 @@ async def list_trees(
     """
     投稿一覧を取得する（管理者用）
     """
+
+    print("tree_censorship_status", tree_censorship_status)
+    print("detail_censorship_status", detail_censorship_status)
+
     # 投稿一覧を取得
     total_count, items = get_tree_list(
         db=db,

@@ -82,7 +82,7 @@ def create_tree_censor_item(
         municipality_obj = municipality_service.get_municipality_by_code(
             tree.municipality_code)
         if municipality_obj:
-            municipality = municipality_obj.jititai
+            municipality = municipality_obj.full_name()
 
     # 投稿情報の作成
     return TreeCensorItem(
@@ -99,5 +99,6 @@ def create_tree_censor_item(
         latitude=tree.latitude,
         longitude=tree.longitude,
         censorship_status=tree.censorship_status,
+        censorship_ng_reason=tree.censorship_ng_reason,
         created_at=tree.created_at
     )

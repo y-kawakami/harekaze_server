@@ -92,7 +92,6 @@ def update_censorship(
         tree, image_service, municipality_service)
     detail_response = TreeCensorDetailResponse(
         **tree_item.model_dump(),
-        censorship_ng_reason=tree.censorship_ng_reason
     )
 
     return detail_response
