@@ -12,3 +12,6 @@ class Municipality:
     tel: str  # 電話番号
     latitude: float  # 緯度
     longitude: float  # 経度
+
+    def full_name(self) -> str:
+        return self.prefecture + self.jititai

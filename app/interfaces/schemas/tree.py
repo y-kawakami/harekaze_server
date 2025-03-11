@@ -354,3 +354,32 @@ class TimeRangeTreesResponse(BaseModel):
     reference_time: time = Field(..., description="検索基準時刻")
     start_time: time = Field(..., description="検索開始時刻")
     end_time: time = Field(..., description="検索終了時刻")
+
+
+class TreeListItem(BaseModel):
+    """投稿一覧の各アイテム"""
+    tree_id: int = Field(..., description="投稿ID")
+    entire_tree_thumb_url: Optional[str] = Field(
+        None, description="桜の全体画像のサムネイルURL")
+    stem_thumb_url: Optional[str] = Field(None, description="幹の画像のサムネイルURL")
+    stem_hole_thumb_url: Optional[str] = Field(
+        None, description="幹の穴の画像のサムネイルURL")
+    mushroom_thumb_url: Optional[str] = Field(
+        None, description="キノコの画像のサムネイルURL")
+    tengusu_thumb_url: Optional[str] = Field(
+        None, description="テングス病の画像のサムネイルURL")
+    kobu_thumb_url: Optional[str] = Field(None, description="こぶの画像のサムネイルURL")
+    contributor: Optional[str] = Field(None, description="投稿者名")
+    location: Optional[str] = Field(None, description="撮影場所")
+    latitude: float = Field(..., description="緯度")
+    longitude: float = Field(..., description="経度")
+    created_at: datetime = Field(..., description="投稿日時")
+
+    class Config:
+        from_attributes = True
+
+
+class TreeListResponse(BaseModel):
+    """投稿一覧レスポンス"""
+    total: int = Field(..., description="総件数")
+    items: List[TreeListItem] = Field(..., description="投稿一覧")

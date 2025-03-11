@@ -471,3 +471,9 @@ Tree.censorship_ng_reason(NG理由)
 - Stem, StemHole, Mushroom, Tengus, Kobu, Tree.contributor_censorship_status も同様
 - NG理由
   - Tree.censorship_ng_reason
+
+ありがとうございます。
+次に、「検閲サマリー」を取得するAPIを実装します。
+パスは GET /admin_api/trees/summary です。
+選択された月(yyyy-MM)の期間で、日毎に投稿数、検閲のステータス（OK, NG, ESC)の数を取得するうような
+API を実装してください。

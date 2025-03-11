@@ -340,7 +340,8 @@ class MunicipalityService:
 
         matching_municipalities = []
         for muni in self.municipalities:
-            if keyword in muni.jititai:
+            name = muni.prefecture + muni.jititai
+            if keyword in name:
                 matching_municipalities.append(muni)
 
         return [muni.code for muni in matching_municipalities]

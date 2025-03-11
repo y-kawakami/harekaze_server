@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.application.admin.censorship_summary import get_censorship_summary
 from app.application.admin.tree_detail import get_tree_detail
-from app.application.admin.tree_list import get_tree_list
+from app.application.admin.tree_list import (get_approved_tree_list,
+                                             get_tree_list)
 from app.application.admin.update_censorship import update_censorship
 from app.domain.models.models import Admin
 from app.domain.services.image_service import ImageService, get_image_service
@@ -19,6 +20,7 @@ from app.interfaces.schemas.admin import (CensorshipSummaryResponse,
                                           CensorshipUpdateRequest,
                                           TreeCensorDetailResponse,
                                           TreeCensorListResponse)
+from app.interfaces.schemas.tree import TreeListResponse
 
 router = APIRouter(
     prefix="",
@@ -56,6 +58,55 @@ async def list_trees(
         municipality=municipality,
         tree_censorship_status=tree_censorship_status,
         detail_censorship_status=detail_censorship_status,
+        page=page,
+        per_page=per_page
+    )
+
+    return {
+        "total": total_count,
+        "items": items
+    }
+
+
+@router.get("/trees/summary", response_model=CensorshipSummaryResponse)
+async def get_censorship_summary_api(
+    month: str = Query(..., description="対象月（YYYY-MM形式）"),
+    current_admin: Admin = Depends(get_current_admin, use_cache=True),
+    db: Session = Depends(get_db)
+):
+    """
+    検閲サマリーを取得する（管理者用）
+
+    指定された月の各日について、投稿数と検閲ステータス別の数を集計します。
+    """
+    summary = get_censorship_summary(db=db, month=month)
+    return summary
+
+
+@router.get("/trees/approved", response_model=TreeListResponse)
+async def list_approved_trees(
+    begin_date: Optional[datetime] = Query(None, description="検索開始日時"),
+    end_date: Optional[datetime] = Query(None, description="検索終了日時"),
+    municipality: Optional[str] = Query(None, description="自治体名（部分一致で検索）"),
+    page: int = Query(1, description="ページ番号", ge=1),
+    per_page: int = Query(20, description="1ページあたりの件数", ge=1, le=100),
+    current_admin: Admin = Depends(get_current_admin, use_cache=True),
+    municipality_service: MunicipalityService = Depends(
+        get_municipality_service, use_cache=True),
+    image_service: ImageService = Depends(get_image_service, use_cache=True),
+    db: Session = Depends(get_db)
+):
+    """
+    承認済みの投稿一覧を取得する（管理者用）
+    """
+    # 承認済み投稿一覧を取得
+    total_count, items = get_approved_tree_list(
+        db=db,
+        municipality_service=municipality_service,
+        image_service=image_service,
+        begin_date=begin_date,
+        end_date=end_date,
+        municipality=municipality,
         page=page,
         per_page=per_page
     )
@@ -124,18 +175,3 @@ async def update_tree_censorship(
         )
 
     return updated_tree
-
-
-@router.get("/trees/summary", response_model=CensorshipSummaryResponse)
-async def get_censorship_summary_api(
-    month: str = Query(..., description="対象月（YYYY-MM形式）"),
-    current_admin: Admin = Depends(get_current_admin, use_cache=True),
-    db: Session = Depends(get_db)
-):
-    """
-    検閲サマリーを取得する（管理者用）
-
-    指定された月の各日について、投稿数と検閲ステータス別の数を集計します。
-    """
-    summary = get_censorship_summary(db=db, month=month)
-    return summary
