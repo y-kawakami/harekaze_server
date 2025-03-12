@@ -39,6 +39,7 @@ def get_flowering_date(
             full_bloom_date=spot.full_bloom_date.strftime("%Y-%m-%d"),
             full_bloom_end_date=spot.full_bloom_end_date.strftime("%Y-%m-%d"),
             variety=spot.variety,
+            updated_date=spot.updated_date.strftime("%Y-%m-%d"),
         )
     else:
         raise FloweringDateNotFoundError(

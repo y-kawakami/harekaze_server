@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, File, Form, Path, Query, UploadFile
 from sqlalchemy.orm import Session
 
+from app.application.common.constants import APPROVED_DEBUG
 from app.application.tree.create_kobu import create_kobu as create_kobu_app
 from app.application.tree.create_mushroom import \
     create_mushroom as create_mushroom_app
@@ -113,7 +114,7 @@ async def create_tree(
         lambda_service=lambda_service,
         flowering_date_service=flowering_date_service,
         photo_date=date,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )
 
 
@@ -448,7 +449,7 @@ async def create_stem(
         lambda_service=lambda_service,
         photo_date=date,
         is_can_rquired=is_can_required,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )
 
 
@@ -526,7 +527,7 @@ async def create_stem_hole(
         image_service=image_service,
         label_detector=label_detector,
         photo_date=date,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )
 
 
@@ -576,7 +577,7 @@ async def create_tengusu(
         image_service=image_service,
         label_detector=label_detector,
         photo_date=date,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )
 
 
@@ -627,7 +628,7 @@ async def create_mushroom(
         image_service=image_service,
         label_detector=label_detector,
         photo_date=date,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )
 
 
@@ -677,5 +678,5 @@ async def create_kobu(
         image_service=image_service,
         label_detector=label_detector,
         photo_date=date,
-        is_approved_debug=is_approved_debug
+        is_approved_debug=APPROVED_DEBUG
     )

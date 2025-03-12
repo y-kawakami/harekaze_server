@@ -1,6 +1,7 @@
 import uuid
 
 from loguru import logger
+from PIL import ImageOps
 
 from app.application.exceptions import ImageUploadError
 from app.domain.services.image_service import ImageService
@@ -28,6 +29,12 @@ async def blur_privacy_app(
     print(f'blur_strength: {blur_strength}')
 
     image = image_service.bytes_to_pil(image_data)
+    rotated_image = ImageOps.exif_transpose(
+        image, in_place=True)  # EXIF情報に基づいて適切に回転
+    if rotated_image is not None:
+        image = rotated_image
+    # 解像度に依存しないはずだが、大きすぎるとタイムアウトになるのでアプリサイズに合わせる.
+    image = image_service.resize_pil_image(image, 2160)
     labels = label_detector.detect(image, ['Tree', 'Person'])
 
     blurred_image = blur.apply_blur_to_bbox(

@@ -14,6 +14,7 @@ class FloweringDateSpot:
     full_bloom_date: date  # 満開予想日
     full_bloom_end_date: date  # 満開予想終了日
     variety: str  # 予想品種
+    updated_date: date  # 更新日
 
     def _to_datetime(self, d: date) -> datetime:
         """dateをJSTのdatetimeに変換します（正午を基準とします）"""

@@ -323,6 +323,7 @@ class FloweringDateResponse(BaseModel):
     full_bloom_date: str = Field(..., description="満開予想日（例: 2024-03-27）")
     full_bloom_end_date: str = Field(..., description="満開予想終了日（例: 2024-04-03）")
     variety: str = Field(..., description="品種名（例: ソメイヨシノ）")
+    updated_date: str = Field(..., description="更新日（例: 2024-03-01）")
 
 
 class TreeTotalCountResponse(BaseModel):

@@ -50,7 +50,8 @@ class FloweringDateService:
                                 flowering_date=parse_date(row['開花予想日']),
                                 full_bloom_date=parse_date(row['満開開始予想日']),
                                 full_bloom_end_date=parse_date(row['満開終了予想日']),
-                                variety=row['予想品種'].strip()
+                                variety=row['予想品種'].strip(),
+                                updated_date=parse_date(row['発表日']),
                             )
                         )
                     except Exception as e:

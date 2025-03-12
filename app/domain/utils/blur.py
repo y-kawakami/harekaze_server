@@ -172,7 +172,7 @@ def apply_blur_to_regions(
             if region.size > 0:  # 領域が空でないことを確認
                 # ぼかしのカーネルサイズを領域のサイズと強度に応じて調整
                 base_kernel_size = min(
-                    99, (x2_pad - x1_pad) // 4 * 2 + 1, (y2_pad - y1_pad) // 4 * 2 + 1)
+                    1000, (x2_pad - x1_pad) // 4 * 2 + 1, (y2_pad - y1_pad) // 4 * 2 + 1)
                 kernel_size = max(3, int(base_kernel_size * blur_strength))
                 # 奇数になるように調整
                 kernel_size = kernel_size if kernel_size % 2 == 1 else kernel_size + 1

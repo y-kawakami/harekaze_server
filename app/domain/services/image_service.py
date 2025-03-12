@@ -185,6 +185,33 @@ class ImageService:
             logger.exception(e)
             return False
 
+    def resize_pil_image(self, image: Image.Image, max_size: int) -> Image.Image:
+        """
+        PILイメージを長辺がmax_sizeになるようにリサイズする
+
+        Args:
+            image (Image.Image): リサイズする元の画像
+            max_size (int): 長辺の最大サイズ（ピクセル）
+
+        Returns:
+            Image.Image: リサイズされた画像
+        """
+        width, height = image.size
+
+        # 既に指定サイズ以下の場合はそのまま返す
+        if width <= max_size and height <= max_size:
+            return image
+
+        # 長辺を基準にアスペクト比を維持してリサイズ
+        if width > height:
+            new_width = max_size
+            new_height = int(height * (max_size / width))
+        else:
+            new_height = max_size
+            new_width = int(width * (max_size / height))
+
+        return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
 
 def get_image_service() -> "ImageService":
     """画像サービスのインスタンスを取得する"""

@@ -1,1 +1,3 @@
 CAN_WIDTH_MM = 96.5
+
+APPROVED_DEBUG = False
