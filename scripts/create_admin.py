@@ -21,6 +21,28 @@ load_dotenv()
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
+def get_password_hash(password: str) -> str:
+    """
+    パスワードのハッシュを生成する関数
+
+    Args:
+        password: 管理者のパスワード
+
+    Returns:
+        str: ハッシュ化されたパスワード
+    """
+    # DBセッションを取得
+    db_session = SessionLocal()
+
+    try:
+        # パスワードのハッシュ化
+        auth_service = AuthService(db_session)
+        hashed_password = auth_service.get_password_hash(password)
+        return hashed_password
+    finally:
+        db_session.close()
+
+
 def create_admin(username: str, password: str):
     """
     管理者アカウントを作成する関数
@@ -72,6 +94,8 @@ def main():
     parser = argparse.ArgumentParser(description="管理者アカウントを作成するツール")
     parser.add_argument("username", help="管理者のユーザー名")
     parser.add_argument("password", help="管理者のパスワード（8文字以上推奨）")
+    parser.add_argument("--hash-only", action="store_true",
+                        help="DBに登録せず、パスワードハッシュのみを出力する")
 
     args = parser.parse_args()
 
@@ -81,9 +105,15 @@ def main():
         if confirm.lower() != 'y':
             sys.exit(0)
 
-    success = create_admin(args.username, args.password)
-    if not success:
-        sys.exit(1)
+    if args.hash_only:
+        # パスワードハッシュのみを生成して表示
+        hashed_password = get_password_hash(args.password)
+        print(f"パスワードハッシュ: {hashed_password}")
+    else:
+        # 通常の管理者アカウント作成処理
+        success = create_admin(args.username, args.password)
+        if not success:
+            sys.exit(1)
 
 
 if __name__ == "__main__":

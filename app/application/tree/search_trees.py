@@ -4,7 +4,6 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import InvalidParamError
-from app.domain.constants.anonymous import filter_anonymous
 from app.domain.models.models import CensorshipStatus
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
@@ -134,8 +133,8 @@ def search_trees(
 
         # 投稿者情報の取得
         contributor = None
-        if tree.contributor:
-            contributor = filter_anonymous(tree.contributor)
+        if tree.contributor and tree.contributor_censorship_status == CensorshipStatus.APPROVED:
+            contributor = tree.contributor
 
         # 検索結果オブジェクトの作成
         tree_result = TreeSearchResult(

@@ -4,7 +4,7 @@ from loguru import logger
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import TreeNotFoundError
-from app.domain.constants.anonymous import filter_anonymous
+from app.domain.models.models import CensorshipStatus
 from app.domain.services.image_service import ImageService
 from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import (KobuInfo, MushroomInfo, StemHoleInfo,
@@ -74,8 +74,7 @@ def get_tree_detail(
     response = TreeDetailResponse(
         id=tree.uid,
         tree_number=f"#{tree.id}",
-        contributor=filter_anonymous(
-            tree.contributor) if tree.contributor else tree.contributor,
+        contributor=tree.contributor if tree.contributor_censorship_status == CensorshipStatus.APPROVED else None,
         latitude=tree.latitude,
         longitude=tree.longitude,
         location=tree.location,
@@ -97,7 +96,7 @@ def get_tree_detail(
     )
 
     # 幹の情報を追加
-    if tree.stem:
+    if tree.stem and tree.stem.censorship_status == CensorshipStatus.APPROVED:
         response.stem = StemInfo(
             image_url=image_service.get_image_url(
                 str(tree.stem.image_obj_key)),
@@ -117,7 +116,7 @@ def get_tree_detail(
         )
 
     # 幹の穴の情報を追加
-    if tree.stem_holes:
+    if tree.stem_holes and tree.stem_holes[0].censorship_status == CensorshipStatus.APPROVED:
         response.stem_hole = StemHoleInfo(
             image_url=image_service.get_image_url(
                 str(tree.stem_holes[0].image_obj_key)),
@@ -128,7 +127,7 @@ def get_tree_detail(
         )
 
     # テングス病の情報を追加
-    if tree.tengus:
+    if tree.tengus and tree.tengus[0].censorship_status == CensorshipStatus.APPROVED:
         response.tengusu = TengusuInfo(
             image_url=image_service.get_image_url(
                 str(tree.tengus[0].image_obj_key)),
@@ -139,7 +138,7 @@ def get_tree_detail(
         )
 
     # キノコの情報を追加
-    if tree.mushrooms:
+    if tree.mushrooms and tree.mushrooms[0].censorship_status == CensorshipStatus.APPROVED:
         response.mushroom = MushroomInfo(
             image_url=image_service.get_image_url(
                 str(tree.mushrooms[0].image_obj_key)),
@@ -150,7 +149,7 @@ def get_tree_detail(
         )
 
     # こぶ状の枝の情報を追加
-    if tree.kobus:
+    if tree.kobus and tree.kobus[0].censorship_status == CensorshipStatus.APPROVED:
         response.kobu = KobuInfo(
             image_url=image_service.get_image_url(
                 str(tree.kobus[0].image_obj_key)),

@@ -110,7 +110,7 @@ def _create_block_response(
             block=tree.block,
             photo_date=tree.photo_date,
             photo_time=tree.photo_time,
-            contributor=tree.contributor,
+            contributor=tree.contributor if tree.contributor_censorship_status == CensorshipStatus.APPROVED else None,
             image_url=image_url,
             thumb_url=thumb_url
         )

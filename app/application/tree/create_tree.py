@@ -14,7 +14,6 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         LocationNotFoundError,
                                         LocationNotInJapanError, NgWordError,
                                         TreeNotDetectedError)
-from app.domain.constants.anonymous import filter_anonymous
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.flowering_date_service import FloweringDateService
@@ -270,6 +269,7 @@ async def create_tree(
         if is_approved_debug:
             logger.info(f"デバッグモードによる自動承認: ツリーUID={tree.uid}")
             tree.censorship_status = CensorshipStatus.APPROVED
+            tree.contributor_censorship_status = CensorshipStatus.APPROVED
             if tree.entire_tree:
                 tree.entire_tree.censorship_status = CensorshipStatus.APPROVED
             repository.update_tree(tree)
@@ -288,7 +288,7 @@ async def create_tree(
     return TreeResponse(
         id=tree.uid,
         tree_number=f"#{tree.id}",
-        contributor=filter_anonymous(contributor) if contributor else None,
+        contributor=contributor,  # 自分が作ったので.
         latitude=tree.latitude,
         longitude=tree.longitude,
         location=tree.location,

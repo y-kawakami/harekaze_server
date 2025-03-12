@@ -6,9 +6,7 @@ from PIL import ImageOps
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError, ImageUploadError,
-                                        InvalidParamError,
-                                        TreeNotDetectedError,
-                                        TreeNotFoundError)
+                                        InvalidParamError, TreeNotFoundError)
 from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.image_service import ImageService
 from app.domain.utils import blur
@@ -86,10 +84,7 @@ async def create_kobu(
     if rotated_image is not None:
         image = rotated_image
 
-    labels = label_detector.detect(image, ['Tree', 'Person'])
-    if "Tree" not in labels:
-        logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
-        raise TreeNotDetectedError()
+    labels = label_detector.detect(image, ['Person'])
 
     # 人物をぼかす
     logger.debug("ぼかしを開始")
