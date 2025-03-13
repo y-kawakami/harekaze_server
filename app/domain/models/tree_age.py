@@ -178,7 +178,7 @@ def estimate_tree_age_with_prefecture(diameter: float, prefecture_code: str) -> 
     return tree_age
 
 
-def estimate_tree_age_from_texture(texture_real: float) -> float:
+def estimate_tree_age_from_texture_old(texture_real: float) -> float:
     """
     樹皮の状態から樹齢を推定する関数
 
@@ -217,3 +217,60 @@ def estimate_tree_age_from_texture(texture_real: float) -> float:
 
     # 通常はここには到達しない
     return 5.0
+
+
+def estimate_tree_age_from_texture(texture: float) -> float:
+    """樹皮の状態から樹齢を推定する関数（改良版）
+
+    樹皮の状態から樹齢を推定する関数（改良版）
+    グラフの緑の点線の関係に基づいて計算を行う
+
+    樹皮の状態(diameter)が1.0-4.0の間は直線的な関係
+    4.0-5.0の間はスムーズな曲線を描く
+
+    線形関数の式を ax + b とすると、以下の条件を満たす必要があります：
+    x = 1.0 のとき y = 10 (現在の条件を維持)
+    x = 4.0 のとき y = 58 (新しい条件)
+    これを解くと：
+    a 1.0 + b = 10
+    a 4.0 + b = 58
+    方程式1から：b = 10 - a
+    方程式2に代入：a 4.0 + (10 - a) = 58
+    整理すると：4a - a + 10 = 58
+    さらに整理：3a = 48
+    a = 16
+    b = 10 - 16 = -6
+    したがって、新しい線形関数は y = 16.0 * x - 6.0 になります。
+    また、4.0から5.0の範囲の二次関数も、x=4.0でy=58となるように、また接続点での傾きが連続するように調整する必要があります。
+    線形部分の傾きは a = 16 なので、x = 4.0 での傾きは 16 です。
+    二次関数を f(x) = c(x-4)^2 + 16x - 6 と設定すると、x=4.0で f(4.0) = 0 + 164 - 6 = 58 となり、条件を満たします。
+    また、x=5.0で約100になるようにすると：
+    f(5.0) = c(5-4)^2 + 165 - 6 = c + 74 ≈ 100
+    c ≈ 26
+    したがって、4.0-5.0の範囲の二次関数は y = 26.0 * ((x - 4.0) ** 2) + 16.0 * x - 6.0 となります。
+    緑の点線の関数も、x=4.0でy=58となるように調整します。
+
+    Args:
+        texture: 樹皮の状態を表す値（1.0-5.0）
+
+    Returns:
+        float: 推定樹齢（年）
+    """
+    if texture <= 0:
+        return 0.0
+
+    # 入力値の範囲を制限
+    if texture < 1.0:
+        texture = 1.0
+    if texture > 5.0:
+        texture = 5.0
+
+    # 区分的に定義された関数
+    if 1.0 <= texture <= 4.0:
+        # 1.0-4.0の間は線形関数
+        # (1.0, 10), (4.0, 58)
+        return 16.0 * texture - 6.0
+    else:
+        # 4.0-5.0の間は二次関数
+        # x=4.0でy=58、x=5.0でy≈100
+        return 26.0 * ((texture - 4.0) ** 2) + 16.0 * texture - 6.0
