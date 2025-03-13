@@ -69,7 +69,7 @@ def apply_blur_to_bbox(
         image: Image.Image,
         bboxes: List[BoundingBox],
         padding_ratio: float = 0.1,
-        blur_strength: float = 1.0
+        blur_strength: float = 3.0
 ) -> Image.Image:
     bbox_coords = []
     for bbox in bboxes:
@@ -84,7 +84,7 @@ def apply_blur_to_bbox_except(
         bboxes: List[BoundingBox],
         except_bboxes: List[BoundingBox],
         padding_ratio: float = 0.1,
-        blur_strength: float = 1.0
+        blur_strength: float = 3.0
 ) -> Image.Image:
     """
     except_bboxesと重ならないbboxesのみにぼかしをかけます

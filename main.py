@@ -1,9 +1,10 @@
 import os
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.interfaces.api import (admin_auth, admin_censorship, auth, debug,
                                 info, ping, tree)
@@ -20,6 +21,16 @@ security = HTTPBasic()
 
 def swagger_ui_auth(username: str = Depends(get_current_username)):
     return username
+
+
+# セキュリティヘッダーを追加するミドルウェア
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        # response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'"
+        return response
 
 
 app = FastAPI(
@@ -62,6 +73,9 @@ app = FastAPI(
 
 # エラーハンドラの登録
 register_error_handlers(app)
+
+# セキュリティヘッダーミドルウェアの追加
+app.add_middleware(SecurityHeadersMiddleware)
 
 if STAGE == "dev":
     # CORS設定

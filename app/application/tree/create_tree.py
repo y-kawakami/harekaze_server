@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+import html
 import os
 import time as time_module  # 時間計測用にtimeモジュールをインポート
 import uuid
@@ -244,7 +245,7 @@ async def create_tree(
         tree = repository.create_tree(
             user_id=current_user.id,
             # uid=tree_uid,
-            contributor=contributor,
+            contributor=html.escape(contributor) if contributor else None,
             latitude=latitude,
             longitude=longitude,
             image_obj_key=image_key,

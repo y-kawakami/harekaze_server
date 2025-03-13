@@ -1,3 +1,5 @@
+import html
+
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
@@ -31,7 +33,15 @@ def register_error_handlers(app: FastAPI) -> None:
             "reason": exc.reason,
         }
         if exc.details:
-            error_response["details"] = exc.details
+            # HTML特殊文字をエスケープ
+            if isinstance(exc.details, str):
+                error_response["details"] = html.escape(exc.details)
+            elif isinstance(exc.details, dict):
+                # 辞書の場合は再帰的にエスケープ
+                error_response["details"] = {k: html.escape(v) if isinstance(v, str) else v
+                                             for k, v in exc.details.items()}
+            else:
+                error_response["details"] = exc.details
 
         return JSONResponse(
             status_code=exc.status,
