@@ -44,7 +44,7 @@ alembic upgrade head
 
 開発サーバーを起動：
 ```bash
-uvicorn main:app --reload
+gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --reload --bind 0.0.0.0:8000
 ```
 
 サーバーが起動したら、以下のURLでSwagger UIにアクセスできます：
