@@ -4,8 +4,8 @@ from enum import IntEnum
 from typing import List, Optional
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import (Boolean, DateTime, Float, ForeignKey, Index, Integer,
-                        Numeric, String, Text, Time)
+from sqlalchemy import (Boolean, DateTime, Double, Float, ForeignKey, Index,
+                        Integer, Numeric, String, Text, Time)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
@@ -42,8 +42,8 @@ class Tree(Base):
         String(36), unique=True, default=lambda: str(uuid.uuid4()))
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"))
     contributor: Mapped[Optional[str]] = mapped_column(String(100))
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
     location: Mapped[Optional[str]] = mapped_column(String(100))  # 自治体名
     prefecture_code: Mapped[Optional[str]] = mapped_column(
@@ -110,15 +110,15 @@ class EntireTree(Base):
     tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('trees.id'))
     vitality: Mapped[Optional[int]] = mapped_column(Integer, index=True)
-    vitality_real: Mapped[Optional[float]] = mapped_column(Float)
+    vitality_real: Mapped[Optional[float]] = mapped_column(Double)
     vitality_noleaf: Mapped[Optional[int]] = mapped_column(Integer)
-    vitality_noleaf_real: Mapped[Optional[float]] = mapped_column(Float)
-    vitality_noleaf_weight: Mapped[Optional[float]] = mapped_column(Float)
+    vitality_noleaf_real: Mapped[Optional[float]] = mapped_column(Double)
+    vitality_noleaf_weight: Mapped[Optional[float]] = mapped_column(Double)
     vitality_bloom: Mapped[Optional[int]] = mapped_column(Integer)
-    vitality_bloom_real: Mapped[Optional[float]] = mapped_column(Float)
-    vitality_bloom_weight: Mapped[Optional[float]] = mapped_column(Float)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    vitality_bloom_real: Mapped[Optional[float]] = mapped_column(Double)
+    vitality_bloom_weight: Mapped[Optional[float]] = mapped_column(Double)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
@@ -157,12 +157,12 @@ class Stem(Base):
     can_width_mm: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     circumference: Mapped[Optional[float]] = mapped_column(Numeric(10, 2))
     texture: Mapped[Optional[int]] = mapped_column(Integer)
-    texture_real: Mapped[Optional[float]] = mapped_column(Float)
+    texture_real: Mapped[Optional[float]] = mapped_column(Double)
     age: Mapped[Optional[int]] = mapped_column(Integer, index=True)
     age_texture: Mapped[Optional[int]] = mapped_column(Integer)
     age_circumference: Mapped[Optional[int]] = mapped_column(Integer)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
@@ -194,8 +194,8 @@ class StemHole(Base):
         Integer, ForeignKey('users.id'), nullable=False)
     tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('trees.id'), nullable=False)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     debug_image_obj_key: Mapped[Optional[str]] = mapped_column(String(255))
@@ -226,8 +226,8 @@ class Tengus(Base):
         Integer, ForeignKey('users.id'), nullable=False)
     tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('trees.id'), nullable=False)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
@@ -257,8 +257,8 @@ class Mushroom(Base):
         Integer, ForeignKey('users.id'), nullable=False)
     tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('trees.id'), nullable=False)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
@@ -288,8 +288,8 @@ class Kobu(Base):
         Integer, ForeignKey('users.id'), nullable=False)
     tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey('trees.id'), nullable=False)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
     thumb_obj_key: Mapped[str] = mapped_column(String(255))
     censorship_status: Mapped[int] = mapped_column(
@@ -314,8 +314,8 @@ class PrefectureStats(Base):
     id: Mapped[int] = mapped_column(
         Integer, primary_key=True, autoincrement=True)
     prefecture_code: Mapped[str] = mapped_column(String(2), unique=True)
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
     location: Mapped[str] = mapped_column(String(100))
     total_trees: Mapped[int] = mapped_column(Integer)
@@ -346,8 +346,8 @@ class MunicipalityStats(Base):
         Integer, primary_key=True, autoincrement=True)
     municipality_code: Mapped[Optional[str]] = mapped_column(
         String(8), index=True)  # 自治体コード（JIS X 0402）
-    latitude: Mapped[float] = mapped_column(Float)
-    longitude: Mapped[float] = mapped_column(Float)
+    latitude: Mapped[float] = mapped_column(Double)
+    longitude: Mapped[float] = mapped_column(Double)
     position: Mapped[str] = mapped_column(Geometry('POINT'))
     location: Mapped[str] = mapped_column(String(100))  # 自治体名
     total_trees: Mapped[int] = mapped_column(Integer)
