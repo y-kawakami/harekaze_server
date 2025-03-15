@@ -318,6 +318,7 @@ class TreeDecoratedResponse(BaseModel):
 
 
 class FloweringDateResponse(BaseModel):
+    spot_id: int = Field(..., description="スポット番号")
     address: str = Field(..., description="住所（例: 東京都千代田区）")
     flowering_date: str = Field(..., description="開花予想日（例: 2024-03-20）")
     full_bloom_date: str = Field(..., description="満開予想日（例: 2024-03-27）")

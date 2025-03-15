@@ -34,6 +34,7 @@ def get_flowering_date(
         logger.info(f"開花日情報の取得完了: 住所={spot.address}")
 
         return FloweringDateResponse(
+            spot_id=int(spot.spot_id),
             address=spot.address,
             flowering_date=spot.flowering_date.strftime("%Y-%m-%d"),
             full_bloom_date=spot.full_bloom_date.strftime("%Y-%m-%d"),
