@@ -326,5 +326,16 @@ class LambdaService:
                 raise e
 
 
+# シングルトンパターンを実装
+_lambda_service_instance = None
+
+
 def get_lambda_service() -> LambdaService:
-    return LambdaService()
+    """
+    Lambda関連のサービスを取得する
+    一度だけインスタンスを生成し、以降は同じインスタンスを再利用します
+    """
+    global _lambda_service_instance
+    if _lambda_service_instance is None:
+        _lambda_service_instance = LambdaService()
+    return _lambda_service_instance

@@ -29,11 +29,10 @@ from app.application.tree.update_stem_og import update_stem_og_app
 from app.application.tree.update_tree_decorated import \
     update_tree_decorated_image as update_tree_decorated_app
 from app.domain.models.models import User
+from app.domain.services.ai_service import AIService, get_ai_service
 from app.domain.services.flowering_date_service import (
     FloweringDateService, get_flowering_date_service)
 from app.domain.services.image_service import ImageService, get_image_service
-from app.domain.services.lambda_service import (LambdaService,
-                                                get_lambda_service)
 from app.domain.services.municipality_service import (MunicipalityService,
                                                       get_municipality_service)
 from app.infrastructure.database.database import get_db
@@ -95,7 +94,7 @@ async def create_tree(
         get_label_detector, use_cache=True),
     flowering_date_service: FloweringDateService = Depends(
         get_flowering_date_service, use_cache=True),
-    lambda_service: LambdaService = Depends(get_lambda_service, use_cache=True)
+    ai_service: AIService = Depends(get_ai_service, use_cache=True)
 ):
     """
     桜の木全体の写真を登録する。
@@ -111,7 +110,7 @@ async def create_tree(
         image_service=image_service,
         geocoding_service=geocoding_service,
         label_detector=label_detector,
-        lambda_service=lambda_service,
+        ai_service=ai_service,
         flowering_date_service=flowering_date_service,
         photo_date=date,
         is_approved_debug=APPROVED_DEBUG
@@ -431,7 +430,7 @@ async def create_stem(
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
-    lambda_service: LambdaService = Depends(get_lambda_service, use_cache=True)
+    ai_service: AIService = Depends(get_ai_service, use_cache=True)
 ):
     """
     幹の写真を登録する。
@@ -446,7 +445,7 @@ async def create_stem(
         longitude=longitude,
         image_service=image_service,
         label_detector=label_detector,
-        lambda_service=lambda_service,
+        ai_service=ai_service,
         photo_date=date,
         is_can_rquired=is_can_required,
         is_approved_debug=APPROVED_DEBUG

@@ -1,3 +1,4 @@
+import asyncio
 import time as time_module  # 時間計測用にtimeモジュールをインポート
 import uuid
 from datetime import datetime
@@ -16,8 +17,8 @@ from app.domain.models.models import CensorshipStatus, User
 from app.domain.models.tree_age import (estimate_tree_age,
                                         estimate_tree_age_from_texture,
                                         estimate_tree_age_with_prefecture)
+from app.domain.services.ai_service import AIService
 from app.domain.services.image_service import ImageService
-from app.domain.services.lambda_service import LambdaService
 from app.domain.utils import blur
 from app.infrastructure.images.label_detector import LabelDetector
 from app.infrastructure.repositories.stem_repository import StemRepository
@@ -34,7 +35,7 @@ async def create_stem(
     longitude: float,
     image_service: ImageService,
     label_detector: LabelDetector,
-    lambda_service: LambdaService,
+    ai_service: AIService,
     photo_date: Optional[str] = None,
     is_can_rquired: bool = False,
     is_approved_debug: bool = False,
@@ -50,7 +51,10 @@ async def create_stem(
         latitude (float): 撮影場所の緯度
         longitude (float): 撮影場所の経度
         image_service (ImageService): 画像サービス
+        label_detector (LabelDetector): ラベル検出器
+        ai_service (AIService): AI呼び出しサービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
+        is_can_rquired (bool): 缶の検出が必須かどうか
         is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
 
     Returns:
@@ -86,6 +90,7 @@ async def create_stem(
         image, in_place=True)  # EXIF情報に基づいて適切に回転
     if rotated_image is not None:
         image = rotated_image
+        image_data = image_service.pil_to_bytes(image, 'jpeg')
     end_time = time_module.time()
     logger.info(f"画像の前処理: {(end_time - start_time) * 1000:.2f}ms")
 
@@ -113,29 +118,31 @@ async def create_stem(
     start_time = time_module.time()
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/stem_orig_{orig_suffix}.jpg"
-    try:
-        await image_service.upload_image(image_data, orig_image_key)
-    except Exception as e:
-        logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
-        raise ImageUploadError(tree_id) from e
-    end_time = time_module.time()
-    logger.info(f"Lambda入力画像のアップロード: {(end_time - start_time) * 1000:.2f}ms")
-
-    # 画像の解析
-    start_time = time_module.time()
-    logger.debug("画像解析を開始")
-    bucket_name = image_service.get_contents_bucket_name()
     debug_key = f"{tree_id}/stem_debug_{orig_suffix}.jpg"
-    result = await lambda_service.analyze_stem(
-        s3_bucket=bucket_name,
-        s3_key=image_service.get_full_object_key(orig_image_key),
+    bucket_name = image_service.get_contents_bucket_name()
+
+    # 画像のアップロードと解析を同時に実行
+    logger.debug("画像のアップロードと解析を同時に開始")
+
+    # 2つのタスクを同時に実行
+    upload_task = image_service.upload_image(image_data, orig_image_key)
+    analyze_task = ai_service.analyze_stem(
+        image_bytes=image_data,
+        filename='image.jpg',
         can_bbox=most_confident_can,
         can_width_mm=CAN_WIDTH_MM,
         output_bucket=bucket_name,
         output_key=image_service.get_full_object_key(debug_key)
     )
+
+    # 両方のタスクが完了するまで待機
+    upload_result, result = await asyncio.gather(upload_task, analyze_task)
+    if upload_result is False:
+        logger.error("画像のアップロードに失敗しました")
+        raise ImageUploadError('internal')
+
     end_time = time_module.time()
-    logger.info(f"画像解析処理: {(end_time - start_time) * 1000:.2f}ms")
+    logger.info(f"画像のアップロードと解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 人物をぼかす
     start_time = time_module.time()

@@ -1,15 +1,18 @@
 import asyncio
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 
 router = APIRouter()
 
 
 @router.get("/ping", status_code=200)
-async def ping():
+async def ping(request: Request):
     """
     ヘルスチェック用のエンドポイント
+    リクエストのaccess_log属性をFalseに設定してログ出力を抑制します
     """
+    # ログ抑制設定
+    request.state.access_log = False
     return {}
 
 

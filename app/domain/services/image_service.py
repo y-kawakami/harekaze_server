@@ -213,6 +213,16 @@ class ImageService:
         return image.resize((new_width, new_height), Image.Resampling.LANCZOS)
 
 
+# シングルトンパターンを実装
+_image_service_instance = None
+
+
 def get_image_service() -> "ImageService":
-    """画像サービスのインスタンスを取得する"""
-    return ImageService()
+    """
+    画像関連のサービスを取得する
+    一度だけインスタンスを生成し、以降は同じインスタンスを再利用します
+    """
+    global _image_service_instance
+    if _image_service_instance is None:
+        _image_service_instance = ImageService()
+    return _image_service_instance

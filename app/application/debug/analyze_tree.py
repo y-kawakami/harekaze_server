@@ -3,8 +3,9 @@ import uuid
 
 from loguru import logger
 
+from app.application.exceptions import ImageUploadError
+from app.domain.services.ai_service import AIService
 from app.domain.services.image_service import ImageService
-from app.domain.services.lambda_service import LambdaService
 from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import TreeVitalityResponse
 
@@ -13,7 +14,7 @@ async def analyze_tree_app(
     image_data: bytes,
     image_service: ImageService,
     label_detector: LabelDetector,
-    lambda_service: LambdaService,
+    ai_service: AIService,
 ) -> TreeVitalityResponse:
     """
     桜の木全体の写真を解析する
@@ -22,7 +23,7 @@ async def analyze_tree_app(
         image_data: 解析対象の画像データ
         image_service: 画像サービス
         label_detector: ラベル検出サービス
-        lambda_service: Lambda呼び出しサービス
+        ai_service: AI呼び出しサービス
 
     Returns:
         TreeVitalityResponse: 木全体の解析結果
@@ -37,33 +38,38 @@ async def analyze_tree_app(
     debug_noleaf_key = f"{tree_id}/entire_debug_noleaf_{orig_suffix}.jpg"
 
     try:
-        # 元画像をアップロード
-        if not await image_service.upload_image(image_data, orig_image_key):
-            logger.error("元画像のアップロードに失敗しました")
-            raise Exception("元画像のアップロードに失敗しました")
+        # 画像のアップロードと解析を同時に実行
+        logger.debug("画像のアップロードと解析を同時に開始")
 
-        # 並列でLambda関数を実行
-        async def run_bloom_analysis():
-            return await lambda_service.analyze_tree_vitality_bloom(
-                s3_bucket=bucket_name,
-                s3_key=image_service.get_full_object_key(orig_image_key),
-                output_bucket=bucket_name,
-                output_key=image_service.get_full_object_key(debug_bloom_key)
-            )
+        # 2つのタスクを並列で実行
+        upload_task = image_service.upload_image(image_data, orig_image_key)
 
-        async def run_noleaf_analysis():
-            return await lambda_service.analyze_tree_vitality_noleaf(
-                s3_bucket=bucket_name,
-                s3_key=image_service.get_full_object_key(orig_image_key),
-                output_bucket=bucket_name,
-                output_key=image_service.get_full_object_key(debug_noleaf_key)
-            )
-
-        # 並列実行
-        bloom_result, noleaf_result = await asyncio.gather(
-            run_bloom_analysis(),
-            run_noleaf_analysis()
+        # 開花時の解析タスク
+        bloom_task = ai_service.analyze_tree_vitality_bloom(
+            image_bytes=image_data,
+            filename='image.jpg',
+            output_bucket=bucket_name,
+            output_key=image_service.get_full_object_key(debug_bloom_key)
         )
+
+        # 葉なし時の解析タスク
+        noleaf_task = ai_service.analyze_tree_vitality_noleaf(
+            image_bytes=image_data,
+            filename='image.jpg',
+            output_bucket=bucket_name,
+            output_key=image_service.get_full_object_key(debug_noleaf_key)
+        )
+
+        # 全てのタスクが完了するまで待機
+        upload_result, bloom_result, noleaf_result = await asyncio.gather(
+            upload_task,
+            bloom_task,
+            noleaf_task
+        )
+
+        if upload_result is False:
+            logger.error("画像のアップロードに失敗しました")
+            raise ImageUploadError('internal')
 
         logger.debug(f"ブルーム分析結果: {bloom_result}")
         logger.debug(f"葉なし分析結果: {noleaf_result}")

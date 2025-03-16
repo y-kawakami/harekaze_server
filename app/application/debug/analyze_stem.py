@@ -1,14 +1,16 @@
+import asyncio
 import uuid
 
 from loguru import logger
 from PIL import ImageOps
 
 from app.application.common.constants import CAN_WIDTH_MM
+from app.application.exceptions import ImageUploadError
 from app.domain.models.bounding_box import BoundingBox
 from app.domain.models.tree_age import (estimate_tree_age,
                                         estimate_tree_age_from_texture)
+from app.domain.services.ai_service import AIService
 from app.domain.services.image_service import ImageService
-from app.domain.services.lambda_service import LambdaService
 from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import StemAnalysisResponse
 
@@ -17,7 +19,7 @@ async def analyze_stem_app(
     image_data: bytes,
     image_service: ImageService,
     label_detector: LabelDetector,
-    lambda_service: LambdaService,
+    ai_service: AIService,
 ) -> StemAnalysisResponse:
     """
     幹の写真を解析する
@@ -26,7 +28,7 @@ async def analyze_stem_app(
         image_data (bytes): 幹の写真データ
         image_service (ImageService): 画像サービス
         label_detector (LabelDetector): ラベル検出器
-        lambda_service (LambdaService): Lambda呼び出しサービス
+        ai_service (AIService): AI呼び出しサービス
 
     Returns:
         StemAnalysisResponse: 解析結果
@@ -38,6 +40,7 @@ async def analyze_stem_app(
         image, in_place=True)  # EXIF情報に基づいて適切に回転
     if rotated_image is not None:
         image = rotated_image
+        image_data = image_service.pil_to_bytes(image, 'jpeg')
 
     labels = label_detector.detect(image, ['Tree', 'Can'])
     if "Tree" not in labels:
@@ -65,26 +68,35 @@ async def analyze_stem_app(
     # Lambda入力画像をアップロード
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"debug/stem_orig_{orig_suffix}.jpg"
-    await image_service.upload_image(image_data, orig_image_key)
-
-    # 画像の解析
-    logger.debug("画像解析を開始")
+    # 画像のアップロードと解析を同時に実行
+    logger.debug("画像のアップロードと解析を同時に開始")
     bucket_name = image_service.get_contents_bucket_name()
     debug_key = f"debug/stem_debug_{orig_suffix}.jpg"
-    result = await lambda_service.analyze_stem(
-        s3_bucket=bucket_name,
-        s3_key=image_service.get_full_object_key(orig_image_key),
+
+    # 2つのタスクを同時に実行
+    upload_task = image_service.upload_image(image_data, orig_image_key)
+    analyze_task = ai_service.analyze_stem(
+        image_bytes=image_data,
+        filename='image.jpg',
         can_bbox=most_confident_can,
         can_width_mm=CAN_WIDTH_MM,
         output_bucket=bucket_name,
         output_key=image_service.get_full_object_key(debug_key)
     )
 
+    # 両方のタスクが完了するまで待機
+    upload_result, result = await asyncio.gather(upload_task, analyze_task)
+    if upload_result is False:
+        logger.error("画像のアップロードに失敗しました")
+        raise ImageUploadError('internal')
+
     # 樹齢の推定
-    age_texture = estimate_tree_age_from_texture(result.smoothness_real)
+    age_texture = estimate_tree_age_from_texture(
+        result.smoothness_real)
     age_circumference = None
     age = 0.0
-    diameter = result.diameter_mm * 0.1 if result.diameter_mm else None
+    diameter = result.diameter_mm * \
+        0.1 if result.diameter_mm else None
     if diameter:
         age_c = estimate_tree_age(diameter)
         age_circumference = round(age_c)

@@ -347,6 +347,16 @@ class MunicipalityService:
         return [muni.code for muni in matching_municipalities]
 
 
+# シングルトンパターンを実装
+_municipality_service_instance = None
+
+
 def get_municipality_service() -> MunicipalityService:
-    """自治体関連のサービスを取得する"""
-    return MunicipalityService()
+    """
+    自治体関連のサービスを取得する
+    一度だけインスタンスを生成し、以降は同じインスタンスを再利用します
+    """
+    global _municipality_service_instance
+    if _municipality_service_instance is None:
+        _municipality_service_instance = MunicipalityService()
+    return _municipality_service_instance

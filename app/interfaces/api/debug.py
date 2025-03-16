@@ -6,9 +6,8 @@ from sqlalchemy.orm import Session
 import app.application.debug.analyze_stem
 import app.application.debug.analyze_tree
 import app.application.debug.blur_privacy
+from app.domain.services.ai_service import AIService, get_ai_service
 from app.domain.services.image_service import ImageService, get_image_service
-from app.domain.services.lambda_service import (LambdaService,
-                                                get_lambda_service)
 from app.infrastructure.database.database import get_db
 from app.infrastructure.images.label_detector import (LabelDetector,
                                                       get_label_detector)
@@ -57,8 +56,8 @@ async def analyze_stem(
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
-    lambda_service: LambdaService = Depends(
-        get_lambda_service, use_cache=True),
+    ai_service: AIService = Depends(
+        get_ai_service, use_cache=True),
 ):
     """
     幹の写真を解析する
@@ -68,7 +67,7 @@ async def analyze_stem(
         image_data=image_data,
         image_service=image_service,
         label_detector=label_detector,
-        lambda_service=lambda_service,
+        ai_service=ai_service,
     )
 
 
@@ -94,8 +93,8 @@ async def analyze_stem_html_post(
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
-    lambda_service: LambdaService = Depends(
-        get_lambda_service, use_cache=True),
+    ai_service: AIService = Depends(
+        get_ai_service, use_cache=True),
 ):
     """
     幹の写真を解析し、結果をHTMLで表示する
@@ -106,7 +105,7 @@ async def analyze_stem_html_post(
             image_data=image_data,
             image_service=image_service,
             label_detector=label_detector,
-            lambda_service=lambda_service,
+            ai_service=ai_service,
         )
 
         return templates.TemplateResponse(
@@ -130,8 +129,8 @@ async def analyze_tree(
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
-    lambda_service: LambdaService = Depends(
-        get_lambda_service, use_cache=True),
+    ai_service: AIService = Depends(
+        get_ai_service, use_cache=True),
 ):
     """
     桜の木全体の写真を解析する
@@ -141,7 +140,7 @@ async def analyze_tree(
         image_data=image_data,
         image_service=image_service,
         label_detector=label_detector,
-        lambda_service=lambda_service,
+        ai_service=ai_service,
     )
 
 
@@ -167,8 +166,8 @@ async def analyze_tree_html_post(
     image_service: ImageService = Depends(get_image_service, use_cache=True),
     label_detector: LabelDetector = Depends(
         get_label_detector, use_cache=True),
-    lambda_service: LambdaService = Depends(
-        get_lambda_service, use_cache=True),
+    ai_service: AIService = Depends(
+        get_ai_service, use_cache=True),
 ):
     """
     桜の木全体の写真を解析し、結果をHTMLで表示する
@@ -179,7 +178,7 @@ async def analyze_tree_html_post(
             image_data=image_data,
             image_service=image_service,
             label_detector=label_detector,
-            lambda_service=lambda_service,
+            ai_service=ai_service,
         )
 
         return templates.TemplateResponse(

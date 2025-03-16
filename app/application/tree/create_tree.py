@@ -17,9 +17,9 @@ from app.application.exceptions import (DatabaseError, ImageUploadError,
                                         TreeNotDetectedError)
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
+from app.domain.services.ai_service import AIService
 from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.image_service import ImageService
-from app.domain.services.lambda_service import LambdaService
 from app.domain.utils import blur
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
@@ -41,7 +41,7 @@ async def create_tree(
     geocoding_service: GeocodingService,
     label_detector: LabelDetector,
     flowering_date_service: FloweringDateService,
-    lambda_service: LambdaService,
+    ai_service: AIService,
     photo_date: Optional[str] = None,
     is_approved_debug: bool = False,
     detail_debug: bool = False
@@ -58,8 +58,12 @@ async def create_tree(
         contributor (str): 投稿者のニックネーム
         image_service (ImageService): 画像サービス
         geocoding_service (GeocodingService): 位置情報サービス
+        label_detector (LabelDetector): ラベル検出器
+        flowering_date_service (FloweringDateService): 桜の開花日サービス
+        ai_service (AIService): AI呼び出しサービス
         photo_date (Optional[str]): 撮影日時（ISO8601形式）
         is_approved_debug (bool): デバッグ用に承認済みとしてマークするフラグ
+        detail_debug (bool): 詳細なデバッグ情報を表示するフラグ
 
     Returns:
         TreeResponse: 作成された木の情報
@@ -112,6 +116,7 @@ async def create_tree(
         image, in_place=True)  # EXIF情報に基づいて適切に回転
     if rotated_image is not None:
         image = rotated_image
+        image_data = image_service.pil_to_bytes(image, 'jpeg')
     end_time = time_module.time()
     logger.info(f"画像の前処理: {(end_time - start_time) * 1000:.2f}ms")
 
@@ -129,52 +134,50 @@ async def create_tree(
     tree_id = str(uuid.uuid4())
     logger.debug(f"生成されたツリーUID: {tree_id}")
 
-    # Lambda入力画像をアップロード
+    # 画像のアップロードと解析を同時に実行
     start_time = time_module.time()
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/entire_orig_{orig_suffix}.jpg"
-    try:
-        await image_service.upload_image(image_data, orig_image_key)
-    except Exception as e:
-        logger.exception(f"画像アップロード中にエラー発生: {str(e)}")
-        raise ImageUploadError(tree_id) from e
-    end_time = time_module.time()
-    logger.info(f"Lambda入力画像のアップロード: {(end_time - start_time) * 1000:.2f}ms")
-
-    # 画像を解析
-    start_time = time_module.time()
-    logger.debug("画像解析を開始")
-    bucket_name = image_service.get_contents_bucket_name()
     debug_bloom_key = f"{tree_id}/entire_debug_bloom_{orig_suffix}.jpg"
     debug_noleaf_key = f"{tree_id}/entire_debug_noleaf_{orig_suffix}.jpg"
 
-    # 非同期関数として定義
-    async def run_bloom_analysis():
-        return await lambda_service.analyze_tree_vitality_bloom(
-            s3_bucket=bucket_name,
-            s3_key=image_service.get_full_object_key(orig_image_key),
-            output_bucket=bucket_name,
-            output_key=image_service.get_full_object_key(debug_bloom_key)
-        )
+    logger.debug("画像のアップロードと解析を同時に開始")
+    bucket_name = image_service.get_contents_bucket_name()
 
-    async def run_noleaf_analysis():
-        return await lambda_service.analyze_tree_vitality_noleaf(
-            s3_bucket=bucket_name,
-            s3_key=image_service.get_full_object_key(orig_image_key),
-            output_bucket=bucket_name,
-            output_key=image_service.get_full_object_key(debug_noleaf_key)
-        )
+    # 3つのタスクを同時に実行
+    upload_task = image_service.upload_image(image_data, orig_image_key)
 
-    # 非同期で並列実行
-    bloom_result, noleaf_result = await asyncio.gather(
-        run_bloom_analysis(),
-        run_noleaf_analysis()
+    # 開花時の解析タスク
+    bloom_task = ai_service.analyze_tree_vitality_bloom(
+        image_bytes=image_data,
+        filename='image.jpg',
+        output_bucket=bucket_name,
+        output_key=image_service.get_full_object_key(debug_bloom_key)
     )
+
+    # 葉なし時の解析タスク
+    noleaf_task = ai_service.analyze_tree_vitality_noleaf(
+        image_bytes=image_data,
+        filename='image.jpg',
+        output_bucket=bucket_name,
+        output_key=image_service.get_full_object_key(debug_noleaf_key)
+    )
+
+    # 全てのタスクが完了するまで待機
+    upload_result, bloom_result, noleaf_result = await asyncio.gather(
+        upload_task,
+        bloom_task,
+        noleaf_task
+    )
+
+    if upload_result is False:
+        logger.error("画像のアップロードに失敗しました")
+        raise ImageUploadError('internal')
 
     logger.debug(f"ブルーム分析結果: {bloom_result}")
     logger.debug(f"葉なし分析結果: {noleaf_result}")
     end_time = time_module.time()
-    logger.info(f"画像解析処理: {(end_time - start_time) * 1000:.2f}ms")
+    logger.info(f"画像のアップロードと解析処理: {(end_time - start_time) * 1000:.2f}ms")
 
     # 桜の元気度推定
     start_time = time_module.time()
