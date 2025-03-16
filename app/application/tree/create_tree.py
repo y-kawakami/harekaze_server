@@ -122,7 +122,7 @@ async def create_tree(
 
     # ラベル検出
     start_time = time_module.time()
-    labels = label_detector.detect(image, ['Tree', 'Person'])
+    labels = await label_detector.detect(image, ['Tree', 'Person'])
     print(labels)
     if "Tree" not in labels:
         logger.warning(f"木が検出できません: ユーザーID={current_user.id}")

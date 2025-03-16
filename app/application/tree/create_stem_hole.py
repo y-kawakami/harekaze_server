@@ -85,7 +85,7 @@ async def create_stem_hole(
     if rotated_image is not None:
         image = rotated_image
 
-    labels = label_detector.detect(image, ['Person'])
+    labels = await label_detector.detect(image, ['Person'])
 
     # 人物をぼかす
     logger.debug("ぼかしを開始")

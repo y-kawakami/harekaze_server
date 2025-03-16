@@ -35,7 +35,7 @@ async def blur_privacy_app(
         image = rotated_image
     # 解像度に依存しないはずだが、大きすぎるとタイムアウトになるのでアプリサイズに合わせる.
     image = image_service.resize_pil_image(image, 2160)
-    labels = label_detector.detect(image, ['Tree', 'Person'])
+    labels = await label_detector.detect(image, ['Tree', 'Person'])
 
     blurred_image = blur.apply_blur_to_bbox(
         image, labels['Person'], blur_strength=blur_strength)

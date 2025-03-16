@@ -1,11 +1,35 @@
 import io
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import (Any, Dict, List, Optional, Set, Tuple, TypedDict, Union,
+                    cast)
 
-import boto3
+import aioboto3
 from botocore.exceptions import ClientError
 from PIL import Image
 
 from app.domain.models.bounding_box import BoundingBox
+
+
+# Rekognitionのレスポンス型の代替定義
+class BoundingBoxDict(TypedDict, total=False):
+    Width: float
+    Height: float
+    Left: float
+    Top: float
+
+
+class InstanceDict(TypedDict, total=False):
+    BoundingBox: BoundingBoxDict
+    Confidence: float
+
+
+class LabelDict(TypedDict, total=False):
+    Name: str
+    Confidence: float
+    Instances: List[InstanceDict]
+
+
+class RekognitionResponseDict(TypedDict, total=False):
+    Labels: List[LabelDict]
 
 
 class LabelDetector:
@@ -25,20 +49,25 @@ class LabelDetector:
 
         # Rekognitionクライアントの初期化はここで行わず、必要時に初期化
         self._rekognition_client = None
+        self._session = None
 
-    def _get_rekognition_client(self):
+    async def _get_rekognition_client(self):
         """
         AWS Rekognitionクライアントを取得する（必要に応じて初期化）
 
         Returns:
-            boto3.client: Rekognitionクライアント
+            aioboto3.client: Rekognitionクライアント
         """
+        if self._session is None:
+            self._session = aioboto3.Session()
+
         if self._rekognition_client is None:
-            self._rekognition_client = boto3.client(
+            self._rekognition_client = self._session.client(
                 'rekognition', region_name='ap-northeast-1')
+
         return self._rekognition_client
 
-    def detect(self, pil_image: Image.Image, target_labels: List[str], max_labels: int = 100) -> Dict[str, List[BoundingBox]]:
+    async def detect(self, pil_image: Image.Image, target_labels: List[str], max_labels: int = 100) -> Dict[str, List[BoundingBox]]:
         """
         PIL画像を入力として、AWS Rekognitionを使用して指定されたラベル検出を行う
 
@@ -62,17 +91,16 @@ class LabelDetector:
 
         try:
             # Rekognitionクライアントを取得
-            rekognition = self._get_rekognition_client()
+            async with await self._get_rekognition_client() as rekognition:
+                # Rekognition APIを呼び出して画像分析
+                response = await rekognition.detect_labels(
+                    Image={'Bytes': img_bytes},
+                    MaxLabels=max_labels,
+                    Features=['GENERAL_LABELS']  # 一般的なラベル検出
+                )
 
-            # Rekognition APIを呼び出して画像分析
-            response = rekognition.detect_labels(
-                Image={'Bytes': img_bytes},
-                MaxLabels=max_labels,
-                Features=['GENERAL_LABELS']  # 一般的なラベル検出
-            )
-
-            # 指定されたラベルのバウンディングボックスを抽出
-            return self.extract_label_bounding_boxes(response, target_labels, target_labels_lower)
+                # 指定されたラベルのバウンディングボックスを抽出
+                return self.extract_label_bounding_boxes(cast(Dict[str, Any], response), target_labels, target_labels_lower)
 
         except ClientError as e:
             # エラーハンドリング
@@ -117,7 +145,8 @@ class LabelDetector:
                     # 信頼度が閾値以上の場合のみ追加
                     if confidence >= self.min_confidence:
                         bbox_dict = instance.get("BoundingBox", {})
-                        bbox = BoundingBox.from_dict(bbox_dict, confidence)
+                        bbox = BoundingBox.from_dict(
+                            cast(Dict[str, Any], bbox_dict), confidence)
                         results[original_label].append(bbox)
 
         # 各ラベルごとに信頼度の高い順にソート
@@ -126,7 +155,7 @@ class LabelDetector:
 
         return results
 
-    def detect_labels(self, rekognition_response: Dict[str, Any], target_labels: List[str]) -> Dict[str, List[BoundingBox]]:
+    async def detect_labels(self, rekognition_response: Dict[str, Any], target_labels: List[str]) -> Dict[str, List[BoundingBox]]:
         """
         AWS Rekognitionのレスポンスから指定されたラベルを検出する
 
@@ -196,6 +225,6 @@ class LabelDetector:
         return formatted_boxes
 
 
-def get_label_detector() -> LabelDetector:
+async def get_label_detector() -> LabelDetector:
     """LabelDetectorのインスタンスを取得する"""
     return LabelDetector()

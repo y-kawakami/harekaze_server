@@ -42,7 +42,7 @@ async def analyze_stem_app(
         image = rotated_image
         image_data = image_service.pil_to_bytes(image, 'jpeg')
 
-    labels = label_detector.detect(image, ['Tree', 'Can'])
+    labels = await label_detector.detect(image, ['Tree', 'Can'])
     if "Tree" not in labels:
         logger.warning("木が検出できません")
         return StemAnalysisResponse(
