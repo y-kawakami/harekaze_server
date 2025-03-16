@@ -139,8 +139,9 @@ async def create_kobu(
         kobu = kobu_repository.create_kobu(
             tree_id=tree.id,
             user_id=current_user.id,
-            latitude=latitude,
-            longitude=longitude,
+            # リリース時は木全体の位置情報を使う.
+            latitude=tree.latitude,
+            longitude=tree.longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             photo_date=parsed_photo_date

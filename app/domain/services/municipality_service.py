@@ -193,9 +193,9 @@ class MunicipalityService:
         if not prefecture:
             return None
 
-        # 都道府県名から「都」「府」「県」を除去
-        prefecture = prefecture.replace(
-            "都", "").replace("府", "").replace("県", "")
+        # 都道府県名から末尾の「都」「府」「県」を除去
+        if prefecture.endswith("都") or prefecture.endswith("府") or prefecture.endswith("県"):
+            prefecture = prefecture[:-1]
 
         # 定数マップから都道府県コードを取得
         return PREFECTURE_CODE_MAP.get(prefecture)

@@ -140,8 +140,9 @@ async def create_stem_hole(
         stem_hole = stem_hole_repository.create_stem_hole(
             user_id=current_user.id,
             tree_id=tree.id,
-            latitude=latitude,
-            longitude=longitude,
+            # リリース時は木全体の位置情報を使う.
+            latitude=tree.latitude,
+            longitude=tree.longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             photo_date=parsed_photo_date

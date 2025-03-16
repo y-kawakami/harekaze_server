@@ -218,8 +218,9 @@ async def create_stem(
         stem = stem_repository.create_stem(
             user_id=current_user.id,
             tree_id=tree.id,
-            latitude=latitude,
-            longitude=longitude,
+            # リリース時は木全体の位置情報を使う.
+            latitude=tree.latitude,
+            longitude=tree.longitude,
             image_obj_key=image_key,
             thumb_obj_key=thumb_key,
             can_detected=most_confident_can is not None,
