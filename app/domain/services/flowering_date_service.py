@@ -130,6 +130,16 @@ class FloweringDateService:
         return nearest_spot
 
 
+# シングルトンパターンを実装
+_flowering_date_service_instance = None
+
+
 def get_flowering_date_service() -> FloweringDateService:
-    """桜の開花日取得サービスを取得する"""
-    return FloweringDateService()
+    """
+    桜の開花日取得サービスを取得する
+    一度だけインスタンスを生成し、以降は同じインスタンスを再利用します
+    """
+    global _flowering_date_service_instance
+    if _flowering_date_service_instance is None:
+        _flowering_date_service_instance = FloweringDateService()
+    return _flowering_date_service_instance

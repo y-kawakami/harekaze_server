@@ -47,6 +47,10 @@ alembic upgrade head
 gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --reload --bind 0.0.0.0:8000
 ```
 
+```(old)
+uvicorn main:app --reload
+```
+
 サーバーが起動したら、以下のURLでSwagger UIにアクセスできます：
 http://localhost:8000/docs
 

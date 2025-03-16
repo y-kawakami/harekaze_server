@@ -30,6 +30,41 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         response.headers["X-Content-Type-Options"] = "nosniff"
         response.headers["X-Frame-Options"] = "DENY"
         # response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'"
+
+        # キャッシュ制御ヘッダーの追加
+        if request.method == "GET" and request.url.path.startswith("/sakura_camera/api/"):
+            # キャッシュを許可する情報取得系のエンドポイント
+            cacheable_endpoints = [
+                "/sakura_camera/api/tree/search",
+                "/sakura_camera/api/tree/total_count",
+                "/sakura_camera/api/tree/area_count",
+                "/sakura_camera/api/tree/area_stats",
+                "/sakura_camera/api/tree/time_block",
+                "/sakura_camera/api/info/flowering_date"
+            ]
+
+            # 動的なID部分を持つエンドポイント（例: /tree/{tree_id}）
+            tree_detail_pattern = "/sakura_camera/api/tree/"
+
+            if any(request.url.path.startswith(endpoint) for endpoint in cacheable_endpoints) or (
+                request.url.path.startswith(tree_detail_pattern) and
+                # /sakura_camera/api/tree/{tree_id} の形式
+                len(request.url.path.split("/")) == 5
+            ):
+                # GETリクエストに対して10分間のキャッシュを許可
+                response.headers["Cache-Control"] = "public, max-age=600"
+            else:
+                # その他のGETリクエストはキャッシュなし
+                response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+                response.headers["Pragma"] = "no-cache"
+                response.headers["Expires"] = "0"
+
+        elif request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+            # 変更を行うメソッドに対してはキャッシュを無効化
+            response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+            response.headers["Pragma"] = "no-cache"
+            response.headers["Expires"] = "0"
+
         return response
 
 
@@ -127,10 +162,15 @@ app.include_router(admin_censorship.router,
 @app.get("/sakura_camera/api/docs", dependencies=[Depends(get_current_username)])
 async def custom_swagger_ui():
     from fastapi.openapi.docs import get_swagger_ui_html
-    return get_swagger_ui_html(
+    response = get_swagger_ui_html(
         openapi_url=app.openapi_url if app.openapi_url else "/sakura_camera/api/openapi.json",
         title="晴れ風API - Swagger UI"
     )
+    # SwaggerUIはキャッシュしない
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 if __name__ == "__main__":
     import uvicorn
