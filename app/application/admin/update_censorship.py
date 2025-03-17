@@ -3,7 +3,7 @@ from typing import Optional
 from sqlalchemy.orm import Session, joinedload
 
 from app.application.admin.common import create_tree_censor_item
-from app.domain.models.models import Tree
+from app.domain.models.models import CensorshipStatus, Tree
 from app.domain.services.image_service import ImageService
 from app.domain.services.municipality_service import MunicipalityService
 from app.interfaces.schemas.admin import (CensorshipUpdateRequest,
@@ -47,13 +47,16 @@ def update_censorship(
     if update_data.tree_censorship_status is not None:
         tree.censorship_status = update_data.tree_censorship_status
 
+        # NG理由を更新
+        if update_data.tree_censorship_status == CensorshipStatus.APPROVED:
+            tree.censorship_ng_reason = None
+        else:
+            if update_data.censorship_ng_reason is not None:
+                tree.censorship_ng_reason = update_data.censorship_ng_reason
+
     # 投稿者名の検閲ステータスを更新
     if update_data.contributor_censorship_status is not None:
         tree.contributor_censorship_status = update_data.contributor_censorship_status
-
-    # NG理由を更新
-    if update_data.censorship_ng_reason is not None:
-        tree.censorship_ng_reason = update_data.censorship_ng_reason
 
     # 桜全体画像の検閲ステータスを更新
     if update_data.entire_tree_censorship_status is not None and tree.entire_tree:
