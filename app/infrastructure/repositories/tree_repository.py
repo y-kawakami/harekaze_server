@@ -607,7 +607,7 @@ class TreeRepository:
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
-                func.max(latest_tree_details.c.contributor_censorship_status).label(
+                func.max(latest_tree_details.c.latest_contributor_censorship_status).label(
                     'latest_contributor_censorship_status'),
                 func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')
@@ -621,7 +621,7 @@ class TreeRepository:
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
-                func.max(latest_tree_details.c.contributor_censorship_status).label(
+                func.max(latest_tree_details.c.latest_contributor_censorship_status).label(
                     'latest_contributor_censorship_status'),
                 func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')

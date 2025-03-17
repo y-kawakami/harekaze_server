@@ -76,23 +76,32 @@ class GeocodingService:
             address_parts = []
 
             # 都道府県と市区町村を抽出し、詳細住所を構築
+            prefecture = None
+            other_address_parts = []
+
             for component in address_components:
                 comp_type = component['types'][0]
                 if comp_type == 'country':
                     country = component['long_name']
                 elif comp_type == 'administrative_area_level_1':
                     prefecture = component['long_name']
-                    address_parts.append(component['long_name'])
                 elif comp_type in ['locality', 'administrative_area_level_2']:
                     municipality = component['long_name']
-                    address_parts.append(component['long_name'])
+                    other_address_parts.append(component['long_name'])
                 # 詳細住所のコンポーネントを収集（郵便番号と国を除く）
                 elif comp_type not in ['postal_code', 'country']:
-                    address_parts.append(component['long_name'])
+                    other_address_parts.append(component['long_name'])
 
-            # 詳細住所を構築（大きい区分から順に並べる）
-            detailed_address = ''.join(
-                reversed(address_parts)) if address_parts else None
+            # 詳細住所を構築（都道府県を先頭に、その後に他の住所要素を逆順で追加）
+            if prefecture:
+                address_parts = [prefecture] + \
+                    list(reversed(other_address_parts))
+                detailed_address = ''.join(address_parts)
+            else:
+                detailed_address = ''.join(
+                    reversed(other_address_parts)) if other_address_parts else None
+
+            logger.debug(f'detailed_address = {detailed_address}')
 
             # 自治体の特定
             matched_municipality = self.municipality_service.find_municipality(
