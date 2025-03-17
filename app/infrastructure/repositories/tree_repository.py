@@ -590,6 +590,8 @@ class TreeRepository:
                 Tree.id,
                 Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
                 Tree.contributor.label('latest_contributor'),
+                Tree.contributor_censorship_status.label(
+                    'latest_contributor_censorship_status'),
                 EntireTree.thumb_obj_key.label('latest_image_thumb_url')
             )
             .join(latest_trees, Tree.id == latest_trees.c.latest_tree_id)
@@ -605,6 +607,8 @@ class TreeRepository:
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
+                func.max(latest_tree_details.c.contributor_censorship_status).label(
+                    'latest_contributor_censorship_status'),
                 func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')
             ).outerjoin(
@@ -617,6 +621,8 @@ class TreeRepository:
                 func.count(Tree.id).label('count'),
                 func.max(latest_tree_details.c.latest_contributor).label(
                     'latest_contributor'),
+                func.max(latest_tree_details.c.contributor_censorship_status).label(
+                    'latest_contributor_censorship_status'),
                 func.max(latest_tree_details.c.latest_image_thumb_url).label(
                     'latest_image_thumb_url')
             ).outerjoin(
@@ -681,8 +687,8 @@ class TreeRepository:
                 count=r[1] or 0,
                 latitude=0,  # latitudeとlongitudeは呼び出し側で設定
                 longitude=0,
-                latest_contributor=r[2],
-                latest_image_thumb_url=r[3],
+                latest_contributor=r[2] if r[3] == CensorshipStatus.APPROVED else None,
+                latest_image_thumb_url=r[4],
             )
             for r in results
         ]

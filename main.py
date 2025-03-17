@@ -52,7 +52,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
                 len(request.url.path.split("/")) == 5
             ):
                 # GETリクエストに対して10分間のキャッシュを許可
-                response.headers["Cache-Control"] = "public, max-age=600"
+                response.headers["Cache-Control"] = "public, max-age=300"
             else:
                 # その他のGETリクエストはキャッシュなし
                 response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
