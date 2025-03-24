@@ -151,7 +151,8 @@ def get_tree_list(
     offset = (page - 1) * per_page
 
     if order_by == SortOrder.CREATED_BY_ASC:
-        query = query.order_by(Tree.created_at.asc())
+        query = query.order_by(Tree.created_at.asc()).offset(
+            offset).limit(per_page)
     else:
         query = query.order_by(Tree.created_at.desc()).offset(
             offset).limit(per_page)
