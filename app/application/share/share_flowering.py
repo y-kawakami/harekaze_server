@@ -1,5 +1,6 @@
 """シェア機能のアプリケーションロジック"""
 import os
+from datetime import datetime
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -33,7 +34,9 @@ def create_share_flowering_response(
 
     og_url = APP_HOST + "/sakura_camera/"
     redirect_url = APP_HOST + "/sakura_camera/"
-    image_url = APP_HOST + f"/sakura_camera/flowering_image/{updated}/{id}.png"
+    timestamp = '20250320'
+    image_url = APP_HOST + \
+        f"/sakura_camera/flowering_image/{updated}/{id}.png?rel={timestamp}"
 
     template_name = "share_flowering.html"
 

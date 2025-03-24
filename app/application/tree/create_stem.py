@@ -98,7 +98,7 @@ async def create_stem(
     start_time = time_module.time()
     labels = await label_detector.detect(image, ['Tree', 'Person', 'Can'])
     if "Tree" not in labels:
-        logger.warning(f"木が検出できません: ユーザーID={current_user.id}")
+        logger.warning(f"Stem:木が検出できません: ユーザーID={current_user.id}")
         raise TreeNotDetectedError()
 
     can_bboxes = labels.get("Can", [])
@@ -110,6 +110,7 @@ async def create_stem(
             max_confidence = bbox.confidence
             most_confident_can = bbox
     if is_can_rquired and most_confident_can is None:
+        logger.warning(f"Stem:缶が検出できません: ユーザーID={current_user.id}")
         raise CanNotDetectedError("缶が検出できません")
     end_time = time_module.time()
     logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
