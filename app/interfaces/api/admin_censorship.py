@@ -17,7 +17,7 @@ from app.domain.services.municipality_service import (MunicipalityService,
 from app.infrastructure.database.database import get_db
 from app.interfaces.api.admin_auth import get_current_admin
 from app.interfaces.schemas.admin import (CensorshipSummaryResponse,
-                                          CensorshipUpdateRequest,
+                                          CensorshipUpdateRequest, SortOrder,
                                           TreeCensorDetailResponse,
                                           TreeCensorListResponse)
 from app.interfaces.schemas.tree import TreeListResponse
@@ -37,6 +37,7 @@ async def list_trees(
         None, description="全体の検閲ステータスリスト"),
     detail_censorship_status: List[int] = Query(
         None, description="詳細の検閲ステータスリスト"),
+    order_by: Optional[SortOrder] = Query(None, description="ソート順"),
     page: int = Query(1, description="ページ番号", ge=1),
     per_page: int = Query(20, description="1ページあたりの件数", ge=1, le=100),
     current_admin: Admin = Depends(get_current_admin, use_cache=True),
@@ -49,8 +50,9 @@ async def list_trees(
     投稿一覧を取得する（管理者用）
     """
 
-    print("tree_censorship_status", tree_censorship_status)
-    print("detail_censorship_status", detail_censorship_status)
+    # print("tree_censorship_status", tree_censorship_status)
+    # print("detail_censorship_status", detail_censorship_status)
+    # print("order_by", order_by)
 
     # 投稿一覧を取得
     total_count, items = get_tree_list(
@@ -62,6 +64,7 @@ async def list_trees(
         municipality=municipality,
         tree_censorship_status=tree_censorship_status,
         detail_censorship_status=detail_censorship_status,
+        order_by=order_by,
         page=page,
         per_page=per_page
     )

@@ -9,7 +9,7 @@ from app.domain.models.models import (CensorshipStatus, EntireTree, Kobu,
                                       Mushroom, Stem, StemHole, Tengus, Tree)
 from app.domain.services.image_service import ImageService
 from app.domain.services.municipality_service import MunicipalityService
-from app.interfaces.schemas.admin import TreeCensorItem
+from app.interfaces.schemas.admin import SortOrder, TreeCensorItem
 from app.interfaces.schemas.tree import TreeListItem
 
 
@@ -22,6 +22,7 @@ def get_tree_list(
     municipality: Optional[str] = None,
     tree_censorship_status: Optional[List[int]] = None,
     detail_censorship_status: Optional[List[int]] = None,
+    order_by: Optional[SortOrder] = None,
     page: int = 1,
     per_page: int = 20
 ) -> Tuple[int, List[TreeCensorItem]]:
@@ -148,8 +149,12 @@ def get_tree_list(
 
     # ページネーション
     offset = (page - 1) * per_page
-    query = query.order_by(Tree.created_at.desc()).offset(
-        offset).limit(per_page)
+
+    if order_by == SortOrder.CREATED_BY_ASC:
+        query = query.order_by(Tree.created_at.asc())
+    else:
+        query = query.order_by(Tree.created_at.desc()).offset(
+            offset).limit(per_page)
 
     trees = query.all()
 

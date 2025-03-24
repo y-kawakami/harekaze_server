@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import IntEnum
 from typing import List, Optional
 
 from pydantic import BaseModel, Field
@@ -73,6 +74,12 @@ class TreeCensorListResponse(BaseModel):
     items: List[TreeCensorItem] = Field(..., description="投稿一覧")
 
 
+class SortOrder(IntEnum):
+    """ソート順"""
+    CREATED_BY_DESC = 1
+    CREATED_BY_ASC = 2
+
+
 class TreeCensorListRequest(BaseModel):
     """投稿一覧リクエスト"""
     begin_date: Optional[datetime] = Field(None, description="検索開始日時")
@@ -82,6 +89,7 @@ class TreeCensorListRequest(BaseModel):
         None, description="全体の検閲ステータスリスト")
     detail_censorship_status: Optional[List[int]] = Field(
         None, description="詳細の検閲ステータスリスト")
+    sort_order: Optional[SortOrder] = Field(None, description="ソート順")
     page: int = Field(1, description="ページ番号", ge=1)
     per_page: int = Field(20, description="1ページあたりの件数", ge=1, le=100)
 
