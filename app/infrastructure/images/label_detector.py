@@ -38,7 +38,7 @@ class LabelDetector:
     画像内の特定ラベル（人物、缶など）のバウンディングボックスを検出するクラス
     """
 
-    def __init__(self, min_confidence: float = 50.0):
+    def __init__(self, min_confidence: float = 70.0):
         """
         初期化メソッド
 

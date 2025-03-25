@@ -18,7 +18,7 @@ class FaceAnalyzer:
     画像内の顔の感情情報とバウンディングボックスを検出するクラス
     """
 
-    def __init__(self, min_confidence: float = 50.0):
+    def __init__(self, min_confidence: float = 70.0):
         """
         初期化メソッド
 
