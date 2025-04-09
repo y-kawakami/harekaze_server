@@ -395,10 +395,10 @@ class TreeRepository:
         age_counts = self.db.query(
             case(
                 {
-                    Stem.age <= 30: '20',
-                    Stem.age <= 40: '30',
-                    Stem.age <= 50: '40',
-                    Stem.age <= 60: '50'
+                    Stem.age <= 19: '20',
+                    Stem.age <= 39: '30',
+                    Stem.age <= 59: '40',
+                    Stem.age <= 79: '50'
                 },
                 else_='60'
             ).label('age_group'),
