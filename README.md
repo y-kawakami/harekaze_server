@@ -228,3 +228,127 @@ python -m app.domain.models.tree_age_plot
 - DB登録処理: 50.21ms
 
 合計処理時間: 16449.48ms
+
+
+
+## データ合計数
+
+* 元気度
+事務局OK: 24172
+事務局NG: 935
+
+* 幹(缶あり)
+OK	280
+NG	86
+
+* 幹(缶なし)
+OK	5953
+NG	165
+
+* 幹の空洞
+OK 299
+NG 35
+
+* コブ
+OK 73
+NG 23
+
+* テングス
+OK 75
+NG 22
+
+* きのこ
+OK 125
+NG 24
+
+## データ集計表
+
+| 種別       | OK     | NG  | 合計   |
+| ---------- | ------ | --- | ------ |
+| 元気度     | 24,172 | 935 | 25,107 |
+| 幹(缶あり) | 280    | 86  | 366    |
+| 幹(缶なし) | 5,953  | 165 | 6,118  |
+| 幹の空洞   | 299    | 35  | 334    |
+| コブ       | 73     | 23  | 96     |
+| テングス   | 75     | 22  | 97     |
+| きのこ     | 125    | 24  | 149    |
+
+
+
+## 集計 SQL
+
+### 元気度
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN et.censorship_status = 1 THEN 1 ELSE 0 END) AS 'OK',
+  SUM(CASE WHEN et.censorship_status = 2 THEN 1 ELSE 0 END) AS 'NG',
+  SUM(CASE WHEN et.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM entire_trees et
+JOIN trees t ON et.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
+
+### 幹の寄り
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN s.can_detected = 1 AND s.censorship_status = 1 THEN 1 ELSE 0 END) AS '缶あり_OK',
+  SUM(CASE WHEN s.can_detected = 1 AND s.censorship_status = 2 THEN 1 ELSE 0 END) AS '缶あり_NG',
+  SUM(CASE WHEN s.can_detected = 1 AND s.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '缶あり_合計',
+  SUM(CASE WHEN s.can_detected = 0 AND s.censorship_status = 1 THEN 1 ELSE 0 END) AS '缶なし_OK',
+  SUM(CASE WHEN s.can_detected = 0 AND s.censorship_status = 2 THEN 1 ELSE 0 END) AS '缶なし_NG',
+  SUM(CASE WHEN s.can_detected = 0 AND s.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '缶なし_合計',
+  SUM(CASE WHEN s.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM stems s
+JOIN trees t ON s.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
+
+### 幹の穴
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN sh.censorship_status = 1 THEN 1 ELSE 0 END) AS 'OK',
+  SUM(CASE WHEN sh.censorship_status = 2 THEN 1 ELSE 0 END) AS 'NG',
+  SUM(CASE WHEN sh.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM stem_holes sh
+JOIN trees t ON sh.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
+
+### コブ
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN k.censorship_status = 1 THEN 1 ELSE 0 END) AS 'OK',
+  SUM(CASE WHEN k.censorship_status = 2 THEN 1 ELSE 0 END) AS 'NG',
+  SUM(CASE WHEN k.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM kobus k
+JOIN trees t ON k.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
+
+### 天狗巣
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN tg.censorship_status = 1 THEN 1 ELSE 0 END) AS 'OK',
+  SUM(CASE WHEN tg.censorship_status = 2 THEN 1 ELSE 0 END) AS 'NG',
+  SUM(CASE WHEN tg.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM tengus tg
+JOIN trees t ON tg.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
+
+### キノコ
+
+SELECT
+  DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d') AS '日付(JST)',
+  SUM(CASE WHEN m.censorship_status = 1 THEN 1 ELSE 0 END) AS 'OK',
+  SUM(CASE WHEN m.censorship_status = 2 THEN 1 ELSE 0 END) AS 'NG',
+  SUM(CASE WHEN m.censorship_status IN (1, 2) THEN 1 ELSE 0 END) AS '合計'
+FROM mushrooms m
+JOIN trees t ON m.tree_id = t.id
+GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
+ORDER BY `日付(JST)`;
