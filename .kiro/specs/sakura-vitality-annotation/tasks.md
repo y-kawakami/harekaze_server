@@ -71,14 +71,14 @@
   - ストリーミングレスポンスでのCSV出力
   - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.7_
 
-- [ ] 4. インターフェース層の実装
-- [ ] 4.1 認証APIエンドポイント
+- [x] 4. インターフェース層の実装
+- [x] 4.1 認証APIエンドポイント
   - POST /annotation_api/login（ログイン・トークン発行）
   - GET /annotation_api/me（現在のアノテーター情報取得）
   - ログアウト処理（クライアント側トークン破棄）
   - 認証ミドルウェアの設定
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5_
-- [ ] 4.2 アノテーションAPIエンドポイント
+- [x] 4.2 アノテーションAPIエンドポイント
   - GET /annotation_api/trees（一覧取得・フィルタリング）
   - GET /annotation_api/trees/{entire_tree_id}（詳細取得）
   - POST /annotation_api/trees/{entire_tree_id}/annotation（アノテーション保存）
@@ -86,7 +86,7 @@
   - GET /annotation_api/export/csv（CSVエクスポート）
   - 認証必須の設定
   - _Requirements: 2.1, 2.5, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.4, 6.5, 9.1, 9.2_
-- [ ] 4.3 (P) Pydanticスキーマ定義
+- [x] 4.3 (P) Pydanticスキーマ定義
   - リクエストスキーマ（AnnotationRequest等）
   - レスポンススキーマ（AnnotationListResponse, AnnotationDetailResponse等）
   - バリデーションロジック（元気度値の範囲チェック）

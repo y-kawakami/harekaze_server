@@ -6,8 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.interfaces.api import (admin_auth, admin_censorship, auth, debug,
-                                info, ping, tree)
+from app.interfaces.api import (admin_auth, admin_censorship, annotation,
+                                annotation_auth, auth, debug, info, ping, tree)
 from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.api.error_handlers import register_error_handlers
 from app.interfaces.share import share
@@ -155,6 +155,10 @@ app.include_router(share.router, prefix="/sakura_camera", tags=["share"])
 app.include_router(admin_auth.router, prefix="/admin_api", tags=["admin"])
 app.include_router(admin_censorship.router,
                    prefix="/admin_api", tags=["admin"])
+app.include_router(annotation_auth.router,
+                   prefix="/annotation_api", tags=["annotation"])
+app.include_router(annotation.router,
+                   prefix="/annotation_api", tags=["annotation"])
 
 # カスタムSwagger UIエンドポイントを追加
 
