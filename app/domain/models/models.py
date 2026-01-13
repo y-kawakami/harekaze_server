@@ -1,10 +1,13 @@
 import uuid
 from datetime import datetime, time, timezone
 from enum import IntEnum
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
+
+if TYPE_CHECKING:
+    from app.domain.models.annotation import VitalityAnnotation
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import (Boolean, DateTime, Double, Float, ForeignKey, Index,
+from sqlalchemy import (Boolean, DateTime, Double, ForeignKey, Index,
                         Integer, Numeric, String, Text, Time)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -139,6 +142,8 @@ class EntireTree(Base):
 
     user: Mapped["User"] = relationship("User")
     tree: Mapped["Tree"] = relationship("Tree", back_populates="entire_tree")
+    vitality_annotation: Mapped[Optional["VitalityAnnotation"]] = relationship(
+        "VitalityAnnotation", uselist=False, back_populates="entire_tree")
 
 
 class Stem(Base):
