@@ -63,7 +63,8 @@ def sample_entire_tree(sample_tree):
     entire_tree.tree = sample_tree
     entire_tree.image_obj_key = "test/image.jpg"
     entire_tree.thumb_obj_key = "test/thumb.jpg"
-    entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.photo_date = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
     entire_tree.vitality_annotation = None
     return entire_tree
 
@@ -76,12 +77,14 @@ def sample_annotated_entire_tree(sample_tree):
     entire_tree.tree = sample_tree
     entire_tree.image_obj_key = "test/image2.jpg"
     entire_tree.thumb_obj_key = "test/thumb2.jpg"
-    entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.photo_date = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
 
     annotation = Mock()
     annotation.vitality_value = 3
     annotation.annotator_id = 1
-    annotation.annotated_at = datetime(2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
+    annotation.annotated_at = datetime(
+        2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
     entire_tree.vitality_annotation = annotation
     return entire_tree
 

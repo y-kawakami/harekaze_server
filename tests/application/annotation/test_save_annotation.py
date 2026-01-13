@@ -29,7 +29,8 @@ def sample_existing_annotation():
     annotation.entire_tree_id = 100
     annotation.vitality_value = 3
     annotation.annotator_id = 1
-    annotation.annotated_at = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    annotation.annotated_at = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
     return annotation
 
 
@@ -184,7 +185,9 @@ class TestSaveAnnotation:
                 request=request,
             )
 
-    def test_save_annotation_records_timestamp(self, mock_db, sample_entire_tree):
+    def test_save_annotation_records_timestamp(
+        self, mock_db, sample_entire_tree
+    ):
         """アノテーション日時が記録される"""
         from app.application.annotation.save_annotation import (
             SaveAnnotationRequest,

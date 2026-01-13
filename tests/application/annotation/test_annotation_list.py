@@ -4,7 +4,6 @@ TDD: RED フェーズ - まずテストを書く
 """
 
 from datetime import datetime, timezone
-from typing import Literal
 from unittest.mock import MagicMock, Mock
 
 import pytest
@@ -73,7 +72,8 @@ def sample_annotated_entire_tree(sample_tree):
     annotation = Mock()
     annotation.vitality_value = 3
     annotation.annotator_id = 1
-    annotation.annotated_at = datetime(2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
+    annotation.annotated_at = datetime(
+        2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
     entire_tree.vitality_annotation = annotation
     return entire_tree
 
@@ -107,7 +107,8 @@ class TestGetAnnotationList:
         query_mock.offset.return_value = query_mock
         query_mock.limit.return_value = query_mock
         query_mock.count.return_value = 2
-        query_mock.all.return_value = [sample_entire_tree, sample_annotated_entire_tree]
+        query_mock.all.return_value = [
+            sample_entire_tree, sample_annotated_entire_tree]
 
         filter_params = AnnotationListFilter(status="all")
 
@@ -376,9 +377,11 @@ class TestAnnotationStats:
         )
 
         # scalar_subquery のモック設定
-        mock_db.query.return_value.filter.return_value.count.return_value = 100
-        mock_db.query.return_value.join.return_value.filter.return_value.count.return_value = 30
-        mock_db.query.return_value.outerjoin.return_value.filter.return_value.count.return_value = 70
+        query = mock_db.query.return_value
+        query.filter.return_value.count.return_value = 100
+        query.join.return_value.filter.return_value.count.return_value = 30
+        join_filter = query.outerjoin.return_value.filter.return_value
+        join_filter.count.return_value = 70
 
         # 各元気度別の件数
         scalar_mock = MagicMock()

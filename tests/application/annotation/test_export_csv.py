@@ -30,7 +30,8 @@ def sample_annotations():
         annotation.entire_tree_id = 100 + i
         annotation.vitality_value = vitality_value
         annotation.annotator_id = 1
-        annotation.annotated_at = datetime(2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
+        annotation.annotated_at = datetime(
+            2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
 
         entire_tree = Mock()
         entire_tree.id = 100 + i
@@ -118,7 +119,9 @@ class TestExportAnnotationCsv:
         assert "image1.jpg" in lines[1]
         assert "image2.jpg" in lines[2]
 
-    def test_export_csv_includes_undiagnosable(self, mock_db, sample_annotations):
+    def test_export_csv_includes_undiagnosable(
+        self, mock_db, sample_annotations
+    ):
         """診断不可（-1）のデータも含まれる"""
         from app.application.annotation.export_csv import export_annotation_csv
 
@@ -131,9 +134,12 @@ class TestExportAnnotationCsv:
         result = export_annotation_csv(db=mock_db, include_undiagnosable=True)
 
         # -1 が含まれていることを確認
-        assert ",-1" in result or ",-1\n" in result or ",-1\r" in result
+        has_minus1 = ",-1" in result or ",-1\n" in result or ",-1\r" in result
+        assert has_minus1
 
-    def test_export_csv_exclude_undiagnosable(self, mock_db, sample_annotations):
+    def test_export_csv_exclude_undiagnosable(
+        self, mock_db, sample_annotations
+    ):
         """診断不可（-1）を除外できる"""
         from app.application.annotation.export_csv import export_annotation_csv
 
