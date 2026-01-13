@@ -92,8 +92,8 @@
   - バリデーションロジック（元気度値の範囲チェック）
   - _Requirements: 4.2_
 
-- [ ] 5. S3画像連携
-- [ ] 5.1 アノテーション用画像URL生成
+- [x] 5. S3画像連携
+- [x] 5.1 アノテーション用画像URL生成
   - hrkz-prd-s3-contentsバケットからの画像取得
   - sakura_camera/media/trees/ + image_obj_key でのパス構成
   - 一覧用サムネイルURL生成
