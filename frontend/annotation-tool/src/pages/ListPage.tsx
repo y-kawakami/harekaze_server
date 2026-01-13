@@ -1,0 +1,310 @@
+/**
+ * 一覧画面
+ * Requirements: 6.2, 2.1-2.5, 3.1-3.6, 9.1, 9.2
+ */
+
+import { useState, useEffect, useCallback } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import type {
+  AnnotationListItem,
+  AnnotationStats,
+  Prefecture,
+  StatusFilter,
+} from '../types/api';
+import { getTrees, getPrefectures, exportCsv } from '../api/client';
+import { useAuth } from '../hooks/useAuth';
+
+const VITALITY_LABELS: Record<number, string> = {
+  1: 'とっても元気',
+  2: '元気',
+  3: '普通',
+  4: '少し気掛かり',
+  5: '気掛かり',
+  [-1]: '診断不可',
+};
+
+const STATUS_TABS: { value: StatusFilter; label: string }[] = [
+  { value: 'all', label: '全て' },
+  { value: 'annotated', label: '入力済み' },
+  { value: 'unannotated', label: '未入力' },
+];
+
+export function ListPage() {
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const { annotator, logout } = useAuth();
+
+  const [items, setItems] = useState<AnnotationListItem[]>([]);
+  const [stats, setStats] = useState<AnnotationStats | null>(null);
+  const [prefectures, setPrefectures] = useState<Prefecture[]>([]);
+  const [total, setTotal] = useState(0);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
+
+  const status = (searchParams.get('status') as StatusFilter) || 'all';
+  const prefectureCode = searchParams.get('prefecture_code') || '';
+  const vitalityValue = searchParams.get('vitality_value');
+  const page = parseInt(searchParams.get('page') || '1', 10);
+  const perPage = 20;
+
+  const fetchData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [treesResponse, prefecturesResponse] = await Promise.all([
+        getTrees({
+          status,
+          prefecture_code: prefectureCode || null,
+          vitality_value: vitalityValue ? parseInt(vitalityValue, 10) : null,
+          page,
+          per_page: perPage,
+        }),
+        getPrefectures(),
+      ]);
+      setItems(treesResponse.items);
+      setStats(treesResponse.stats);
+      setTotal(treesResponse.total);
+      setPrefectures(prefecturesResponse.prefectures);
+    } catch (error) {
+      console.error('Failed to fetch data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [status, prefectureCode, vitalityValue, page, perPage]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const updateFilter = (key: string, value: string | null) => {
+    const newParams = new URLSearchParams(searchParams);
+    if (value) {
+      newParams.set(key, value);
+    } else {
+      newParams.delete(key);
+    }
+    if (key !== 'page') {
+      newParams.delete('page');
+    }
+    if (key === 'status' && value !== 'annotated') {
+      newParams.delete('vitality_value');
+    }
+    setSearchParams(newParams);
+  };
+
+  const handleExportCsv = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await exportCsv(true);
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'annotations.csv';
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('CSV export failed:', error);
+      alert('CSVエクスポートに失敗しました');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleItemClick = (entireTreeId: number) => {
+    const params = new URLSearchParams();
+    params.set('status', status);
+    if (prefectureCode) params.set('prefecture_code', prefectureCode);
+    if (vitalityValue) params.set('vitality_value', vitalityValue);
+    navigate(`/annotation/${entireTreeId}?${params}`);
+  };
+
+  const totalPages = Math.ceil(total / perPage);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+          <h1 className="text-xl font-bold text-gray-800">
+            桜元気度アノテーションツール
+          </h1>
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-600">{annotator?.username}</span>
+            <button
+              onClick={logout}
+              className="text-sm text-gray-600 hover:text-gray-800"
+            >
+              ログアウト
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="max-w-7xl mx-auto px-4 py-6">
+        {/* Stats */}
+        {stats && (
+          <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+            <div className="flex flex-wrap gap-4 items-center justify-between">
+              <div className="flex gap-6 text-sm">
+                <span>
+                  全件: <strong>{stats.total_count}</strong>
+                </span>
+                <span>
+                  入力済み: <strong>{stats.annotated_count}</strong>
+                </span>
+                <span>
+                  未入力: <strong>{stats.unannotated_count}</strong>
+                </span>
+              </div>
+              <div className="flex gap-3 text-xs">
+                {[1, 2, 3, 4, 5, -1].map((v) => (
+                  <span key={v} className="px-2 py-1 bg-gray-100 rounded">
+                    {VITALITY_LABELS[v]}:{' '}
+                    <strong>
+                      {v === -1
+                        ? stats.vitality_minus1_count
+                        : stats[`vitality_${v}_count` as keyof AnnotationStats]}
+                    </strong>
+                  </span>
+                ))}
+              </div>
+              <button
+                onClick={handleExportCsv}
+                disabled={isExporting}
+                className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded-lg transition-colors"
+              >
+                {isExporting ? 'エクスポート中...' : 'CSVエクスポート'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="bg-white rounded-lg shadow-sm p-4 mb-6">
+          <div className="flex flex-wrap gap-4 items-center">
+            {/* Status Tabs */}
+            <div className="flex border rounded-lg overflow-hidden">
+              {STATUS_TABS.map((tab) => (
+                <button
+                  key={tab.value}
+                  onClick={() => updateFilter('status', tab.value)}
+                  className={`px-4 py-2 text-sm font-medium transition-colors ${
+                    status === tab.value
+                      ? 'bg-sakura-500 text-white'
+                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Prefecture Filter */}
+            <select
+              value={prefectureCode}
+              onChange={(e) => updateFilter('prefecture_code', e.target.value || null)}
+              className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
+            >
+              <option value="">全ての都道府県</option>
+              {prefectures.map((pref) => (
+                <option key={pref.code} value={pref.code}>
+                  {pref.name}
+                </option>
+              ))}
+            </select>
+
+            {/* Vitality Filter (only for annotated) */}
+            {status === 'annotated' && (
+              <select
+                value={vitalityValue || ''}
+                onChange={(e) => updateFilter('vitality_value', e.target.value || null)}
+                className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
+              >
+                <option value="">全ての元気度</option>
+                {[1, 2, 3, 4, 5, -1].map((v) => (
+                  <option key={v} value={v}>
+                    {VITALITY_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            )}
+
+            <span className="text-sm text-gray-600 ml-auto">
+              該当件数: <strong>{total}</strong>
+            </span>
+          </div>
+        </div>
+
+        {/* Grid */}
+        {isLoading ? (
+          <div className="text-center py-12">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-4 border-sakura-500 border-t-transparent"></div>
+            <p className="mt-2 text-gray-600">読み込み中...</p>
+          </div>
+        ) : items.length === 0 ? (
+          <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+            <p className="text-gray-600">該当する画像がありません</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+            {items.map((item) => (
+              <div
+                key={item.entire_tree_id}
+                onClick={() => handleItemClick(item.entire_tree_id)}
+                className="bg-white rounded-lg shadow-sm overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+              >
+                <div className="aspect-square relative">
+                  <img
+                    src={item.thumb_url}
+                    alt="桜画像"
+                    className="w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  {item.annotation_status === 'annotated' && item.vitality_value && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-sakura-500 text-white text-xs rounded">
+                      {VITALITY_LABELS[item.vitality_value]}
+                    </div>
+                  )}
+                  {item.annotation_status === 'unannotated' && (
+                    <div className="absolute top-2 right-2 px-2 py-1 bg-gray-500 text-white text-xs rounded">
+                      未入力
+                    </div>
+                  )}
+                </div>
+                <div className="p-2">
+                  <p className="text-xs text-gray-600 truncate">
+                    {item.prefecture_name} - {item.location}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="flex justify-center gap-2 mt-6">
+            <button
+              onClick={() => updateFilter('page', String(page - 1))}
+              disabled={page <= 1}
+              className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              前へ
+            </button>
+            <span className="px-4 py-2 text-sm">
+              {page} / {totalPages}
+            </span>
+            <button
+              onClick={() => updateFilter('page', String(page + 1))}
+              disabled={page >= totalPages}
+              className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
+            >
+              次へ
+            </button>
+          </div>
+        )}
+      </main>
+    </div>
+  );
+}

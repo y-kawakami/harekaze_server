@@ -34,3 +34,9 @@ app/branch_segmentation/
 logs/
 
 .DS_Store
+
+# Frontend (Node.js/Vite)
+node_modules/
+*.local
+*.tsbuildinfo
+.eslintcache
