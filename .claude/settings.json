@@ -1,0 +1,23 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "*.py",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "uv run ruff check src/ --fix --output-format=concise || echo 'Ruff check completed with issues'"
+          },
+          {
+            "type": "command", 
+            "command": "uv run flake8 src/ --max-line-length=120 || echo 'Flake8 check completed with issues'"
+          },
+          {
+            "type": "command",
+            "command": "uv run basedpyright src/ || echo 'Basedpyright type check completed with issues'"
+          }
+        ]
+      }
+    ]
+  }
+}
