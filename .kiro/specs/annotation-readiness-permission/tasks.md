@@ -34,18 +34,18 @@
   - テーブル引数にインデックス定義を追加
   - _Requirements: 1.1, 1.3_
 
-- [ ] 3. 認証・認可機能の拡張
-- [ ] 3.1 AnnotationAuthService の JWT ペイロードに role を含める
+- [x] 3. 認証・認可機能の拡張
+- [x] 3.1 AnnotationAuthService の JWT ペイロードに role を含める
   - トークン作成時に role をペイロードに追加
   - トークン検証時に role を抽出して返す
   - _Requirements: 2.4, 8.1, 8.2_
 
-- [ ] 3.2 管理者権限チェック用の require_admin 依存関数を作成
+- [x] 3.2 管理者権限チェック用の require_admin 依存関数を作成
   - get_current_annotator で取得したアノテーターの role をチェック
   - admin 以外の場合は 403 Forbidden を返す
   - _Requirements: 4.2_
 
-- [ ] 3.3 認証 API のレスポンスに role を含める
+- [x] 3.3 認証 API のレスポンスに role を含める
   - ログインエンドポイントのレスポンスに role を追加
   - /me エンドポイントのレスポンスに role を追加
   - _Requirements: 8.1, 8.2_

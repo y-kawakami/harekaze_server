@@ -29,6 +29,10 @@ from app.application.annotation.save_annotation import (
     SaveAnnotationRequest,
     save_annotation,
 )
+from app.application.annotation.update_is_ready import (
+    UpdateIsReadyRequest as UpdateIsReadyUseCaseRequest,
+    update_is_ready,
+)
 from app.domain.models.annotation import Annotator
 from app.domain.services.flowering_date_service import (
     get_flowering_date_service,
@@ -38,7 +42,7 @@ from app.domain.services.municipality_service import (
     get_municipality_service,
 )
 from app.infrastructure.database.database import get_db
-from app.interfaces.api.annotation_auth import get_current_annotator
+from app.interfaces.api.annotation_auth import get_current_annotator, require_admin
 from app.interfaces.schemas.annotation import (
     AnnotationDetailResponse,
     AnnotationListItemResponse,
@@ -48,6 +52,8 @@ from app.interfaces.schemas.annotation import (
     PrefectureListResponse,
     PrefectureResponse,
     SaveAnnotationResponse,
+    UpdateIsReadyRequest,
+    UpdateIsReadyResponse,
 )
 
 router = APIRouter(
@@ -286,3 +292,42 @@ async def export_csv(
             "Content-Disposition": "attachment; filename=annotations.csv",
         },
     )
+
+
+@router.patch(
+    "/trees/{entire_tree_id}/is_ready",
+    response_model=UpdateIsReadyResponse
+)
+async def update_tree_is_ready(
+    entire_tree_id: int,
+    request: UpdateIsReadyRequest,
+    current_annotator: Annotator = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> UpdateIsReadyResponse:
+    """
+    画像の is_ready フラグを更新する（管理者専用）
+
+    管理者がアノテーション対象画像を選別するためのエンドポイント。
+    """
+    try:
+        use_case_request = UpdateIsReadyUseCaseRequest(
+            entire_tree_id=entire_tree_id,
+            is_ready=request.is_ready,
+        )
+
+        result = update_is_ready(
+            db=db,
+            annotator_id=current_annotator.id,
+            request=use_case_request,
+        )
+
+        return UpdateIsReadyResponse(
+            entire_tree_id=result.entire_tree_id,
+            is_ready=result.is_ready,
+            updated_at=result.updated_at,
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )

@@ -120,19 +120,22 @@ class TestAnnotationAuthServiceToken:
 
     def test_create_annotator_token(self, service):
         """アノテーター用JWTトークンが生成される"""
-        token = service.create_annotator_token(123)
+        token = service.create_annotator_token(123, "annotator")
 
         assert token is not None
         assert isinstance(token, str)
         assert len(token) > 0
 
     def test_verify_annotator_token_valid(self, service):
-        """有効なトークンからアノテーターIDを取得できる"""
-        token = service.create_annotator_token(456)
+        """有効なトークンからアノテーターIDとroleを取得できる"""
+        token = service.create_annotator_token(456, "annotator")
 
-        annotator_id = service.verify_annotator_token(token)
+        result = service.verify_annotator_token(token)
 
+        assert result is not None
+        annotator_id, role = result
         assert annotator_id == 456
+        assert role == "annotator"
 
     def test_verify_annotator_token_invalid(self, service):
         """無効なトークンはNoneを返す"""
@@ -181,6 +184,41 @@ class TestAnnotationAuthServiceToken:
         result = service.verify_annotator_token(token)
 
         assert result is None
+
+
+@pytest.mark.unit
+class TestAnnotationAuthServiceTokenWithRole:
+    """role を含むトークン機能のテスト"""
+
+    def test_create_annotator_token_with_role(self, service):
+        """アノテーター用JWTトークンにroleが含まれる"""
+        token = service.create_annotator_token(123, "admin")
+
+        assert token is not None
+        assert isinstance(token, str)
+        assert len(token) > 0
+
+    def test_verify_annotator_token_returns_role(self, service):
+        """有効なトークンからroleも取得できる"""
+        token = service.create_annotator_token(456, "annotator")
+
+        result = service.verify_annotator_token(token)
+
+        assert result is not None
+        annotator_id, role = result
+        assert annotator_id == 456
+        assert role == "annotator"
+
+    def test_verify_annotator_token_admin_role(self, service):
+        """adminロールのトークンを正しく検証できる"""
+        token = service.create_annotator_token(789, "admin")
+
+        result = service.verify_annotator_token(token)
+
+        assert result is not None
+        annotator_id, role = result
+        assert annotator_id == 789
+        assert role == "admin"
 
 
 @pytest.mark.unit

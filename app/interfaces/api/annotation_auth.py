@@ -42,7 +42,7 @@ async def annotation_login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    access_token = auth_service.create_annotator_token(annotator.id)
+    access_token = auth_service.create_annotator_token(annotator.id, annotator.role)
 
     return AnnotatorToken(access_token=access_token, token_type="bearer")
 
@@ -66,14 +66,15 @@ async def get_current_annotator(
     """
     auth_service = AnnotationAuthService(db)
 
-    annotator_id = auth_service.verify_annotator_token(token)
-    if not annotator_id:
+    result = auth_service.verify_annotator_token(token)
+    if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="認証情報が無効です",
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+    annotator_id, _ = result
     annotator = auth_service.get_annotator_by_id(annotator_id)
     if not annotator:
         raise HTTPException(
@@ -83,6 +84,29 @@ async def get_current_annotator(
         )
 
     return annotator
+
+
+async def require_admin(
+    current_annotator: Annotator = Depends(get_current_annotator)
+) -> Annotator:
+    """
+    管理者権限を要求する依存関数
+
+    Args:
+        current_annotator: 現在のアノテーター
+
+    Returns:
+        Annotator: admin ロールのアノテーター
+
+    Raises:
+        HTTPException: 403 Forbidden（admin でない場合）
+    """
+    if current_annotator.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="管理者権限が必要です",
+        )
+    return current_annotator
 
 
 @router.get("/me", response_model=AnnotatorResponse)
@@ -95,6 +119,7 @@ async def read_annotator_me(
     return AnnotatorResponse(
         id=current_annotator.id,
         username=current_annotator.username,
+        role=current_annotator.role,
         last_login=current_annotator.last_login,
         created_at=current_annotator.created_at,
     )

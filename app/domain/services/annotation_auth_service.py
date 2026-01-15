@@ -64,11 +64,12 @@ class AnnotationAuthService:
 
         return annotator
 
-    def create_annotator_token(self, annotator_id: int) -> str:
+    def create_annotator_token(self, annotator_id: int, role: str) -> str:
         """アノテーター用の JWT トークンを作成する
 
         Args:
             annotator_id: アノテーター ID
+            role: アノテーターのロール ('admin' または 'annotator')
 
         Returns:
             str: JWT トークン
@@ -79,17 +80,20 @@ class AnnotationAuthService:
             "sub": str(annotator_id),
             "exp": expire,
             "is_annotator": True,
+            "role": role,
         }
         return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
-    def verify_annotator_token(self, token: str | None) -> int | None:
+    def verify_annotator_token(
+        self, token: str | None
+    ) -> tuple[int, str] | None:
         """アノテーター用の JWT トークンを検証する
 
         Args:
             token: JWT トークン
 
         Returns:
-            int | None: アノテーター ID または None
+            tuple[int, str] | None: (アノテーター ID, role) または None
         """
         if not token:
             return None
@@ -98,11 +102,12 @@ class AnnotationAuthService:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             annotator_id = payload.get("sub")
             is_annotator = payload.get("is_annotator", False)
+            role = payload.get("role", "annotator")
 
             if not annotator_id or not is_annotator:
                 return None
 
-            return int(annotator_id)
+            return (int(annotator_id), role)
         except (JWTError, ValueError):
             return None
 

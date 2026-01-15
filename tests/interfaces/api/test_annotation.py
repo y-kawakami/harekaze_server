@@ -25,6 +25,7 @@ def sample_annotator(db: Session) -> Annotator:
     annotator = Annotator(
         username="test_annotator",
         hashed_password=pwd_context.hash("test_password123"),
+        role="annotator",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -35,13 +36,61 @@ def sample_annotator(db: Session) -> Annotator:
 
 
 @pytest.fixture
-def sample_tree(db: Session) -> Tree:
+def admin_annotator(db: Session) -> Annotator:
+    """テスト用adminアノテーターをDBに作成"""
+    annotator = Annotator(
+        username="admin_annotator",
+        hashed_password=pwd_context.hash("admin_password123"),
+        role="admin",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(annotator)
+    db.commit()
+    db.refresh(annotator)
+    return annotator
+
+
+@pytest.fixture
+def admin_auth_headers(client, admin_annotator: Annotator) -> dict:
+    """admin認証済みヘッダーを取得"""
+    response = client.post(
+        "/annotation_api/login",
+        data={
+            "username": "admin_annotator",
+            "password": "admin_password123",
+        },
+    )
+    assert response.status_code == status.HTTP_200_OK
+    token = response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}
+
+
+@pytest.fixture
+def sample_user(db: Session):
+    """テスト用ユーザーをDBに作成"""
+    from app.domain.models.models import User
+    user = User(
+        ip_addr="127.0.0.1",
+        created_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(timezone.utc),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@pytest.fixture
+def sample_tree(db: Session, sample_user) -> Tree:
     """テスト用の桜の木をDBに作成"""
     tree = Tree(
+        user_id=sample_user.id,
         prefecture_code="13",
         location="東京都渋谷区",
         latitude=35.6580,
         longitude=139.7016,
+        position="POINT(139.7016 35.6580)",
         created_at=datetime.now(timezone.utc),
         updated_at=datetime.now(timezone.utc),
     )
@@ -52,10 +101,13 @@ def sample_tree(db: Session) -> Tree:
 
 
 @pytest.fixture
-def sample_entire_tree(db: Session, sample_tree: Tree) -> EntireTree:
+def sample_entire_tree(db: Session, sample_tree: Tree, sample_user) -> EntireTree:
     """テスト用の桜全体画像をDBに作成"""
     entire_tree = EntireTree(
         tree_id=sample_tree.id,
+        user_id=sample_user.id,
+        latitude=35.6580,
+        longitude=139.7016,
         image_obj_key="2024/04/01/test_image.jpg",
         thumb_obj_key="2024/04/01/test_thumb.jpg",
         created_at=datetime.now(timezone.utc),
@@ -135,6 +187,19 @@ class TestAnnotationAuthAPI:
         assert response.status_code == status.HTTP_200_OK
         data = response.json()
         assert data["username"] == "test_annotator"
+        assert data["role"] == "annotator"
+
+    def test_get_me_returns_admin_role(self, client, admin_auth_headers):
+        """adminロールの場合、roleがadminで返される"""
+        response = client.get(
+            "/annotation_api/me",
+            headers=admin_auth_headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["username"] == "admin_annotator"
+        assert data["role"] == "admin"
 
     def test_get_me_unauthenticated(self, client):
         """未認証で401"""
@@ -468,6 +533,60 @@ class TestCSVExportAPI:
         content = response.text
         # -1は除外される
         assert ",-1" not in content
+
+
+@pytest.mark.integration
+class TestRequireAdminDependency:
+    """require_admin 依存関数のテスト"""
+
+    def test_require_admin_allows_admin_role(
+        self,
+        client,
+        admin_auth_headers,
+        db,
+        sample_entire_tree,
+    ):
+        """adminロールでis_ready変更APIにアクセスできる"""
+        # is_ready更新エンドポイント（admin専用）にアクセス
+        response = client.patch(
+            f"/annotation_api/trees/{sample_entire_tree.id}/is_ready",
+            json={"is_ready": True},
+            headers=admin_auth_headers,
+        )
+
+        # adminなのでアクセス許可される（200または404）
+        assert response.status_code in [
+            status.HTTP_200_OK, status.HTTP_404_NOT_FOUND
+        ]
+
+    def test_require_admin_denies_annotator_role(
+        self,
+        client,
+        auth_headers,
+        db,
+        sample_entire_tree,
+    ):
+        """annotatorロールでis_ready変更APIへのアクセスは403"""
+        response = client.patch(
+            f"/annotation_api/trees/{sample_entire_tree.id}/is_ready",
+            json={"is_ready": True},
+            headers=auth_headers,
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    def test_require_admin_denies_unauthenticated(
+        self,
+        client,
+        sample_entire_tree,
+    ):
+        """未認証でis_ready変更APIへのアクセスは401"""
+        response = client.patch(
+            f"/annotation_api/trees/{sample_entire_tree.id}/is_ready",
+            json={"is_ready": True},
+        )
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
 
 
 @pytest.mark.integration

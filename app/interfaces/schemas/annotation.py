@@ -19,6 +19,7 @@ class AnnotatorResponse(BaseModel):
     """アノテーター情報レスポンス"""
     id: int = Field(..., description="アノテーターID")
     username: str = Field(..., description="アノテーターユーザー名")
+    role: str = Field(..., description="アノテーターのロール（admin/annotator）")
     last_login: Optional[datetime] = Field(None, description="最終ログイン日時")
     created_at: datetime = Field(..., description="作成日時")
 
@@ -111,3 +112,15 @@ class PrefectureResponse(BaseModel):
 class PrefectureListResponse(BaseModel):
     """都道府県一覧レスポンス"""
     prefectures: list[PrefectureResponse] = Field(..., description="都道府県一覧")
+
+
+class UpdateIsReadyRequest(BaseModel):
+    """is_ready更新リクエスト"""
+    is_ready: bool = Field(..., description="評価準備完了フラグ")
+
+
+class UpdateIsReadyResponse(BaseModel):
+    """is_ready更新レスポンス"""
+    entire_tree_id: int = Field(..., description="EntireTree ID")
+    is_ready: bool = Field(..., description="更新後のis_readyフラグ")
+    updated_at: datetime = Field(..., description="更新日時")
