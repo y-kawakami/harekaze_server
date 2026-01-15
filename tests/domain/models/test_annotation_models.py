@@ -62,6 +62,44 @@ class TestAnnotatorModel:
 
         assert annotator.last_login is not None
 
+    def test_annotator_default_role_is_annotator(self, db: Session):
+        """デフォルトのroleは'annotator'である"""
+        annotator = Annotator(
+            username="default_role_test",
+            hashed_password="password"
+        )
+        db.add(annotator)
+        db.commit()
+        db.refresh(annotator)
+
+        assert annotator.role == "annotator"
+
+    def test_annotator_role_can_be_admin(self, db: Session):
+        """roleを'admin'に設定できる"""
+        annotator = Annotator(
+            username="admin_test",
+            hashed_password="password",
+            role="admin"
+        )
+        db.add(annotator)
+        db.commit()
+        db.refresh(annotator)
+
+        assert annotator.role == "admin"
+
+    def test_annotator_role_can_be_annotator(self, db: Session):
+        """roleを'annotator'に明示的に設定できる"""
+        annotator = Annotator(
+            username="annotator_role_test",
+            hashed_password="password",
+            role="annotator"
+        )
+        db.add(annotator)
+        db.commit()
+        db.refresh(annotator)
+
+        assert annotator.role == "annotator"
+
 
 class TestVitalityAnnotationModel:
     """VitalityAnnotationモデルのテスト"""
@@ -215,3 +253,54 @@ class TestVitalityAnnotationModel:
 
         assert annotation.annotator is not None
         assert annotation.annotator.id == setup_data["annotator"].id
+
+    def test_vitality_annotation_default_is_ready_false(
+        self, db: Session, setup_data
+    ):
+        """is_readyのデフォルト値はFalseである"""
+        annotation = VitalityAnnotation(
+            entire_tree_id=setup_data["entire_tree"].id,
+            vitality_value=3,
+            annotator_id=setup_data["annotator"].id,
+            annotated_at=datetime.now(timezone.utc)
+        )
+        db.add(annotation)
+        db.commit()
+        db.refresh(annotation)
+
+        assert annotation.is_ready is False
+
+    def test_vitality_annotation_is_ready_can_be_true(
+        self, db: Session, setup_data
+    ):
+        """is_readyをTrueに設定できる"""
+        annotation = VitalityAnnotation(
+            entire_tree_id=setup_data["entire_tree"].id,
+            vitality_value=3,
+            annotator_id=setup_data["annotator"].id,
+            annotated_at=datetime.now(timezone.utc),
+            is_ready=True
+        )
+        db.add(annotation)
+        db.commit()
+        db.refresh(annotation)
+
+        assert annotation.is_ready is True
+
+    def test_vitality_annotation_vitality_value_nullable(
+        self, db: Session, setup_data
+    ):
+        """vitality_valueはNULL許容である（is_readyのみ設定時）"""
+        annotation = VitalityAnnotation(
+            entire_tree_id=setup_data["entire_tree"].id,
+            vitality_value=None,
+            annotator_id=setup_data["annotator"].id,
+            annotated_at=datetime.now(timezone.utc),
+            is_ready=True
+        )
+        db.add(annotation)
+        db.commit()
+        db.refresh(annotation)
+
+        assert annotation.vitality_value is None
+        assert annotation.is_ready is True

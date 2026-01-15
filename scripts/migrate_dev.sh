@@ -17,6 +17,9 @@ REMOTE_DB_HOST="${DB_HOST}"
 # ローカルホストの設定
 export DB_HOST="127.0.0.1"
 export DB_PORT="${LOCAL_PORT}"
+export DB_USER="${DB_USER}"
+export DB_PASSWORD="${DB_PASSWORD}"
+export DB_NAME="${DB_NAME}"
 
 # SSHトンネルの設定
 echo "SSHトンネルを確立しています..."

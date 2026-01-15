@@ -5,6 +5,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import DatePicker from 'react-datepicker';
+import 'react-datepicker/dist/react-datepicker.css';
 import type {
   AnnotationListItem,
   AnnotationStats,
@@ -13,6 +15,18 @@ import type {
 } from '../types/api';
 import { getTrees, getPrefectures, exportCsv } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
+
+// 日付文字列 → Dateオブジェクト変換
+const parseDate = (str: string | null): Date | null => {
+  if (!str) return null;
+  return new Date(str);
+};
+
+// Dateオブジェクト → YYYY-MM-DD文字列変換
+const formatDate = (date: Date | null): string | null => {
+  if (!date) return null;
+  return date.toISOString().split('T')[0];
+};
 
 const VITALITY_LABELS: Record<number, string> = {
   1: 'とっても元気',
@@ -44,6 +58,8 @@ export function ListPage() {
   const status = (searchParams.get('status') as StatusFilter) || 'all';
   const prefectureCode = searchParams.get('prefecture_code') || '';
   const vitalityValue = searchParams.get('vitality_value');
+  const photoDateFrom = searchParams.get('photo_date_from') || '';
+  const photoDateTo = searchParams.get('photo_date_to') || '';
   const page = parseInt(searchParams.get('page') || '1', 10);
   const perPage = 20;
 
@@ -55,6 +71,8 @@ export function ListPage() {
           status,
           prefecture_code: prefectureCode || null,
           vitality_value: vitalityValue ? parseInt(vitalityValue, 10) : null,
+          photo_date_from: photoDateFrom || null,
+          photo_date_to: photoDateTo || null,
           page,
           per_page: perPage,
         }),
@@ -69,7 +87,7 @@ export function ListPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [status, prefectureCode, vitalityValue, page, perPage]);
+  }, [status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo, page, perPage]);
 
   useEffect(() => {
     fetchData();
@@ -116,6 +134,8 @@ export function ListPage() {
     params.set('status', status);
     if (prefectureCode) params.set('prefecture_code', prefectureCode);
     if (vitalityValue) params.set('vitality_value', vitalityValue);
+    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
+    if (photoDateTo) params.set('photo_date_to', photoDateTo);
     navigate(`/annotation/${entireTreeId}?${params}`);
   };
 
@@ -213,6 +233,28 @@ export function ListPage() {
                 </option>
               ))}
             </select>
+
+            {/* Photo Date Range Filter */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-gray-600">撮影日:</span>
+              <DatePicker
+                selected={parseDate(photoDateFrom || null)}
+                onChange={(date: Date | null) => updateFilter('photo_date_from', formatDate(date))}
+                dateFormat="yyyy/MM/dd"
+                placeholderText="開始日"
+                isClearable
+                className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none w-32"
+              />
+              <span className="text-gray-400">〜</span>
+              <DatePicker
+                selected={parseDate(photoDateTo || null)}
+                onChange={(date: Date | null) => updateFilter('photo_date_to', formatDate(date))}
+                dateFormat="yyyy/MM/dd"
+                placeholderText="終了日"
+                isClearable
+                className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none w-32"
+              />
+            </div>
 
             {/* Vitality Filter (only for annotated) */}
             {status === 'annotated' && (

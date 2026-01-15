@@ -78,7 +78,7 @@ class AnnotationDetailResponse(BaseModel):
     """詳細レスポンス"""
     entire_tree_id: int = Field(..., description="EntireTree ID")
     tree_id: int = Field(..., description="Tree ID")
-    image_url: str = Field(..., description="画像URL（署名付き）")
+    image_url: str = Field(..., description="画像URL")
     photo_date: Optional[datetime] = Field(None, description="撮影日")
     prefecture_name: str = Field(..., description="都道府県名")
     location: str = Field(..., description="撮影場所")

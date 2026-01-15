@@ -16,6 +16,7 @@ echo Image Tag is ${image_tag}
 
 build_app_api=0
 build_admin_api=0
+build_annotation_api=0
 build_manage_api=0
 build_data_batch=0
 
@@ -23,6 +24,8 @@ if [ ${SERVICE} = "app-api" ]; then
   build_app_api=1
 elif [ ${SERVICE} = "admin-api" ]; then
   build_admin_api=1
+elif [ ${SERVICE} = "annotation-api" ]; then
+  build_annotation_api=1
 elif [ ${SERVICE} = "manage-api" ]; then
   build_manage_api=1
 elif [ ${SERVICE} = "data-batch" ]; then
@@ -30,6 +33,7 @@ elif [ ${SERVICE} = "data-batch" ]; then
 elif [ ${SERVICE} = "all" ]; then
   build_app_api=1
   build_admin_api=0
+  build_annotation_api=0
   build_manage_api=0
   build_data_batch=0
 fi
@@ -50,6 +54,15 @@ if [ $build_admin_api -eq 1 ]; then
     exit 1
   fi
   pushed_repositories="${pushed_repositories}admin-api "
+fi
+if [ $build_annotation_api -eq 1 ]; then
+  echo "build annotation-api"
+  docker build -t "hrkz-annotation-api:${image_tag}" -f Docker/Dockerfile.annotationapi .
+  if [ $? -ne 0 ]; then
+    echo "build annotation-api failed"
+    exit 1
+  fi
+  pushed_repositories="${pushed_repositories}annotation-api "
 fi
 if [ $build_manage_api -eq 1 ]; then
   docker build -t "hrkz-manage-api:${image_tag}" -f Docker/Dockerfile.manageapi .

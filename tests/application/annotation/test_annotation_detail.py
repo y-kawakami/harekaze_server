@@ -17,8 +17,8 @@ def mock_db():
 @pytest.fixture
 def mock_image_service():
     service = Mock()
-    service.get_presigned_url.return_value = (
-        "https://example.com/signed/image.jpg?signature=xxx"
+    service.get_image_url.return_value = (
+        "https://example.com/sakura_camera/media/trees/image.jpg"
     )
     return service
 
@@ -147,7 +147,7 @@ class TestGetAnnotationDetail:
         mock_flowering_date_service,
         sample_entire_tree,
     ):
-        """署名付きURLが含まれる"""
+        """画像URLが含まれる"""
         from app.application.annotation.annotation_detail import (
             AnnotationListFilter,
             get_annotation_detail,
@@ -176,8 +176,8 @@ class TestGetAnnotationDetail:
         )
 
         assert result is not None
-        assert "signed" in result.image_url
-        mock_image_service.get_presigned_url.assert_called_once()
+        assert "sakura_camera" in result.image_url
+        mock_image_service.get_image_url.assert_called_once()
 
     def test_get_annotation_detail_with_photo_info(
         self,

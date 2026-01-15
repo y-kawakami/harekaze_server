@@ -5,6 +5,7 @@ Requirements: 2.1-2.5, 3.1-3.6
 """
 
 from dataclasses import dataclass
+from datetime import date, datetime
 from typing import Literal
 
 from sqlalchemy import func
@@ -23,6 +24,8 @@ class AnnotationListFilter:
     status: Literal["all", "annotated", "unannotated"] = "all"
     prefecture_code: str | None = None
     vitality_value: int | None = None
+    photo_date_from: date | None = None
+    photo_date_to: date | None = None
     page: int = 1
     per_page: int = 20
 
@@ -116,6 +119,20 @@ def get_annotation_list(
     ):
         query = query.filter(
             VitalityAnnotation.vitality_value == filter_params.vitality_value
+        )
+
+    # 撮影日範囲フィルター
+    if filter_params.photo_date_from:
+        query = query.filter(
+            EntireTree.photo_date >= datetime.combine(
+                filter_params.photo_date_from, datetime.min.time()
+            )
+        )
+    if filter_params.photo_date_to:
+        query = query.filter(
+            EntireTree.photo_date <= datetime.combine(
+                filter_params.photo_date_to, datetime.max.time()
+            )
         )
 
     # 総件数を取得（ページネーション前）

@@ -80,6 +80,8 @@ export async function getTrees(
   if (filter.vitality_value !== undefined && filter.vitality_value !== null) {
     params.append('vitality_value', String(filter.vitality_value));
   }
+  if (filter.photo_date_from) params.append('photo_date_from', filter.photo_date_from);
+  if (filter.photo_date_to) params.append('photo_date_to', filter.photo_date_to);
   if (filter.page) params.append('page', String(filter.page));
   if (filter.per_page) params.append('per_page', String(filter.per_page));
 
@@ -100,6 +102,8 @@ export async function getTreeDetail(
   if (filter.vitality_value !== undefined && filter.vitality_value !== null) {
     params.append('vitality_value', String(filter.vitality_value));
   }
+  if (filter.photo_date_from) params.append('photo_date_from', filter.photo_date_from);
+  if (filter.photo_date_to) params.append('photo_date_to', filter.photo_date_to);
 
   const response = await fetch(`${API_BASE}/trees/${entireTreeId}?${params}`, {
     headers: getAuthHeaders(),

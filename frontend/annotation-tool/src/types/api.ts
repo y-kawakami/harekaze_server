@@ -84,6 +84,8 @@ export interface ListFilter {
   status: StatusFilter;
   prefecture_code: string | null;
   vitality_value: number | null;
+  photo_date_from: string | null;
+  photo_date_to: string | null;
   page: number;
   per_page: number;
 }

@@ -111,6 +111,113 @@ PASS: harekaze2025
 ngrok http --region=ap --basic-auth "harekaze:harekaze2025"--domain=harekaze-kkcraft.jp.ngrok.io 8000
 ```
 
+## アノテーションツール
+
+桜画像に対して元気度（1-5、診断不可）をラベル付けするためのWebツールです。
+詳細な仕様は `.kiro/specs/sakura-vitality-annotation/requirements.md` を参照してください。
+
+### ローカル開発環境
+
+#### 1. バックエンドAPI起動（ポート8000）
+
+```bash
+gunicorn main:app --worker-class uvicorn.workers.UvicornWorker --reload --bind 0.0.0.0:8000
+```
+
+#### 2. フロントエンド起動（ポート3000）
+
+```bash
+cd frontend/annotation-tool
+npm install   # 初回のみ
+npm run dev
+```
+
+#### 3. アクセス
+
+| 画面 | URL |
+|------|-----|
+| アノテーションツール | http://localhost:3000 |
+| API ドキュメント (Swagger) | http://localhost:8000/docs |
+
+開発モードでは、Viteのプロキシ設定により `/annotation_api` へのリクエストは自動的にバックエンド（ポート8000）に転送されます。
+
+### 本番環境
+
+本番環境ではSPAをビルドし、Webサーバー（nginx等）から静的ファイルとして配信します。
+
+#### 1. SPAビルド
+
+```bash
+cd frontend/annotation-tool
+npm run build
+```
+
+ビルド成果物は `frontend/annotation-tool/dist/` に出力されます。
+
+#### 2. nginx設定例
+
+```nginx
+server {
+    listen 80;
+    server_name annotation.example.com;
+
+    # SPA静的ファイル配信
+    location / {
+        root /var/www/annotation-tool/dist;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # APIプロキシ
+    location /annotation_api/ {
+        proxy_pass http://localhost:8000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+### 認証
+
+アノテーターとしてログインするには、`annotators` テーブルにアカウントが必要です。
+
+#### 初期アカウント
+
+マイグレーション実行時に以下の初期アカウントが作成されます：
+
+| ユーザー名 | パスワード |
+|-----------|-----------|
+| `annotator` | `annotation2026` |
+
+#### アノテーター管理スクリプト
+
+```bash
+# アノテーターを作成
+python scripts/create_annotator.py create ユーザー名 パスワード
+
+# アノテーター一覧を表示
+python scripts/create_annotator.py list
+
+# アノテーターを削除
+python scripts/create_annotator.py delete ユーザー名
+
+# パスワードハッシュのみを生成（DBには登録しない）
+python scripts/create_annotator.py create ユーザー名 パスワード --hash-only
+```
+
+### APIエンドポイント
+
+| Method | Endpoint | 説明 |
+|--------|----------|------|
+| POST | `/annotation_api/login` | ログイン |
+| GET | `/annotation_api/me` | 現在のアノテーター情報取得 |
+| GET | `/annotation_api/trees` | 桜画像一覧取得（フィルタリング対応） |
+| GET | `/annotation_api/trees/{id}` | 桜画像詳細取得 |
+| POST | `/annotation_api/trees/{id}/annotation` | アノテーション保存 |
+| GET | `/annotation_api/prefectures` | 都道府県一覧取得 |
+| GET | `/annotation_api/export/csv` | CSVエクスポート |
+
 ## テスト
 
 ### テスト環境のセットアップ

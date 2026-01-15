@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # サービス名の検証
-if [ "$1" != "app-api" ] && [ "$1" != "admin-api" ]; then
-    echo "Usage: $0 [app-api|admin-api]"
+if [ "$1" != "app-api" ] && [ "$1" != "admin-api" ] && [ "$1" != "annotation-api" ]; then
+    echo "Usage: $0 [app-api|admin-api|annotation-api]"
     echo "サービス名は app-api または admin-api を指定してください"
     exit 1
 fi

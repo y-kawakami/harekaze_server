@@ -1,9 +1,9 @@
 #!/bin/bash
 
 # サービス名の検証
-if [ "$1" != "app-api" ] && [ "$1" != "admin-api" ]; then
-    echo "Usage: $0 [app-api|admin-api]"
-    echo "サービス名は app-api または admin-api を指定してください"
+if [ "$1" != "app-api" ] && [ "$1" != "admin-api" ] && [ "$1" != "annotation-api" ]; then
+    echo "Usage: $0 [app-api|admin-api|annotation-api]"
+    echo "サービス名は app-api または admin-api または annotation-api を指定してください"
     exit 1
 fi
 
@@ -16,4 +16,4 @@ export IMAGE_TAG=develop
 $(pwd)/Docker/build-to-ecr.sh
 
 # サービス名に応じてECSサービス名を設定
-aws ecs update-service --cluster hrkz-dev-cluster --service hrkz-dev-${SERVICE} --force-new-deployment
+# aws ecs update-service --cluster hrkz-dev-cluster --service hrkz-dev-${SERVICE} --force-new-deployment

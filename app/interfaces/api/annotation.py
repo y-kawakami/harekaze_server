@@ -9,6 +9,7 @@ GET /annotation_api/export/csv: CSVエクスポート
 Requirements: 2-6, 9
 """
 
+from datetime import date
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -63,6 +64,10 @@ async def get_trees(
         None, description="都道府県コード"),
     vitality_value: Optional[int] = Query(
         None, description="元気度（1-5または-1）"),
+    photo_date_from: Optional[date] = Query(
+        None, description="撮影日開始（YYYY-MM-DD）"),
+    photo_date_to: Optional[date] = Query(
+        None, description="撮影日終了（YYYY-MM-DD）"),
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの件数"),
     _: Annotator = Depends(get_current_annotator),
@@ -75,6 +80,8 @@ async def get_trees(
     - status: all（全て）/ annotated（入力済み）/ unannotated（未入力）
     - prefecture_code: 都道府県コード
     - vitality_value: 元気度（入力済み選択時のみ有効）
+    - photo_date_from: 撮影日開始（YYYY-MM-DD）
+    - photo_date_to: 撮影日終了（YYYY-MM-DD）
     """
     image_service = get_image_service()
     municipality_service = get_municipality_service()
@@ -83,6 +90,8 @@ async def get_trees(
         status=status_filter,
         prefecture_code=prefecture_code,
         vitality_value=vitality_value,
+        photo_date_from=photo_date_from,
+        photo_date_to=photo_date_to,
         page=page,
         per_page=per_page,
     )
@@ -133,6 +142,10 @@ async def get_tree_detail(
         None, description="都道府県コード"),
     vitality_value: Optional[int] = Query(
         None, description="元気度（1-5または-1）"),
+    photo_date_from: Optional[date] = Query(
+        None, description="撮影日開始（YYYY-MM-DD）"),
+    photo_date_to: Optional[date] = Query(
+        None, description="撮影日終了（YYYY-MM-DD）"),
     _: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationDetailResponse:
@@ -149,6 +162,8 @@ async def get_tree_detail(
         status=status_filter,
         prefecture_code=prefecture_code,
         vitality_value=vitality_value,
+        photo_date_from=photo_date_from,
+        photo_date_to=photo_date_to,
     )
 
     result = get_annotation_detail(

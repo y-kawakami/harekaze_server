@@ -33,6 +33,8 @@ export function AnnotationPage() {
   const status = (searchParams.get('status') as StatusFilter) || 'all';
   const prefectureCode = searchParams.get('prefecture_code') || '';
   const vitalityValue = searchParams.get('vitality_value');
+  const photoDateFrom = searchParams.get('photo_date_from') || '';
+  const photoDateTo = searchParams.get('photo_date_to') || '';
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -42,6 +44,8 @@ export function AnnotationPage() {
         status,
         prefecture_code: prefectureCode || null,
         vitality_value: vitalityValue ? parseInt(vitalityValue, 10) : null,
+        photo_date_from: photoDateFrom || null,
+        photo_date_to: photoDateTo || null,
       });
       setDetail(result);
       setSelectedValue(result.current_vitality_value);
@@ -50,7 +54,7 @@ export function AnnotationPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, status, prefectureCode, vitalityValue]);
+  }, [id, status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo]);
 
   useEffect(() => {
     fetchDetail();
@@ -80,6 +84,8 @@ export function AnnotationPage() {
     params.set('status', status);
     if (prefectureCode) params.set('prefecture_code', prefectureCode);
     if (vitalityValue) params.set('vitality_value', vitalityValue);
+    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
+    if (photoDateTo) params.set('photo_date_to', photoDateTo);
     navigate(`/annotation/${targetId}?${params}`);
   };
 
@@ -88,6 +94,8 @@ export function AnnotationPage() {
     params.set('status', status);
     if (prefectureCode) params.set('prefecture_code', prefectureCode);
     if (vitalityValue) params.set('vitality_value', vitalityValue);
+    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
+    if (photoDateTo) params.set('photo_date_to', photoDateTo);
     return `/?${params}`;
   };
 

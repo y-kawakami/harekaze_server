@@ -5,7 +5,7 @@ Requirements: 4.1, 5.1-5.7
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import date, datetime
 from typing import Literal
 
 from sqlalchemy.orm import Session, joinedload
@@ -24,6 +24,8 @@ class AnnotationListFilter:
     status: Literal["all", "annotated", "unannotated"] = "all"
     prefecture_code: str | None = None
     vitality_value: int | None = None
+    photo_date_from: date | None = None
+    photo_date_to: date | None = None
 
 
 @dataclass
@@ -86,8 +88,8 @@ def get_annotation_detail(
     if not entire_tree:
         return None
 
-    # 署名付きURLを生成
-    image_url = image_service.get_presigned_url(entire_tree.image_obj_key)
+    # 画像URLを生成（CloudFront経由）
+    image_url = image_service.get_image_url(entire_tree.image_obj_key)
 
     # 撮影情報を取得
     photo_date = entire_tree.photo_date
@@ -114,10 +116,12 @@ def get_annotation_detail(
 
     if latitude and longitude:
         spot = flowering_date_service.find_nearest_spot(latitude, longitude)
-        if spot:
-            flowering_date = spot.flowering_date.isoformat()
-            full_bloom_start_date = spot.full_bloom_date.isoformat()
-            full_bloom_end_date = spot.full_bloom_end_date.isoformat()
+        if spot and photo_date:
+            # 撮影日の年に合わせて日付を調整
+            target_year = photo_date.year
+            flowering_date = spot.flowering_date.replace(year=target_year).isoformat()
+            full_bloom_start_date = spot.full_bloom_date.replace(year=target_year).isoformat()
+            full_bloom_end_date = spot.full_bloom_end_date.replace(year=target_year).isoformat()
 
     # 既存アノテーション値を取得
     current_vitality_value: int | None = None
@@ -191,6 +195,20 @@ def _calculate_navigation(
     ):
         query = query.filter(
             VitalityAnnotation.vitality_value == filter_params.vitality_value
+        )
+
+    # 撮影日範囲フィルター
+    if filter_params.photo_date_from:
+        query = query.filter(
+            EntireTree.photo_date >= datetime.combine(
+                filter_params.photo_date_from, datetime.min.time()
+            )
+        )
+    if filter_params.photo_date_to:
+        query = query.filter(
+            EntireTree.photo_date <= datetime.combine(
+                filter_params.photo_date_to, datetime.max.time()
+            )
         )
 
     # 総件数

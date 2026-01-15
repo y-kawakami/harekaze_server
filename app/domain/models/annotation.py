@@ -3,7 +3,7 @@
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import DateTime, ForeignKey, Index, Integer, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
@@ -22,6 +22,8 @@ class Annotator(Base):
         String(50), unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(
         String(255), nullable=False)
+    role: Mapped[str] = mapped_column(
+        String(20), nullable=False, default="annotator")
     last_login: Mapped[Optional[datetime]] = mapped_column(
         DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -39,8 +41,10 @@ class VitalityAnnotation(Base):
         Integer, primary_key=True, autoincrement=True)
     entire_tree_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("entire_trees.id"), unique=True, nullable=False)
-    vitality_value: Mapped[int] = mapped_column(
-        Integer, nullable=False)
+    vitality_value: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True)
+    is_ready: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False)
     annotator_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("annotators.id"), nullable=False)
     annotated_at: Mapped[datetime] = mapped_column(
@@ -55,6 +59,7 @@ class VitalityAnnotation(Base):
         Index("idx_vitality_annotations_entire_tree_id", "entire_tree_id"),
         Index("idx_vitality_annotations_vitality_value", "vitality_value"),
         Index("idx_vitality_annotations_annotator_id", "annotator_id"),
+        Index("idx_vitality_annotations_is_ready", "is_ready"),
     )
 
     entire_tree: Mapped["EntireTree"] = relationship(
