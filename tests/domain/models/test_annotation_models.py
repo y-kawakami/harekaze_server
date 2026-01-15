@@ -100,6 +100,26 @@ class TestAnnotatorModel:
 
         assert annotator.role == "annotator"
 
+    def test_annotator_role_validation_rejects_invalid_role(self, db: Session):
+        """無効なrole値は拒否される"""
+        with pytest.raises(ValueError) as exc_info:
+            Annotator(
+                username="invalid_role_test",
+                hashed_password="password",
+                role="invalid_role"
+            )
+        assert "role must be 'admin' or 'annotator'" in str(exc_info.value)
+
+    def test_annotator_role_validation_rejects_empty_role(self, db: Session):
+        """空のrole値は拒否される"""
+        with pytest.raises(ValueError) as exc_info:
+            Annotator(
+                username="empty_role_test",
+                hashed_password="password",
+                role=""
+            )
+        assert "role must be 'admin' or 'annotator'" in str(exc_info.value)
+
 
 class TestVitalityAnnotationModel:
     """VitalityAnnotationモデルのテスト"""

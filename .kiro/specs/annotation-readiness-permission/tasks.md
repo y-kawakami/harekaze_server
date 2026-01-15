@@ -22,13 +22,13 @@
   - is_ready カラムにインデックスを作成してフィルタリング性能を確保
   - _Requirements: 1.1, 1.3_
 
-- [ ] 2. ドメインモデルの更新
-- [ ] 2.1 (P) Annotator モデルに role フィールドを追加
+- [x] 2. ドメインモデルの更新
+- [x] 2.1 (P) Annotator モデルに role フィールドを追加
   - role フィールドを Mapped[str] として追加
   - 'admin' または 'annotator' のみ許可するバリデーションロジック
   - _Requirements: 2.1, 2.2, 2.4_
 
-- [ ] 2.2 (P) VitalityAnnotation モデルに is_ready フィールドを追加
+- [x] 2.2 (P) VitalityAnnotation モデルに is_ready フィールドを追加
   - is_ready フィールドを Mapped[bool] として追加（デフォルト FALSE）
   - vitality_value を Optional に変更
   - テーブル引数にインデックス定義を追加

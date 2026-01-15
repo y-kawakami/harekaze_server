@@ -4,12 +4,15 @@ from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Boolean, DateTime, ForeignKey, Index, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship, validates
 
 from app.infrastructure.database.database import Base
 
 if TYPE_CHECKING:
     from app.domain.models.models import EntireTree
+
+
+VALID_ANNOTATOR_ROLES = ("admin", "annotator")
 
 
 class Annotator(Base):
@@ -31,6 +34,15 @@ class Annotator(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc))
+
+    @validates("role")
+    def validate_role(self, key: str, value: str) -> str:
+        """role値をバリデーションする"""
+        if value not in VALID_ANNOTATOR_ROLES:
+            raise ValueError(
+                f"role must be 'admin' or 'annotator', got '{value}'"
+            )
+        return value
 
 
 class VitalityAnnotation(Base):
