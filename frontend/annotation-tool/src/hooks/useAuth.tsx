@@ -18,6 +18,7 @@ interface AuthContextType {
   annotator: Annotator | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  isAdmin: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => void;
   checkAuth: () => Promise<void>;
@@ -68,6 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     annotator,
     isLoading,
     isAuthenticated: !!annotator,
+    isAdmin: annotator?.role === 'admin',
     login,
     logout,
     checkAuth,

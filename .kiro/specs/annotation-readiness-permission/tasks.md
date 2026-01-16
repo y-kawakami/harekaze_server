@@ -142,8 +142,8 @@
   - updateIsReadyBatch 関数を追加（バッチ更新）
   - _Requirements: 4.1, 4.4_
 
-- [ ] 8. フロントエンド認証状態管理の拡張
-- [ ] 8.1 useAuth フックに role 情報を追加
+- [x] 8. フロントエンド認証状態管理の拡張
+- [x] 8.1 useAuth フックに role 情報を追加
   - Annotator 型に role を反映
   - isAdmin ヘルパーを追加（annotator?.role === 'admin'）
   - ログイン時と /me 取得時に role を保存
