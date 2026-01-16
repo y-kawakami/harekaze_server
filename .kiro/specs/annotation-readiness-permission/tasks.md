@@ -174,13 +174,13 @@
   - annotator ロールの場合は既存の統計のみ表示
   - _Requirements: 7.1, 7.2, 7.3_
 
-- [ ] 10. 詳細画面（AnnotationPage）の UI 更新
-- [ ] 10.1 is_ready 状態表示を追加
+- [x] 10. 詳細画面（AnnotationPage）の UI 更新
+- [x] 10.1 is_ready 状態表示を追加
   - 撮影情報セクションに現在の is_ready 状態を表示
   - admin ロールの場合のみ表示
   - _Requirements: 6.1, 6.3_
 
-- [ ] 10.2 is_ready トグルと保存メッセージを実装
+- [x] 10.2 is_ready トグルと保存メッセージを実装
   - is_ready 状態を切り替えるトグルを追加
   - admin ロールの場合のみトグルを表示
   - トグル操作時に API を呼び出して状態を更新

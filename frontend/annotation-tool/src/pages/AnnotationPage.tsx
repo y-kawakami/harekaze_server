@@ -1,12 +1,12 @@
 /**
  * アノテーション画面
- * Requirements: 6.3, 4.1-4.6, 5.1-5.7
+ * Requirements: 6.1, 6.2, 6.3, 6.4, 4.1-4.6, 5.1-5.7
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import type { AnnotationDetail, StatusFilter } from '../types/api';
-import { getTreeDetail, saveAnnotation } from '../api/client';
+import { getTreeDetail, saveAnnotation, updateIsReady } from '../api/client';
 import { useAuth } from '../hooks/useAuth';
 
 const VITALITY_OPTIONS: { value: number; label: string; color: string }[] = [
@@ -22,13 +22,15 @@ export function AnnotationPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { annotator, logout } = useAuth();
+  const { annotator, logout, isAdmin } = useAuth();
 
   const [detail, setDetail] = useState<AnnotationDetail | null>(null);
   const [selectedValue, setSelectedValue] = useState<number | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [isUpdatingIsReady, setIsUpdatingIsReady] = useState(false);
+  const [isReadyMessage, setIsReadyMessage] = useState<string | null>(null);
 
   const status = (searchParams.get('status') as StatusFilter) || 'all';
   const prefectureCode = searchParams.get('prefecture_code') || '';
@@ -102,6 +104,31 @@ export function AnnotationPage() {
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-';
     return new Date(dateStr).toLocaleDateString('ja-JP');
+  };
+
+  // is_ready トグルハンドラ（管理者専用）
+  const handleToggleIsReady = async () => {
+    if (!id || !detail || isUpdatingIsReady) return;
+
+    const newIsReady = !detail.is_ready;
+    setIsUpdatingIsReady(true);
+    setIsReadyMessage(null);
+
+    // 楽観的更新
+    setDetail((prev) => prev ? { ...prev, is_ready: newIsReady } : prev);
+
+    try {
+      await updateIsReady(parseInt(id, 10), newIsReady);
+      setIsReadyMessage('準備状態を保存しました');
+      setTimeout(() => setIsReadyMessage(null), 2000);
+    } catch (error) {
+      console.error('Failed to update is_ready:', error);
+      // ロールバック
+      setDetail((prev) => prev ? { ...prev, is_ready: !newIsReady } : prev);
+      setIsReadyMessage('準備状態の保存に失敗しました');
+    } finally {
+      setIsUpdatingIsReady(false);
+    }
   };
 
   if (isLoading) {
@@ -230,7 +257,48 @@ export function AnnotationPage() {
                   <dt className="text-gray-500">撮影場所</dt>
                   <dd className="text-gray-800">{detail.location || '-'}</dd>
                 </div>
+                {/* is_ready 状態表示とトグル（管理者のみ） */}
+                {isAdmin && (
+                  <div className="flex justify-between items-center pt-2 border-t mt-2">
+                    <dt className="text-gray-500">準備状態</dt>
+                    <dd className="flex items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 text-xs rounded ${
+                          detail.is_ready
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-orange-100 text-orange-700'
+                        }`}
+                      >
+                        {detail.is_ready ? '準備完了' : '未準備'}
+                      </span>
+                      <button
+                        onClick={handleToggleIsReady}
+                        disabled={isUpdatingIsReady}
+                        className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
+                          detail.is_ready ? 'bg-green-600' : 'bg-gray-300'
+                        } ${isUpdatingIsReady ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={detail.is_ready ? '準備完了を解除' : '準備完了にする'}
+                      >
+                        <span
+                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            detail.is_ready ? 'translate-x-4' : 'translate-x-0'
+                          }`}
+                        />
+                      </button>
+                    </dd>
+                  </div>
+                )}
               </dl>
+              {/* is_ready 保存メッセージ */}
+              {isReadyMessage && (
+                <p
+                  className={`mt-3 text-center text-sm ${
+                    isReadyMessage.includes('失敗') ? 'text-red-500' : 'text-green-500'
+                  }`}
+                >
+                  {isReadyMessage}
+                </p>
+              )}
             </div>
 
             {/* Navigation */}
