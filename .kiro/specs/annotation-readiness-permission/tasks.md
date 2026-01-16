@@ -149,26 +149,26 @@
   - ログイン時と /me 取得時に role を保存
   - _Requirements: 8.3_
 
-- [ ] 9. 一覧画面（ListPage）の UI 更新
-- [ ] 9.1 is_ready バッジ表示を実装
+- [x] 9. 一覧画面（ListPage）の UI 更新
+- [x] 9.1 is_ready バッジ表示を実装
   - 各画像カードに is_ready 状態を示すバッジを表示
   - admin ロールの場合のみバッジを表示
   - _Requirements: 5.1, 5.4_
 
-- [ ] 9.2 is_ready フィルターオプションを実装
+- [x] 9.2 is_ready フィルターオプションを実装
   - 「全て」「準備完了」「未準備」のフィルター選択 UI を追加
   - admin ロールの場合のみフィルターを表示
   - フィルター変更時に一覧を再取得
   - _Requirements: 5.2, 5.4_
 
-- [ ] 9.3 is_ready トグル機能を実装
+- [x] 9.3 is_ready トグル機能を実装
   - 各画像カードに is_ready 切り替えトグルを追加
   - admin ロールの場合のみトグルを表示
   - トグルクリック時に即座に API を呼び出して状態を更新
   - 楽観的更新で UI を即時反映し、失敗時にロールバック
   - _Requirements: 5.3, 5.5_
 
-- [ ] 9.4 統計情報の表示を拡張
+- [x] 9.4 統計情報の表示を拡張
   - ready_count, not_ready_count を統計表示に追加
   - admin ロールの場合は is_ready 別統計を表示
   - annotator ロールの場合は既存の統計のみ表示
