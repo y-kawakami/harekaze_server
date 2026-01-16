@@ -363,14 +363,14 @@ class TestAnnotationSaveAPI:
         auth_headers,
         sample_entire_tree,
     ):
-        """無効な元気度値で400"""
+        """無効な元気度値で422（Pydanticバリデーションエラー）"""
         response = client.post(
             f"/annotation_api/trees/{sample_entire_tree.id}/annotation",
             json={"vitality_value": 10},
             headers=auth_headers,
         )
 
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
 
     def test_save_annotation_minus1(
         self,
@@ -602,14 +602,14 @@ class TestAnnotationDetailAPI:
         mock_flowering_date_service,
         mock_image_service,
         client,
-        auth_headers,
+        admin_auth_headers,
         db,
         sample_entire_tree,
     ):
-        """認証済みで詳細取得"""
+        """認証済みで詳細取得（adminロールで全画像にアクセス可能）"""
         # モック設定
         img_service = MagicMock()
-        img_service.generate_presigned_url.return_value = \
+        img_service.get_image_url.return_value = \
             "https://example.com/image.jpg"
         mock_image_service.return_value = img_service
 
@@ -625,7 +625,7 @@ class TestAnnotationDetailAPI:
 
         response = client.get(
             f"/annotation_api/trees/{sample_entire_tree.id}",
-            headers=auth_headers,
+            headers=admin_auth_headers,
         )
 
         assert response.status_code == status.HTTP_200_OK
