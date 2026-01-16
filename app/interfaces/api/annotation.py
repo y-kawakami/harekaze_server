@@ -30,8 +30,10 @@ from app.application.annotation.save_annotation import (
     save_annotation,
 )
 from app.application.annotation.update_is_ready import (
+    UpdateIsReadyBatchRequest as UpdateIsReadyBatchUseCaseRequest,
     UpdateIsReadyRequest as UpdateIsReadyUseCaseRequest,
     update_is_ready,
+    update_is_ready_batch,
 )
 from app.domain.models.annotation import Annotator
 from app.domain.services.flowering_date_service import (
@@ -52,6 +54,8 @@ from app.interfaces.schemas.annotation import (
     PrefectureListResponse,
     PrefectureResponse,
     SaveAnnotationResponse,
+    UpdateIsReadyBatchRequest,
+    UpdateIsReadyBatchResponse,
     UpdateIsReadyRequest,
     UpdateIsReadyResponse,
 )
@@ -74,9 +78,11 @@ async def get_trees(
         None, description="撮影日開始（YYYY-MM-DD）"),
     photo_date_to: Optional[date] = Query(
         None, description="撮影日終了（YYYY-MM-DD）"),
+    is_ready_filter: Optional[bool] = Query(
+        None, alias="is_ready", description="準備完了フィルター（adminのみ有効）"),
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの件数"),
-    _: Annotator = Depends(get_current_annotator),
+    current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationListResponse:
     """
@@ -88,6 +94,7 @@ async def get_trees(
     - vitality_value: 元気度（入力済み選択時のみ有効）
     - photo_date_from: 撮影日開始（YYYY-MM-DD）
     - photo_date_to: 撮影日終了（YYYY-MM-DD）
+    - is_ready: 準備完了フィルター（adminのみ有効）
     """
     image_service = get_image_service()
     municipality_service = get_municipality_service()
@@ -98,6 +105,7 @@ async def get_trees(
         vitality_value=vitality_value,
         photo_date_from=photo_date_from,
         photo_date_to=photo_date_to,
+        is_ready_filter=is_ready_filter,
         page=page,
         per_page=per_page,
     )
@@ -107,6 +115,7 @@ async def get_trees(
         image_service=image_service,
         municipality_service=municipality_service,
         filter_params=filter_params,
+        annotator_role=current_annotator.role,
     )
 
     return AnnotationListResponse(
@@ -119,6 +128,7 @@ async def get_trees(
                 location=item.location,
                 annotation_status=item.annotation_status,
                 vitality_value=item.vitality_value,
+                is_ready=item.is_ready,
             )
             for item in result.items
         ],
@@ -132,6 +142,8 @@ async def get_trees(
             vitality_4_count=result.stats.vitality_4_count,
             vitality_5_count=result.stats.vitality_5_count,
             vitality_minus1_count=result.stats.vitality_minus1_count,
+            ready_count=result.stats.ready_count,
+            not_ready_count=result.stats.not_ready_count,
         ),
         total=result.total,
         page=result.page,
@@ -152,13 +164,14 @@ async def get_tree_detail(
         None, description="撮影日開始（YYYY-MM-DD）"),
     photo_date_to: Optional[date] = Query(
         None, description="撮影日終了（YYYY-MM-DD）"),
-    _: Annotator = Depends(get_current_annotator),
+    current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationDetailResponse:
     """
     桜画像の詳細情報を取得する
 
     ナビゲーション用のフィルター条件を保持し、前後のIDを計算する。
+    annotator ロールが is_ready=FALSE の画像にアクセスした場合は 403 を返す。
     """
     image_service = get_image_service()
     flowering_date_service = get_flowering_date_service()
@@ -172,14 +185,21 @@ async def get_tree_detail(
         photo_date_to=photo_date_to,
     )
 
-    result = get_annotation_detail(
-        db=db,
-        image_service=image_service,
-        flowering_date_service=flowering_date_service,
-        municipality_service=municipality_service,
-        entire_tree_id=entire_tree_id,
-        filter_params=filter_params,
-    )
+    try:
+        result = get_annotation_detail(
+            db=db,
+            image_service=image_service,
+            flowering_date_service=flowering_date_service,
+            municipality_service=municipality_service,
+            entire_tree_id=entire_tree_id,
+            filter_params=filter_params,
+            annotator_role=current_annotator.role,
+        )
+    except PermissionError as e:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=str(e),
+        )
 
     if not result:
         raise HTTPException(
@@ -202,6 +222,7 @@ async def get_tree_detail(
         total_count=result.total_count,
         prev_id=result.prev_id,
         next_id=result.next_id,
+        is_ready=result.is_ready,
     )
 
 
@@ -331,3 +352,35 @@ async def update_tree_is_ready(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e),
         )
+
+
+@router.patch(
+    "/trees/is_ready/batch",
+    response_model=UpdateIsReadyBatchResponse
+)
+async def update_trees_is_ready_batch(
+    request: UpdateIsReadyBatchRequest,
+    current_annotator: Annotator = Depends(require_admin),
+    db: Session = Depends(get_db),
+) -> UpdateIsReadyBatchResponse:
+    """
+    複数画像の is_ready フラグを一括更新する（管理者専用）
+
+    管理者が複数のアノテーション対象画像を一括で選別するためのエンドポイント。
+    存在しないIDはスキップされる。
+    """
+    use_case_request = UpdateIsReadyBatchUseCaseRequest(
+        entire_tree_ids=request.entire_tree_ids,
+        is_ready=request.is_ready,
+    )
+
+    result = update_is_ready_batch(
+        db=db,
+        annotator_id=current_annotator.id,
+        request=use_case_request,
+    )
+
+    return UpdateIsReadyBatchResponse(
+        updated_count=result.updated_count,
+        updated_ids=result.updated_ids,
+    )

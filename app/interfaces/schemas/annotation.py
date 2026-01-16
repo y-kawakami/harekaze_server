@@ -50,6 +50,7 @@ class AnnotationListItemResponse(BaseModel):
     annotation_status: Literal["annotated", "unannotated"] = Field(
         ..., description="アノテーション状態")
     vitality_value: Optional[int] = Field(None, description="元気度（1-5または-1）")
+    is_ready: bool = Field(False, description="評価準備完了フラグ")
 
 
 class AnnotationStatsResponse(BaseModel):
@@ -63,6 +64,8 @@ class AnnotationStatsResponse(BaseModel):
     vitality_4_count: int = Field(..., description="元気度4の件数")
     vitality_5_count: int = Field(..., description="元気度5の件数")
     vitality_minus1_count: int = Field(..., description="診断不可の件数")
+    ready_count: int = Field(0, description="準備完了件数")
+    not_ready_count: int = Field(0, description="未準備件数")
 
 
 class AnnotationListResponse(BaseModel):
@@ -93,6 +96,7 @@ class AnnotationDetailResponse(BaseModel):
     total_count: int = Field(..., description="フィルター条件内の総件数")
     prev_id: Optional[int] = Field(None, description="前の画像ID")
     next_id: Optional[int] = Field(None, description="次の画像ID")
+    is_ready: bool = Field(False, description="評価準備完了フラグ")
 
 
 class SaveAnnotationResponse(BaseModel):
@@ -124,3 +128,15 @@ class UpdateIsReadyResponse(BaseModel):
     entire_tree_id: int = Field(..., description="EntireTree ID")
     is_ready: bool = Field(..., description="更新後のis_readyフラグ")
     updated_at: datetime = Field(..., description="更新日時")
+
+
+class UpdateIsReadyBatchRequest(BaseModel):
+    """is_readyバッチ更新リクエスト"""
+    entire_tree_ids: list[int] = Field(..., description="対象の画像IDリスト")
+    is_ready: bool = Field(..., description="設定するフラグ値")
+
+
+class UpdateIsReadyBatchResponse(BaseModel):
+    """is_readyバッチ更新レスポンス"""
+    updated_count: int = Field(..., description="更新された件数")
+    updated_ids: list[int] = Field(..., description="更新されたIDリスト")

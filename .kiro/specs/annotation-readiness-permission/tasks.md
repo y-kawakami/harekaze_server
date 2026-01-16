@@ -79,26 +79,26 @@
   - 必要に応じて既存の保存ロジックを調整
   - _Requirements: 1.2_
 
-- [ ] 5. API エンドポイントの実装
-- [ ] 5.1 is_ready 更新 API エンドポイントを追加
+- [x] 5. API エンドポイントの実装
+- [x] 5.1 is_ready 更新 API エンドポイントを追加
   - PATCH /annotation_api/trees/{id}/is_ready エンドポイントを作成
   - require_admin 依存関数で管理者権限を確認
   - リクエスト/レスポンススキーマを定義
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 5.2 is_ready バッチ更新 API エンドポイントを追加
+- [x] 5.2 is_ready バッチ更新 API エンドポイントを追加
   - PATCH /annotation_api/trees/is_ready/batch エンドポイントを作成
   - require_admin 依存関数で管理者権限を確認
   - バッチリクエスト/レスポンススキーマを定義
   - _Requirements: 4.4_
 
-- [ ] 5.3 一覧 API のレスポンスを拡張
+- [x] 5.3 一覧 API のレスポンスを拡張
   - AnnotationListItemResponse に is_ready フィールドを追加
   - AnnotationStatsResponse に ready_count, not_ready_count を追加
   - is_ready_filter クエリパラメータを追加（admin のみ有効）
   - _Requirements: 3.1, 3.2, 3.3, 7.1, 7.2_
 
-- [ ] 5.4 詳細 API のレスポンスを拡張
+- [x] 5.4 詳細 API のレスポンスを拡張
   - AnnotationDetailResponse に is_ready フィールドを追加
   - annotator ロールが is_ready=FALSE の画像にアクセスした場合、403 を返す
   - _Requirements: 3.4_
