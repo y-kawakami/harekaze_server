@@ -1,7 +1,7 @@
 """アノテーション詳細取得機能
 
 単一画像の詳細情報取得、撮影情報・開花予想日の取得を行う。
-Requirements: 4.1, 5.1-5.7
+Requirements: 4.1, 5.1-5.7, 3.4
 """
 
 from dataclasses import dataclass
@@ -46,6 +46,7 @@ class AnnotationDetailResponse:
     total_count: int
     prev_id: int | None
     next_id: int | None
+    is_ready: bool = False
 
 
 def get_annotation_detail(
@@ -55,6 +56,7 @@ def get_annotation_detail(
     municipality_service: MunicipalityService,
     entire_tree_id: int,
     filter_params: AnnotationListFilter,
+    annotator_role: str = "annotator",
 ) -> AnnotationDetailResponse | None:
     """アノテーション詳細を取得
 
@@ -65,9 +67,13 @@ def get_annotation_detail(
         municipality_service: 自治体サービス
         entire_tree_id: 対象のEntireTree ID
         filter_params: フィルター条件（ナビゲーション計算用）
+        annotator_role: アノテーターのロール（'admin' or 'annotator'）
 
     Returns:
         AnnotationDetailResponse | None: 詳細データまたはNone
+
+    Raises:
+        PermissionError: annotatorロールがis_ready=FALSEの画像にアクセスした場合
     """
     # 対象のEntireTreeを取得
     entire_tree = (
@@ -87,6 +93,18 @@ def get_annotation_detail(
 
     if not entire_tree:
         return None
+
+    # is_ready 状態を取得
+    is_ready = False
+    if entire_tree.vitality_annotation:
+        is_ready = entire_tree.vitality_annotation.is_ready
+
+    # 権限チェック: annotator ロールは is_ready=FALSE の画像にアクセスできない
+    if annotator_role == "annotator":
+        if not entire_tree.vitality_annotation or not is_ready:
+            raise PermissionError(
+                f"Image {entire_tree_id} is not ready for annotation"
+            )
 
     # 画像URLを生成（CloudFront経由）
     image_url = image_service.get_image_url(entire_tree.image_obj_key)
@@ -148,6 +166,7 @@ def get_annotation_detail(
         total_count=total_count,
         prev_id=prev_id,
         next_id=next_id,
+        is_ready=is_ready,
     )
 
 

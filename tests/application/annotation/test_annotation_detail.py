@@ -133,6 +133,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",  # admin ロールで全画像にアクセス
         )
 
         assert result is not None
@@ -173,6 +174,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
@@ -213,6 +215,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
@@ -254,6 +257,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
@@ -378,6 +382,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
@@ -437,6 +442,7 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=100,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
@@ -494,8 +500,291 @@ class TestGetAnnotationDetail:
             municipality_service=mock_municipality_service,
             entire_tree_id=102,
             filter_params=filter_params,
+            annotator_role="admin",
         )
 
         assert result is not None
         assert result.prev_id == 101
         assert result.next_id is None
+
+
+@pytest.fixture
+def sample_ready_entire_tree(sample_tree):
+    """is_ready=TRUEのEntireTreeオブジェクト"""
+    entire_tree = Mock()
+    entire_tree.id = 200
+    entire_tree.tree_id = sample_tree.id
+    entire_tree.tree = sample_tree
+    entire_tree.image_obj_key = "test/image_ready.jpg"
+    entire_tree.thumb_obj_key = "test/thumb_ready.jpg"
+    entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+
+    annotation = Mock()
+    annotation.vitality_value = 4
+    annotation.is_ready = True
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+@pytest.fixture
+def sample_not_ready_entire_tree(sample_tree):
+    """is_ready=FALSEのEntireTreeオブジェクト"""
+    entire_tree = Mock()
+    entire_tree.id = 201
+    entire_tree.tree_id = sample_tree.id
+    entire_tree.tree = sample_tree
+    entire_tree.image_obj_key = "test/image_not_ready.jpg"
+    entire_tree.thumb_obj_key = "test/thumb_not_ready.jpg"
+    entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+
+    annotation = Mock()
+    annotation.vitality_value = 2
+    annotation.is_ready = False
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+@pytest.mark.unit
+class TestGetAnnotationDetailWithRole:
+    """権限ベースアクセス制御のテスト"""
+
+    def test_admin_can_access_not_ready_image(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_not_ready_entire_tree,
+    ):
+        """adminロールはis_ready=FALSEの画像にアクセスできる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_not_ready_entire_tree
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_not_ready_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=201,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.entire_tree_id == 201
+        assert result.is_ready is False
+
+    def test_admin_can_access_ready_image(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_ready_entire_tree,
+    ):
+        """adminロールはis_ready=TRUEの画像にアクセスできる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_ready_entire_tree
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_ready_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=200,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.entire_tree_id == 200
+        assert result.is_ready is True
+
+    def test_annotator_can_access_ready_image(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_ready_entire_tree,
+    ):
+        """annotatorロールはis_ready=TRUEの画像にアクセスできる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_ready_entire_tree
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_ready_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=200,
+            filter_params=filter_params,
+            annotator_role="annotator",
+        )
+
+        assert result is not None
+        assert result.entire_tree_id == 200
+
+    def test_annotator_cannot_access_not_ready_image(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_not_ready_entire_tree,
+    ):
+        """annotatorロールはis_ready=FALSEの画像にアクセスできない（PermissionError）"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_not_ready_entire_tree
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_not_ready_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        with pytest.raises(PermissionError, match="not ready"):
+            get_annotation_detail(
+                db=mock_db,
+                image_service=mock_image_service,
+                flowering_date_service=mock_flowering_date_service,
+                municipality_service=mock_municipality_service,
+                entire_tree_id=201,
+                filter_params=filter_params,
+                annotator_role="annotator",
+            )
+
+    def test_annotator_cannot_access_no_annotation_image(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree,
+    ):
+        """annotatorロールはアノテーションがない画像にアクセスできない"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_entire_tree  # vitality_annotation = None
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        with pytest.raises(PermissionError, match="not ready"):
+            get_annotation_detail(
+                db=mock_db,
+                image_service=mock_image_service,
+                flowering_date_service=mock_flowering_date_service,
+                municipality_service=mock_municipality_service,
+                entire_tree_id=100,
+                filter_params=filter_params,
+                annotator_role="annotator",
+            )
+
+    def test_detail_response_has_is_ready_field(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_ready_entire_tree,
+    ):
+        """詳細レスポンスにis_readyフィールドが含まれる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_ready_entire_tree
+        query_mock.count.return_value = 1
+        query_mock.order_by.return_value = query_mock
+        query_mock.all.return_value = [sample_ready_entire_tree]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=200,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert hasattr(result, 'is_ready')
+        assert result.is_ready is True

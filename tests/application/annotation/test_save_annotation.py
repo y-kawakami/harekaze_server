@@ -245,3 +245,88 @@ class TestSaveAnnotation:
         )
 
         mock_db.commit.assert_called()
+
+
+@pytest.fixture
+def sample_existing_annotation_with_is_ready():
+    """is_ready=TRUE の既存アノテーション"""
+    annotation = Mock()
+    annotation.id = 1
+    annotation.entire_tree_id = 100
+    annotation.vitality_value = 3
+    annotation.is_ready = True  # is_ready が TRUE に設定されている
+    annotation.annotator_id = 1
+    annotation.annotated_at = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    return annotation
+
+
+@pytest.mark.unit
+class TestSaveAnnotationPreservesIsReady:
+    """アノテーション保存時のis_ready保持確認テスト"""
+
+    def test_save_annotation_preserves_is_ready_when_updating(
+        self, mock_db, sample_entire_tree, sample_existing_annotation_with_is_ready
+    ):
+        """既存アノテーション更新時にis_readyフラグが保持される"""
+        from app.application.annotation.save_annotation import (
+            SaveAnnotationRequest,
+            save_annotation,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_existing_annotation_with_is_ready
+
+        mock_db.get.return_value = sample_entire_tree
+
+        request = SaveAnnotationRequest(
+            entire_tree_id=100,
+            vitality_value=5,  # vitality_value のみ更新
+        )
+
+        save_annotation(
+            db=mock_db,
+            annotator_id=2,
+            request=request,
+        )
+
+        # is_ready は変更されていないことを確認（TRUE のまま）
+        # Mock オブジェクトのプロパティが変更されていないことを確認
+        assert sample_existing_annotation_with_is_ready.is_ready is True
+        # vitality_value は更新されている
+        assert sample_existing_annotation_with_is_ready.vitality_value == 5
+
+    def test_save_annotation_preserves_is_ready_false_when_updating(
+        self, mock_db, sample_entire_tree, sample_existing_annotation
+    ):
+        """既存アノテーション更新時にis_ready=FALSEも保持される"""
+        from app.application.annotation.save_annotation import (
+            SaveAnnotationRequest,
+            save_annotation,
+        )
+
+        # is_ready を FALSE に設定
+        sample_existing_annotation.is_ready = False
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.first.return_value = sample_existing_annotation
+
+        mock_db.get.return_value = sample_entire_tree
+
+        request = SaveAnnotationRequest(
+            entire_tree_id=100,
+            vitality_value=4,
+        )
+
+        save_annotation(
+            db=mock_db,
+            annotator_id=2,
+            request=request,
+        )
+
+        # is_ready は変更されていないことを確認（FALSE のまま）
+        assert sample_existing_annotation.is_ready is False

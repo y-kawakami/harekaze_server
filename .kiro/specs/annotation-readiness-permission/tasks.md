@@ -50,31 +50,31 @@
   - /me エンドポイントのレスポンスに role を追加
   - _Requirements: 8.1, 8.2_
 
-- [ ] 4. Application 層のユースケース実装
-- [ ] 4.1 is_ready フラグ更新ユースケースを実装
+- [x] 4. Application 層のユースケース実装
+- [x] 4.1 is_ready フラグ更新ユースケースを実装
   - update_is_ready 関数を作成（単一画像の is_ready 更新）
   - VitalityAnnotation が存在しない場合は新規作成（vitality_value=NULL）
   - 更新後の情報を含むレスポンスを返す
   - _Requirements: 4.1, 4.3_
 
-- [ ] 4.2 is_ready バッチ更新ユースケースを実装
+- [x] 4.2 is_ready バッチ更新ユースケースを実装
   - update_is_ready_batch 関数を作成（複数画像の一括更新）
   - 更新件数と更新された ID リストを返す
   - _Requirements: 4.4_
 
-- [ ] 4.3 annotation_list の権限ベースフィルタリングを実装
+- [x] 4.3 annotation_list の権限ベースフィルタリングを実装
   - annotator ロールの場合、自動的に is_ready=TRUE でフィルター
   - admin ロールの場合、is_ready フィルターパラメータを任意で使用可能
   - 統計情報に is_ready 別の件数（ready_count, not_ready_count）を追加
   - _Requirements: 3.1, 3.2, 3.3, 7.1, 7.2_
 
-- [ ] 4.4 annotation_detail の権限ベースアクセス制御を実装
+- [x] 4.4 annotation_detail の権限ベースアクセス制御を実装
   - annotator ロールが is_ready=FALSE の画像にアクセスした場合、PermissionError を発生
   - admin ロールはすべての画像にアクセス可能
   - 詳細レスポンスに is_ready フィールドを追加
   - _Requirements: 3.4_
 
-- [ ] 4.5 save_annotation の is_ready 保持動作を確認
+- [x] 4.5 save_annotation の is_ready 保持動作を確認
   - アノテーション保存時に is_ready フラグを変更しないことを確認
   - 必要に応じて既存の保存ロジックを調整
   - _Requirements: 1.2_

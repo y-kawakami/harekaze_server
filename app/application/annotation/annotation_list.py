@@ -1,7 +1,7 @@
 """アノテーション一覧取得機能
 
 桜画像一覧の取得・フィルタリング・統計情報取得を行う。
-Requirements: 2.1-2.5, 3.1-3.6
+Requirements: 2.1-2.5, 3.1-3.6, 3.1, 3.2, 3.3, 7.1, 7.2
 """
 
 from dataclasses import dataclass
@@ -26,6 +26,7 @@ class AnnotationListFilter:
     vitality_value: int | None = None
     photo_date_from: date | None = None
     photo_date_to: date | None = None
+    is_ready_filter: bool | None = None  # adminのみ使用可能
     page: int = 1
     per_page: int = 20
 
@@ -41,6 +42,7 @@ class AnnotationListItem:
     location: str
     annotation_status: Literal["annotated", "unannotated"]
     vitality_value: int | None
+    is_ready: bool
 
 
 @dataclass
@@ -56,6 +58,8 @@ class AnnotationStats:
     vitality_4_count: int
     vitality_5_count: int
     vitality_minus1_count: int
+    ready_count: int = 0
+    not_ready_count: int = 0
 
 
 @dataclass
@@ -74,6 +78,7 @@ def get_annotation_list(
     image_service: ImageService,
     municipality_service: MunicipalityService,
     filter_params: AnnotationListFilter,
+    annotator_role: str = "annotator",
 ) -> AnnotationListResponse:
     """フィルタリング付きアノテーション一覧を取得
 
@@ -82,6 +87,7 @@ def get_annotation_list(
         image_service: 画像サービス
         municipality_service: 自治体サービス
         filter_params: フィルター条件
+        annotator_role: アノテーターのロール（'admin' or 'annotator'）
 
     Returns:
         AnnotationListResponse: 一覧データと統計情報
@@ -99,6 +105,17 @@ def get_annotation_list(
             joinedload(EntireTree.vitality_annotation),
         )
     )
+
+    # is_ready フィルター（権限に応じた処理）
+    if annotator_role == "annotator":
+        # annotator ロールは自動的に is_ready=TRUE でフィルター
+        query = query.filter(VitalityAnnotation.is_ready == True)  # noqa: E712
+    elif annotator_role == "admin":
+        # admin ロールは is_ready フィルターパラメータを使用可能
+        if filter_params.is_ready_filter is not None:
+            query = query.filter(
+                VitalityAnnotation.is_ready == filter_params.is_ready_filter
+            )
 
     # ステータスフィルター
     if filter_params.status == "annotated":
@@ -165,12 +182,14 @@ def get_annotation_list(
         if entire_tree.tree and entire_tree.tree.location:
             location = entire_tree.tree.location
 
-        # アノテーション状態と元気度を取得
+        # アノテーション状態と元気度、is_ready を取得
         annotation_status: Literal["annotated", "unannotated"] = "unannotated"
         vitality_value: int | None = None
+        is_ready: bool = False
         if entire_tree.vitality_annotation:
             annotation_status = "annotated"
             vitality_value = entire_tree.vitality_annotation.vitality_value
+            is_ready = entire_tree.vitality_annotation.is_ready
 
         # サムネイルURLを生成
         thumb_url = image_service.get_image_url(entire_tree.thumb_obj_key)
@@ -184,11 +203,12 @@ def get_annotation_list(
                 location=location,
                 annotation_status=annotation_status,
                 vitality_value=vitality_value,
+                is_ready=is_ready,
             )
         )
 
     # 統計情報を取得
-    stats = get_annotation_stats(db)
+    stats = get_annotation_stats(db, annotator_role)
 
     return AnnotationListResponse(
         items=items,
@@ -199,22 +219,39 @@ def get_annotation_list(
     )
 
 
-def get_annotation_stats(db: Session) -> AnnotationStats:
+def get_annotation_stats(
+    db: Session, annotator_role: str = "annotator"
+) -> AnnotationStats:
     """統計情報を取得
 
     Args:
         db: DBセッション
+        annotator_role: アノテーターのロール（'admin' or 'annotator'）
 
     Returns:
         AnnotationStats: 統計情報
     """
-    # 全件数
-    total_count = db.query(func.count(EntireTree.id)).scalar() or 0
+    # annotator ロールの場合は is_ready=TRUE のみを対象とした統計
+    is_ready_filter = annotator_role == "annotator"
 
-    # アノテーション済み件数
-    annotated_count = (
-        db.query(func.count(VitalityAnnotation.id)).scalar() or 0
-    )
+    if is_ready_filter:
+        # is_ready=TRUE のレコードのみを対象
+        base_query = db.query(VitalityAnnotation).filter(
+            VitalityAnnotation.is_ready == True  # noqa: E712
+        )
+        # 全件数は is_ready=TRUE のアノテーション済み件数
+        total_count = base_query.count()
+        annotated_count = (
+            base_query.filter(
+                VitalityAnnotation.vitality_value.isnot(None)
+            ).count()
+        )
+    else:
+        # admin は全件対象
+        total_count = db.query(func.count(EntireTree.id)).scalar() or 0
+        annotated_count = (
+            db.query(func.count(VitalityAnnotation.id)).scalar() or 0
+        )
 
     # 未入力件数
     unannotated_count = total_count - annotated_count
@@ -222,13 +259,29 @@ def get_annotation_stats(db: Session) -> AnnotationStats:
     # 元気度別件数
     vitality_counts = {}
     for value in [1, 2, 3, 4, 5, -1]:
-        count = (
-            db.query(func.count(VitalityAnnotation.id))
-            .filter(VitalityAnnotation.vitality_value == value)
-            .scalar()
-            or 0
+        vitality_query = db.query(func.count(VitalityAnnotation.id)).filter(
+            VitalityAnnotation.vitality_value == value
         )
+        if is_ready_filter:
+            vitality_query = vitality_query.filter(
+                VitalityAnnotation.is_ready == True  # noqa: E712
+            )
+        count = vitality_query.scalar() or 0
         vitality_counts[value] = count
+
+    # is_ready 統計（admin のみ意味がある）
+    ready_count = (
+        db.query(func.count(VitalityAnnotation.id))
+        .filter(VitalityAnnotation.is_ready == True)  # noqa: E712
+        .scalar()
+        or 0
+    )
+    not_ready_count = (
+        db.query(func.count(VitalityAnnotation.id))
+        .filter(VitalityAnnotation.is_ready == False)  # noqa: E712
+        .scalar()
+        or 0
+    )
 
     return AnnotationStats(
         total_count=total_count,
@@ -240,4 +293,6 @@ def get_annotation_stats(db: Session) -> AnnotationStats:
         vitality_4_count=vitality_counts[4],
         vitality_5_count=vitality_counts[5],
         vitality_minus1_count=vitality_counts[-1],
+        ready_count=ready_count,
+        not_ready_count=not_ready_count,
     )
