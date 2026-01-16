@@ -8,9 +8,12 @@ export interface AnnotatorToken {
   token_type: string;
 }
 
+export type AnnotatorRole = 'admin' | 'annotator';
+
 export interface Annotator {
   id: number;
   username: string;
+  role: AnnotatorRole;
   last_login: string | null;
   created_at: string;
 }
@@ -23,6 +26,7 @@ export interface AnnotationListItem {
   location: string;
   annotation_status: 'annotated' | 'unannotated';
   vitality_value: number | null;
+  is_ready: boolean;
 }
 
 export interface AnnotationStats {
@@ -35,6 +39,8 @@ export interface AnnotationStats {
   vitality_4_count: number;
   vitality_5_count: number;
   vitality_minus1_count: number;
+  ready_count: number;
+  not_ready_count: number;
 }
 
 export interface AnnotationListResponse {
@@ -60,6 +66,7 @@ export interface AnnotationDetail {
   total_count: number;
   prev_id: number | null;
   next_id: number | null;
+  is_ready: boolean;
 }
 
 export interface SaveAnnotationResponse {
@@ -80,6 +87,8 @@ export interface PrefectureListResponse {
 
 export type StatusFilter = 'all' | 'annotated' | 'unannotated';
 
+export type IsReadyFilter = 'all' | 'ready' | 'not_ready';
+
 export interface ListFilter {
   status: StatusFilter;
   prefecture_code: string | null;
@@ -88,4 +97,26 @@ export interface ListFilter {
   photo_date_to: string | null;
   page: number;
   per_page: number;
+  is_ready_filter: IsReadyFilter | null;
+}
+
+// is_ready 更新用リクエスト/レスポンス型
+export interface UpdateIsReadyRequest {
+  is_ready: boolean;
+}
+
+export interface UpdateIsReadyResponse {
+  entire_tree_id: number;
+  is_ready: boolean;
+  updated_at: string;
+}
+
+export interface UpdateIsReadyBatchRequest {
+  entire_tree_ids: number[];
+  is_ready: boolean;
+}
+
+export interface UpdateIsReadyBatchResponse {
+  updated_count: number;
+  updated_ids: number[];
 }

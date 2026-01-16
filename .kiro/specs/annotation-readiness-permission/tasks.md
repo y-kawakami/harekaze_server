@@ -128,8 +128,8 @@
   - annotator ロールが is_ready=FALSE の詳細にアクセスで 403 を確認
   - _Requirements: 3.1, 3.2, 3.3, 3.4, 7.1, 7.2_
 
-- [ ] 7. フロントエンド型定義と API クライアントの更新
-- [ ] 7.1 (P) 型定義を更新
+- [x] 7. フロントエンド型定義と API クライアントの更新
+- [x] 7.1 (P) 型定義を更新
   - Annotator 型に role フィールドを追加
   - AnnotationListItem 型に is_ready フィールドを追加
   - AnnotationStats 型に ready_count, not_ready_count を追加
@@ -137,7 +137,7 @@
   - is_ready 更新用のリクエスト/レスポンス型を追加
   - _Requirements: 2.2, 5.1, 7.1_
 
-- [ ] 7.2 (P) API クライアントに is_ready 更新関数を追加
+- [x] 7.2 (P) API クライアントに is_ready 更新関数を追加
   - updateIsReady 関数を追加（単一更新）
   - updateIsReadyBatch 関数を追加（バッチ更新）
   - _Requirements: 4.1, 4.4_

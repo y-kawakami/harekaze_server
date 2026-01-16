@@ -11,6 +11,9 @@ import type {
   SaveAnnotationResponse,
   PrefectureListResponse,
   ListFilter,
+  UpdateIsReadyResponse,
+  UpdateIsReadyBatchRequest,
+  UpdateIsReadyBatchResponse,
 } from '../types/api';
 
 const API_BASE = '/annotation_api';
@@ -84,6 +87,9 @@ export async function getTrees(
   if (filter.photo_date_to) params.append('photo_date_to', filter.photo_date_to);
   if (filter.page) params.append('page', String(filter.page));
   if (filter.per_page) params.append('per_page', String(filter.per_page));
+  if (filter.is_ready_filter && filter.is_ready_filter !== 'all') {
+    params.append('is_ready_filter', filter.is_ready_filter === 'ready' ? 'true' : 'false');
+  }
 
   const response = await fetch(`${API_BASE}/trees?${params}`, {
     headers: getAuthHeaders(),
@@ -149,4 +155,41 @@ export async function exportCsv(includeUndiagnosable: boolean = true): Promise<B
   }
 
   return response.blob();
+}
+
+/**
+ * 単一画像の is_ready フラグを更新する（管理者専用）
+ */
+export async function updateIsReady(
+  entireTreeId: number,
+  isReady: boolean
+): Promise<UpdateIsReadyResponse> {
+  const response = await fetch(`${API_BASE}/trees/${entireTreeId}/is_ready`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ is_ready: isReady }),
+  });
+
+  return handleResponse<UpdateIsReadyResponse>(response);
+}
+
+/**
+ * 複数画像の is_ready フラグを一括更新する（管理者専用）
+ */
+export async function updateIsReadyBatch(
+  request: UpdateIsReadyBatchRequest
+): Promise<UpdateIsReadyBatchResponse> {
+  const response = await fetch(`${API_BASE}/trees/is_ready/batch`, {
+    method: 'PATCH',
+    headers: {
+      ...getAuthHeaders(),
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  return handleResponse<UpdateIsReadyBatchResponse>(response);
 }
