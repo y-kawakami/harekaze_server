@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.domain.models.annotation import VitalityAnnotation
@@ -107,21 +107,40 @@ def get_annotation_list(
     )
 
     # is_ready フィルター（権限に応じた処理）
+    # VitalityAnnotation レコードがない場合は is_ready=FALSE として扱う
     if annotator_role == "annotator":
         # annotator ロールは自動的に is_ready=TRUE でフィルター
         query = query.filter(VitalityAnnotation.is_ready == True)  # noqa: E712
     elif annotator_role == "admin":
         # admin ロールは is_ready フィルターパラメータを使用可能
-        if filter_params.is_ready_filter is not None:
+        if filter_params.is_ready_filter is True:
             query = query.filter(
-                VitalityAnnotation.is_ready == filter_params.is_ready_filter
+                VitalityAnnotation.is_ready == True  # noqa: E712
+            )
+        elif filter_params.is_ready_filter is False:
+            # レコードがない、または is_ready=FALSE
+            query = query.filter(
+                or_(
+                    VitalityAnnotation.id.is_(None),
+                    VitalityAnnotation.is_ready == False,  # noqa: E712
+                )
             )
 
     # ステータスフィルター
+    # annotated: vitality_value が入力済み
+    # unannotated: VitalityAnnotation が存在しない、または vitality_value が NULL
     if filter_params.status == "annotated":
-        query = query.filter(VitalityAnnotation.id.isnot(None))
+        query = query.filter(
+            VitalityAnnotation.id.isnot(None),
+            VitalityAnnotation.vitality_value.isnot(None),
+        )
     elif filter_params.status == "unannotated":
-        query = query.filter(VitalityAnnotation.id.is_(None))
+        query = query.filter(
+            or_(
+                VitalityAnnotation.id.is_(None),
+                VitalityAnnotation.vitality_value.is_(None),
+            )
+        )
 
     # 都道府県フィルター
     if filter_params.prefecture_code:
@@ -249,8 +268,11 @@ def get_annotation_stats(
     else:
         # admin は全件対象
         total_count = db.query(func.count(EntireTree.id)).scalar() or 0
+        # annotated_count は vitality_value が入力済みのレコード数
         annotated_count = (
-            db.query(func.count(VitalityAnnotation.id)).scalar() or 0
+            db.query(func.count(VitalityAnnotation.id))
+            .filter(VitalityAnnotation.vitality_value.isnot(None))
+            .scalar() or 0
         )
 
     # 未入力件数
@@ -270,18 +292,15 @@ def get_annotation_stats(
         vitality_counts[value] = count
 
     # is_ready 統計（admin のみ意味がある）
+    # ready_count: is_ready=TRUE のレコード数
+    # not_ready_count: 全件数 - ready_count（レコードがない画像も未準備として扱う）
     ready_count = (
         db.query(func.count(VitalityAnnotation.id))
         .filter(VitalityAnnotation.is_ready == True)  # noqa: E712
         .scalar()
         or 0
     )
-    not_ready_count = (
-        db.query(func.count(VitalityAnnotation.id))
-        .filter(VitalityAnnotation.is_ready == False)  # noqa: E712
-        .scalar()
-        or 0
-    )
+    not_ready_count = total_count - ready_count
 
     return AnnotationStats(
         total_count=total_count,

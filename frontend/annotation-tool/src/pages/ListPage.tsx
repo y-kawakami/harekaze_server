@@ -146,6 +146,9 @@ export function ListPage() {
     if (vitalityValue) params.set('vitality_value', vitalityValue);
     if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
     if (photoDateTo) params.set('photo_date_to', photoDateTo);
+    if (isReadyFilter && isReadyFilter !== 'all') {
+      params.set('is_ready_filter', isReadyFilter);
+    }
     navigate(`/annotation/${entireTreeId}?${params}`);
   };
 

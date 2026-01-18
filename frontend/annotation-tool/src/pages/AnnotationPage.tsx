@@ -37,6 +37,7 @@ export function AnnotationPage() {
   const vitalityValue = searchParams.get('vitality_value');
   const photoDateFrom = searchParams.get('photo_date_from') || '';
   const photoDateTo = searchParams.get('photo_date_to') || '';
+  const isReadyFilter = (searchParams.get('is_ready_filter') as 'all' | 'ready' | 'not_ready') || 'all';
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -48,6 +49,7 @@ export function AnnotationPage() {
         vitality_value: vitalityValue ? parseInt(vitalityValue, 10) : null,
         photo_date_from: photoDateFrom || null,
         photo_date_to: photoDateTo || null,
+        is_ready_filter: isReadyFilter,
       });
       setDetail(result);
       setSelectedValue(result.current_vitality_value);
@@ -56,7 +58,7 @@ export function AnnotationPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo]);
+  }, [id, status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo, isReadyFilter]);
 
   useEffect(() => {
     fetchDetail();
@@ -88,6 +90,9 @@ export function AnnotationPage() {
     if (vitalityValue) params.set('vitality_value', vitalityValue);
     if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
     if (photoDateTo) params.set('photo_date_to', photoDateTo);
+    if (isReadyFilter && isReadyFilter !== 'all') {
+      params.set('is_ready_filter', isReadyFilter);
+    }
     navigate(`/annotation/${targetId}?${params}`);
   };
 
@@ -98,6 +103,9 @@ export function AnnotationPage() {
     if (vitalityValue) params.set('vitality_value', vitalityValue);
     if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
     if (photoDateTo) params.set('photo_date_to', photoDateTo);
+    if (isReadyFilter && isReadyFilter !== 'all') {
+      params.set('is_ready_filter', isReadyFilter);
+    }
     return `/?${params}`;
   };
 

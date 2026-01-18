@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import date, datetime
 from typing import Literal
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.domain.models.annotation import VitalityAnnotation
@@ -26,6 +27,8 @@ class AnnotationListFilter:
     vitality_value: int | None = None
     photo_date_from: date | None = None
     photo_date_to: date | None = None
+    is_ready_filter: bool | None = None
+    annotator_role: str = "annotator"
 
 
 @dataclass
@@ -195,11 +198,37 @@ def _calculate_navigation(
         )
     )
 
+    # is_ready フィルター（権限に応じた処理）
+    if filter_params.annotator_role == "annotator":
+        # annotator ロールは自動的に is_ready=TRUE でフィルター
+        query = query.filter(VitalityAnnotation.is_ready == True)  # noqa: E712
+    elif filter_params.annotator_role == "admin":
+        # admin ロールは is_ready フィルターパラメータを使用可能
+        if filter_params.is_ready_filter is True:
+            query = query.filter(
+                VitalityAnnotation.is_ready == True  # noqa: E712
+            )
+        elif filter_params.is_ready_filter is False:
+            query = query.filter(
+                or_(
+                    VitalityAnnotation.id.is_(None),
+                    VitalityAnnotation.is_ready == False,  # noqa: E712
+                )
+            )
+
     # ステータスフィルター
     if filter_params.status == "annotated":
-        query = query.filter(VitalityAnnotation.id.isnot(None))
+        query = query.filter(
+            VitalityAnnotation.id.isnot(None),
+            VitalityAnnotation.vitality_value.isnot(None),
+        )
     elif filter_params.status == "unannotated":
-        query = query.filter(VitalityAnnotation.id.is_(None))
+        query = query.filter(
+            or_(
+                VitalityAnnotation.id.is_(None),
+                VitalityAnnotation.vitality_value.is_(None),
+            )
+        )
 
     # 都道府県フィルター
     if filter_params.prefecture_code:

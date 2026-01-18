@@ -40,3 +40,5 @@ node_modules/
 *.local
 *.tsbuildinfo
 .eslintcache
+
+.cursor

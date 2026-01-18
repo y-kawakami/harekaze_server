@@ -8,28 +8,35 @@
     # パスワードハッシュのみを生成（DBには登録しない）
     python scripts/create_annotator.py username password --hash-only
 """
+from passlib.context import CryptContext
+from dotenv import load_dotenv
 import argparse
 import sys
 from pathlib import Path
 
-from dotenv import load_dotenv
-from passlib.context import CryptContext
-
-from app.domain.models.annotation import Annotator
-from app.infrastructure.database.database import engine, sessionmaker
-
-# プロジェクトのルートディレクトリをPYTHONPATHに追加
+# プロジェクトのルートディレクトリをPYTHONPATHに追加（importの前に実行する必要がある）
 project_root = Path(__file__).parent.parent
 sys.path.append(str(project_root))
+
 
 # .envファイルを読み込む
 load_dotenv()
 
-# セッション作成
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 # パスワードハッシュ用のコンテキスト
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# DB関連の初期化（遅延実行用）
+_SessionLocal = None
+
+
+def _get_session():
+    """DBセッションを遅延初期化して取得する"""
+    global _SessionLocal
+    if _SessionLocal is None:
+        from app.infrastructure.database.database import engine, sessionmaker
+        _SessionLocal = sessionmaker(
+            autocommit=False, autoflush=False, bind=engine)
+    return _SessionLocal()
 
 
 def get_password_hash(password: str) -> str:
@@ -48,7 +55,8 @@ def create_annotator(username: str, password: str) -> bool:
     Returns:
         bool: 作成に成功したかどうか
     """
-    db_session = SessionLocal()
+    from app.domain.models.annotation import Annotator
+    db_session = _get_session()
 
     try:
         # 既存の同名アノテーターをチェック
@@ -70,7 +78,7 @@ def create_annotator(username: str, password: str) -> bool:
         db_session.commit()
         db_session.refresh(annotator)
 
-        print(f"アノテーターアカウントが作成されました。")
+        print("アノテーターアカウントが作成されました。")
         print(f"  ID: {annotator.id}")
         print(f"  ユーザー名: {annotator.username}")
         return True
@@ -86,7 +94,8 @@ def create_annotator(username: str, password: str) -> bool:
 
 def list_annotators() -> None:
     """登録済みのアノテーター一覧を表示する"""
-    db_session = SessionLocal()
+    from app.domain.models.annotation import Annotator
+    db_session = _get_session()
 
     try:
         annotators = db_session.query(Annotator).all()
@@ -115,7 +124,8 @@ def delete_annotator(username: str) -> bool:
     Returns:
         bool: 削除に成功したかどうか
     """
-    db_session = SessionLocal()
+    from app.domain.models.annotation import Annotator
+    db_session = _get_session()
 
     try:
         annotator = db_session.query(Annotator).filter(

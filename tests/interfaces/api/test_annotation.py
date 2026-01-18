@@ -660,3 +660,540 @@ class TestAnnotationDetailAPI:
         )
 
         assert response.status_code == status.HTTP_404_NOT_FOUND
+
+
+@pytest.mark.integration
+class TestIsReadyIntegrationFlow:
+    """is_ready 機能の統合テスト
+
+    認証 → 一覧取得 → is_ready 更新のフローをテストする。
+    Requirements: 3.1, 3.2, 3.3, 3.4, 4.1, 4.2, 4.4
+    """
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_auth_list_update_is_ready_flow(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_entire_tree,
+    ):
+        """認証 → 一覧取得 → is_ready更新の完全フロー（admin）"""
+        # モック設定
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # Step 1: adminアノテーターを作成
+        admin = Annotator(
+            username="flow_test_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        # Step 2: 認証
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "flow_test_admin", "password": "admin_pass"},
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Step 3: 一覧取得（初期状態: VitalityAnnotationが無い画像）
+        list_response = client.get("/annotation_api/trees", headers=headers)
+        assert list_response.status_code == status.HTTP_200_OK
+        data = list_response.json()
+        # 統計情報が含まれていることを確認
+        assert "stats" in data
+        assert "total_count" in data["stats"]
+
+        # Step 4: is_ready を True に更新
+        update_response = client.patch(
+            f"/annotation_api/trees/{sample_entire_tree.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+        assert update_response.status_code == status.HTTP_200_OK
+        assert update_response.json()["is_ready"] is True
+
+        # Step 5: 一覧取得で is_ready 状態が反映されていることを確認
+        list_response2 = client.get("/annotation_api/trees", headers=headers)
+        assert list_response2.status_code == status.HTTP_200_OK
+        items = list_response2.json()["items"]
+        target_item = next(
+            (i for i in items if i["entire_tree_id"] == sample_entire_tree.id),
+            None
+        )
+        assert target_item is not None
+        assert target_item["is_ready"] is True
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_flowering_date_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_annotator_cannot_access_not_ready_detail(
+        self,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        mock_image_service,
+        client,
+        db,
+        sample_entire_tree,
+    ):
+        """annotatorロールが is_ready=FALSE の画像詳細にアクセスすると403"""
+        # モック設定
+        mock_image_service.return_value = MagicMock()
+        mock_flowering_date_service.return_value = MagicMock()
+        mock_municipality_service.return_value = MagicMock()
+
+        # annotatorアノテーターを作成
+        annotator = Annotator(
+            username="access_test_annotator",
+            hashed_password=pwd_context.hash("annotator_pass"),
+            role="annotator",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(annotator)
+        db.commit()
+
+        # 認証
+        login_response = client.post(
+            "/annotation_api/login",
+            data={
+                "username": "access_test_annotator",
+                "password": "annotator_pass"
+            },
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready=FALSE の画像詳細にアクセス → 403
+        response = client.get(
+            f"/annotation_api/trees/{sample_entire_tree.id}",
+            headers=headers,
+        )
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_flowering_date_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_annotator_can_access_ready_detail(
+        self,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        mock_image_service,
+        client,
+        db,
+        sample_entire_tree,
+    ):
+        """annotatorロールが is_ready=TRUE の画像詳細にアクセスできる"""
+        # モック設定
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/image.jpg"
+        mock_image_service.return_value = img_service
+
+        flowering_service = MagicMock()
+        flowering_service.find_nearest_spot.return_value = None
+        mock_flowering_date_service.return_value = flowering_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # まずadminを作成してis_readyを設定するため
+        admin = Annotator(
+            username="ready_test_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+        db.refresh(admin)
+
+        # VitalityAnnotation を is_ready=TRUE で作成（有効なannotator_idを使用）
+        annotation = VitalityAnnotation(
+            entire_tree_id=sample_entire_tree.id,
+            vitality_value=None,
+            is_ready=True,
+            annotator_id=admin.id,
+            annotated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(annotation)
+        db.commit()
+
+        # annotatorを作成
+        annotator = Annotator(
+            username="ready_access_annotator",
+            hashed_password=pwd_context.hash("annotator_pass"),
+            role="annotator",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(annotator)
+        db.commit()
+
+        # 認証
+        login_response = client.post(
+            "/annotation_api/login",
+            data={
+                "username": "ready_access_annotator",
+                "password": "annotator_pass"
+            },
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready=TRUE の画像詳細にアクセス → 200
+        response = client.get(
+            f"/annotation_api/trees/{sample_entire_tree.id}",
+            headers=headers,
+        )
+        assert response.status_code == status.HTTP_200_OK
+        assert response.json()["is_ready"] is True
+
+    def test_batch_update_is_ready_multiple_records(
+        self,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """バッチ更新で複数レコードを一括更新"""
+        # 複数のEntireTreeを作成
+        entire_trees = []
+        for i in range(3):
+            et = EntireTree(
+                tree_id=sample_tree.id,
+                user_id=sample_user.id,
+                latitude=35.6580 + i * 0.001,
+                longitude=139.7016 + i * 0.001,
+                image_obj_key=f"2024/04/01/test_image_{i}.jpg",
+                thumb_obj_key=f"2024/04/01/test_thumb_{i}.jpg",
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+            db.add(et)
+            entire_trees.append(et)
+        db.commit()
+        for et in entire_trees:
+            db.refresh(et)
+
+        # adminアノテーターを作成
+        admin = Annotator(
+            username="batch_test_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        # 認証
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "batch_test_admin", "password": "admin_pass"},
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # バッチ更新
+        entire_tree_ids = [et.id for et in entire_trees]
+        response = client.patch(
+            "/annotation_api/trees/is_ready/batch",
+            json={"entire_tree_ids": entire_tree_ids, "is_ready": True},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert data["updated_count"] == 3
+        assert set(data["updated_ids"]) == set(entire_tree_ids)
+
+    def test_batch_update_is_ready_denied_for_annotator(
+        self,
+        client,
+        db,
+        sample_entire_tree,
+    ):
+        """annotatorロールでバッチ更新は403"""
+        # annotatorを作成
+        annotator = Annotator(
+            username="batch_denied_annotator",
+            hashed_password=pwd_context.hash("annotator_pass"),
+            role="annotator",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(annotator)
+        db.commit()
+
+        # 認証
+        login_response = client.post(
+            "/annotation_api/login",
+            data={
+                "username": "batch_denied_annotator",
+                "password": "annotator_pass"
+            },
+        )
+        assert login_response.status_code == status.HTTP_200_OK
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # バッチ更新を試行 → 403
+        response = client.patch(
+            "/annotation_api/trees/is_ready/batch",
+            json={
+                "entire_tree_ids": [sample_entire_tree.id],
+                "is_ready": True
+            },
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_403_FORBIDDEN
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_annotator_only_sees_ready_items_in_list(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """annotatorロールは一覧で is_ready=TRUE の画像のみ表示"""
+        # モック設定
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # is_ready=TRUE と FALSE の画像を作成
+        et_ready = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/ready_image.jpg",
+            thumb_obj_key="2024/04/01/ready_thumb.jpg",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et_not_ready = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6590,
+            longitude=139.7026,
+            image_obj_key="2024/04/01/not_ready_image.jpg",
+            thumb_obj_key="2024/04/01/not_ready_thumb.jpg",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et_ready)
+        db.add(et_not_ready)
+        db.commit()
+        db.refresh(et_ready)
+        db.refresh(et_not_ready)
+
+        # adminを作成してis_readyを設定
+        admin = Annotator(
+            username="list_test_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        admin_login = client.post(
+            "/annotation_api/login",
+            data={"username": "list_test_admin", "password": "admin_pass"},
+        )
+        admin_token = admin_login.json()["access_token"]
+        admin_headers = {"Authorization": f"Bearer {admin_token}"}
+
+        # et_ready を is_ready=TRUE に設定
+        client.patch(
+            f"/annotation_api/trees/{et_ready.id}/is_ready",
+            json={"is_ready": True},
+            headers=admin_headers,
+        )
+
+        # annotatorを作成
+        annotator = Annotator(
+            username="list_test_annotator",
+            hashed_password=pwd_context.hash("annotator_pass"),
+            role="annotator",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(annotator)
+        db.commit()
+
+        annotator_login = client.post(
+            "/annotation_api/login",
+            data={
+                "username": "list_test_annotator",
+                "password": "annotator_pass"
+            },
+        )
+        annotator_token = annotator_login.json()["access_token"]
+        annotator_headers = {
+            "Authorization": f"Bearer {annotator_token}"
+        }
+
+        # annotatorで一覧取得
+        response = client.get(
+            "/annotation_api/trees",
+            headers=annotator_headers
+        )
+        assert response.status_code == status.HTTP_200_OK
+        items = response.json()["items"]
+
+        # is_ready=TRUEの画像のみ含まれる
+        item_ids = [item["entire_tree_id"] for item in items]
+        assert et_ready.id in item_ids
+        assert et_not_ready.id not in item_ids
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_admin_can_filter_by_is_ready(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """adminロールは is_ready フィルターで絞り込み可能"""
+        # モック設定
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # 画像を作成
+        et1 = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/filter_test1.jpg",
+            thumb_obj_key="2024/04/01/filter_test1_thumb.jpg",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et2 = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6590,
+            longitude=139.7026,
+            image_obj_key="2024/04/01/filter_test2.jpg",
+            thumb_obj_key="2024/04/01/filter_test2_thumb.jpg",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et1)
+        db.add(et2)
+        db.commit()
+        db.refresh(et1)
+        db.refresh(et2)
+
+        # adminを作成
+        admin = Annotator(
+            username="filter_test_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "filter_test_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # et1を is_ready=TRUE に設定
+        resp1 = client.patch(
+            f"/annotation_api/trees/{et1.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+        assert resp1.status_code == status.HTTP_200_OK
+
+        # et2を is_ready=FALSE に設定（明示的にレコードを作成）
+        resp2 = client.patch(
+            f"/annotation_api/trees/{et2.id}/is_ready",
+            json={"is_ready": False},
+            headers=headers,
+        )
+        assert resp2.status_code == status.HTTP_200_OK
+
+        # is_ready=TRUE でフィルター
+        response_ready = client.get(
+            "/annotation_api/trees",
+            params={"is_ready": True},
+            headers=headers,
+        )
+        assert response_ready.status_code == status.HTTP_200_OK
+        ready_items = response_ready.json()["items"]
+        ready_ids = [i["entire_tree_id"] for i in ready_items]
+        assert et1.id in ready_ids
+        assert et2.id not in ready_ids
+
+        # is_ready=FALSE でフィルター
+        response_not_ready = client.get(
+            "/annotation_api/trees",
+            params={"is_ready": False},
+            headers=headers,
+        )
+        assert response_not_ready.status_code == status.HTTP_200_OK
+        not_ready_ids = [
+            i["entire_tree_id"] for i in response_not_ready.json()["items"]
+        ]
+        assert et1.id not in not_ready_ids
+        assert et2.id in not_ready_ids

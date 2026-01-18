@@ -164,6 +164,9 @@ async def get_tree_detail(
         None, description="撮影日開始（YYYY-MM-DD）"),
     photo_date_to: Optional[date] = Query(
         None, description="撮影日終了（YYYY-MM-DD）"),
+    is_ready_filter: Optional[bool] = Query(
+        None, alias="is_ready",
+        description="準備完了フィルター（adminのみ有効、ナビゲーション用）"),
     current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationDetailResponse:
@@ -183,6 +186,8 @@ async def get_tree_detail(
         vitality_value=vitality_value,
         photo_date_from=photo_date_from,
         photo_date_to=photo_date_to,
+        is_ready_filter=is_ready_filter,
+        annotator_role=current_annotator.role,
     )
 
     try:
