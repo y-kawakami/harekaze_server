@@ -8,11 +8,12 @@
     # パスワードハッシュのみを生成（DBには登録しない）
     python scripts/create_annotator.py username password --hash-only
 """
-from passlib.context import CryptContext
-from dotenv import load_dotenv
 import argparse
 import sys
 from pathlib import Path
+
+from dotenv import load_dotenv
+from passlib.context import CryptContext
 
 # プロジェクトのルートディレクトリをPYTHONPATHに追加（importの前に実行する必要がある）
 project_root = Path(__file__).parent.parent

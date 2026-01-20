@@ -16,4 +16,4 @@ export IMAGE_TAG=develop
 $(pwd)/Docker/build-to-ecr.sh
 
 # サービス名に応じてECSサービス名を設定
-# aws ecs update-service --cluster hrkz-dev-cluster --service hrkz-dev-${SERVICE} --force-new-deployment
+aws ecs update-service --cluster hrkz-dev-cluster --service hrkz-dev-${SERVICE} --force-new-deployment

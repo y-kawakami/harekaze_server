@@ -67,6 +67,7 @@ export interface AnnotationDetail {
   prev_id: number | null;
   next_id: number | null;
   is_ready: boolean;
+  bloom_status: string | null;
 }
 
 export interface SaveAnnotationResponse {

@@ -3,19 +3,24 @@
  * Requirements: 6.1, 6.2, 6.3, 6.4, 4.1-4.6, 5.1-5.7
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
-import type { AnnotationDetail, StatusFilter } from '../types/api';
-import { getTreeDetail, saveAnnotation, updateIsReady } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
+import { useState, useEffect, useCallback } from "react";
+import {
+  useParams,
+  useNavigate,
+  useSearchParams,
+  Link,
+} from "react-router-dom";
+import type { AnnotationDetail, StatusFilter } from "../types/api";
+import { getTreeDetail, saveAnnotation, updateIsReady } from "../api/client";
+import { useAuth } from "../hooks/useAuth";
 
 const VITALITY_OPTIONS: { value: number; label: string; color: string }[] = [
-  { value: 1, label: 'とっても元気', color: 'bg-green-500' },
-  { value: 2, label: '元気', color: 'bg-lime-500' },
-  { value: 3, label: '普通', color: 'bg-yellow-500' },
-  { value: 4, label: '少し気掛かり', color: 'bg-orange-500' },
-  { value: 5, label: '気掛かり', color: 'bg-red-500' },
-  { value: -1, label: '診断不可', color: 'bg-gray-500' },
+  { value: 1, label: "とっても元気", color: "bg-green-500" },
+  { value: 2, label: "元気", color: "bg-lime-500" },
+  { value: 3, label: "ふつう", color: "bg-yellow-500" },
+  { value: 4, label: "少し気がかり", color: "bg-orange-500" },
+  { value: 5, label: "気がかり", color: "bg-red-500" },
+  { value: -1, label: "診断不可", color: "bg-gray-500" },
 ];
 
 export function AnnotationPage() {
@@ -32,12 +37,14 @@ export function AnnotationPage() {
   const [isUpdatingIsReady, setIsUpdatingIsReady] = useState(false);
   const [isReadyMessage, setIsReadyMessage] = useState<string | null>(null);
 
-  const status = (searchParams.get('status') as StatusFilter) || 'all';
-  const prefectureCode = searchParams.get('prefecture_code') || '';
-  const vitalityValue = searchParams.get('vitality_value');
-  const photoDateFrom = searchParams.get('photo_date_from') || '';
-  const photoDateTo = searchParams.get('photo_date_to') || '';
-  const isReadyFilter = (searchParams.get('is_ready_filter') as 'all' | 'ready' | 'not_ready') || 'all';
+  const status = (searchParams.get("status") as StatusFilter) || "all";
+  const prefectureCode = searchParams.get("prefecture_code") || "";
+  const vitalityValue = searchParams.get("vitality_value");
+  const photoDateFrom = searchParams.get("photo_date_from") || "";
+  const photoDateTo = searchParams.get("photo_date_to") || "";
+  const isReadyFilter =
+    (searchParams.get("is_ready_filter") as "all" | "ready" | "not_ready") ||
+    "all";
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -54,11 +61,19 @@ export function AnnotationPage() {
       setDetail(result);
       setSelectedValue(result.current_vitality_value);
     } catch (error) {
-      console.error('Failed to fetch detail:', error);
+      console.error("Failed to fetch detail:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [id, status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo, isReadyFilter]);
+  }, [
+    id,
+    status,
+    prefectureCode,
+    vitalityValue,
+    photoDateFrom,
+    photoDateTo,
+    isReadyFilter,
+  ]);
 
   useEffect(() => {
     fetchDetail();
@@ -72,11 +87,11 @@ export function AnnotationPage() {
 
     try {
       await saveAnnotation(parseInt(id, 10), value);
-      setSaveMessage('保存しました');
+      setSaveMessage("保存しました");
       setTimeout(() => setSaveMessage(null), 2000);
     } catch (error) {
-      console.error('Failed to save:', error);
-      setSaveMessage('保存に失敗しました');
+      console.error("Failed to save:", error);
+      setSaveMessage("保存に失敗しました");
     } finally {
       setIsSaving(false);
     }
@@ -85,33 +100,58 @@ export function AnnotationPage() {
   const navigateTo = (targetId: number | null) => {
     if (!targetId) return;
     const params = new URLSearchParams();
-    params.set('status', status);
-    if (prefectureCode) params.set('prefecture_code', prefectureCode);
-    if (vitalityValue) params.set('vitality_value', vitalityValue);
-    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
-    if (photoDateTo) params.set('photo_date_to', photoDateTo);
-    if (isReadyFilter && isReadyFilter !== 'all') {
-      params.set('is_ready_filter', isReadyFilter);
+    params.set("status", status);
+    if (prefectureCode) params.set("prefecture_code", prefectureCode);
+    if (vitalityValue) params.set("vitality_value", vitalityValue);
+    if (photoDateFrom) params.set("photo_date_from", photoDateFrom);
+    if (photoDateTo) params.set("photo_date_to", photoDateTo);
+    if (isReadyFilter && isReadyFilter !== "all") {
+      params.set("is_ready_filter", isReadyFilter);
     }
     navigate(`/annotation/${targetId}?${params}`);
   };
 
   const getBackUrl = () => {
     const params = new URLSearchParams();
-    params.set('status', status);
-    if (prefectureCode) params.set('prefecture_code', prefectureCode);
-    if (vitalityValue) params.set('vitality_value', vitalityValue);
-    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
-    if (photoDateTo) params.set('photo_date_to', photoDateTo);
-    if (isReadyFilter && isReadyFilter !== 'all') {
-      params.set('is_ready_filter', isReadyFilter);
+    params.set("status", status);
+    if (prefectureCode) params.set("prefecture_code", prefectureCode);
+    if (vitalityValue) params.set("vitality_value", vitalityValue);
+    if (photoDateFrom) params.set("photo_date_from", photoDateFrom);
+    if (photoDateTo) params.set("photo_date_to", photoDateTo);
+    if (isReadyFilter && isReadyFilter !== "all") {
+      params.set("is_ready_filter", isReadyFilter);
     }
     return `/?${params}`;
   };
 
   const formatDate = (dateStr: string | null) => {
-    if (!dateStr) return '-';
-    return new Date(dateStr).toLocaleDateString('ja-JP');
+    if (!dateStr) return "-";
+    return new Date(dateStr).toLocaleDateString("ja-JP");
+  };
+
+  const formatDateShort = (dateStr: string | null) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  };
+
+  const getBloomStatusStyle = (status: string | null) => {
+    switch (status) {
+      case "開花前":
+        return "bg-gray-100 text-gray-700";
+      case "3分咲き":
+        return "bg-pink-100 text-pink-700";
+      case "5分咲き":
+        return "bg-pink-200 text-pink-800";
+      case "満開":
+        return "bg-pink-500 text-white";
+      case "散り始め":
+        return "bg-orange-100 text-orange-700";
+      case "葉桜":
+        return "bg-green-100 text-green-700";
+      default:
+        return "bg-gray-50 text-gray-500";
+    }
   };
 
   // is_ready トグルハンドラ（管理者専用）
@@ -123,17 +163,17 @@ export function AnnotationPage() {
     setIsReadyMessage(null);
 
     // 楽観的更新
-    setDetail((prev) => prev ? { ...prev, is_ready: newIsReady } : prev);
+    setDetail((prev) => (prev ? { ...prev, is_ready: newIsReady } : prev));
 
     try {
       await updateIsReady(parseInt(id, 10), newIsReady);
-      setIsReadyMessage('準備状態を保存しました');
+      setIsReadyMessage("準備状態を保存しました");
       setTimeout(() => setIsReadyMessage(null), 2000);
     } catch (error) {
-      console.error('Failed to update is_ready:', error);
+      console.error("Failed to update is_ready:", error);
       // ロールバック
-      setDetail((prev) => prev ? { ...prev, is_ready: !newIsReady } : prev);
-      setIsReadyMessage('準備状態の保存に失敗しました');
+      setDetail((prev) => (prev ? { ...prev, is_ready: !newIsReady } : prev));
+      setIsReadyMessage("準備状態の保存に失敗しました");
     } finally {
       setIsUpdatingIsReady(false);
     }
@@ -155,7 +195,10 @@ export function AnnotationPage() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <p className="text-gray-600">画像が見つかりません</p>
-          <Link to="/" className="text-sakura-500 hover:underline mt-2 inline-block">
+          <Link
+            to="/"
+            className="text-sakura-500 hover:underline mt-2 inline-block"
+          >
             一覧に戻る
           </Link>
         </div>
@@ -208,7 +251,9 @@ export function AnnotationPage() {
           <div className="space-y-6">
             {/* Vitality Selection */}
             <div className="bg-white rounded-lg shadow-sm p-6">
-              <h2 className="text-lg font-bold text-gray-800 mb-4">元気度入力</h2>
+              <h2 className="text-lg font-bold text-gray-800 mb-4">
+                元気度入力
+              </h2>
               <div className="space-y-2">
                 {VITALITY_OPTIONS.map((option) => (
                   <button
@@ -218,7 +263,7 @@ export function AnnotationPage() {
                     className={`w-full py-3 px-4 rounded-lg font-medium transition-all flex items-center justify-between ${
                       selectedValue === option.value
                         ? `${option.color} text-white shadow-lg scale-[1.02]`
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     }`}
                   >
                     <span>{option.label}</span>
@@ -229,7 +274,9 @@ export function AnnotationPage() {
               {saveMessage && (
                 <p
                   className={`mt-4 text-center text-sm ${
-                    saveMessage.includes('失敗') ? 'text-red-500' : 'text-green-500'
+                    saveMessage.includes("失敗")
+                      ? "text-red-500"
+                      : "text-green-500"
                   }`}
                 >
                   {saveMessage}
@@ -240,22 +287,42 @@ export function AnnotationPage() {
             {/* Photo Info */}
             <div className="bg-white rounded-lg shadow-sm p-6">
               <h2 className="text-lg font-bold text-gray-800 mb-4">撮影情報</h2>
-              <dl className="space-y-3 text-sm">
+              <dl className="space-y-3 text-md">
+                <div className="flex justify-between items-center">
+                  <dt className="text-gray-500">開花状態</dt>
+                  <dd>
+                    <span
+                      className={`px-2 py-0.5 text-sm rounded font-medium ${getBloomStatusStyle(
+                        detail.bloom_status
+                      )}`}
+                    >
+                      {detail.bloom_status || "-"}
+                    </span>
+                  </dd>
+                </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">撮影日</dt>
-                  <dd className="text-gray-800">{formatDate(detail.photo_date)}</dd>
+                  <dd className="text-gray-800">
+                    {formatDate(detail.photo_date)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-500">開花予想日</dt>
-                  <dd className="text-gray-800">{detail.flowering_date || '-'}</dd>
+                  <dt className="text-gray-500">開花日</dt>
+                  <dd className="text-gray-800">
+                    {formatDateShort(detail.flowering_date)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-500">満開開始予想日</dt>
-                  <dd className="text-gray-800">{detail.full_bloom_start_date || '-'}</dd>
+                  <dt className="text-gray-500">満開開始日</dt>
+                  <dd className="text-gray-800">
+                    {formatDateShort(detail.full_bloom_start_date)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
-                  <dt className="text-gray-500">満開終了予想日</dt>
-                  <dd className="text-gray-800">{detail.full_bloom_end_date || '-'}</dd>
+                  <dt className="text-gray-500">満開終了日</dt>
+                  <dd className="text-gray-800">
+                    {formatDateShort(detail.full_bloom_end_date)}
+                  </dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">都道府県</dt>
@@ -263,7 +330,7 @@ export function AnnotationPage() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-gray-500">撮影場所</dt>
-                  <dd className="text-gray-800">{detail.location || '-'}</dd>
+                  <dd className="text-gray-800">{detail.location || "-"}</dd>
                 </div>
                 {/* is_ready 状態表示とトグル（管理者のみ） */}
                 {isAdmin && (
@@ -273,23 +340,29 @@ export function AnnotationPage() {
                       <span
                         className={`px-2 py-0.5 text-xs rounded ${
                           detail.is_ready
-                            ? 'bg-green-100 text-green-700'
-                            : 'bg-orange-100 text-orange-700'
+                            ? "bg-green-100 text-green-700"
+                            : "bg-orange-100 text-orange-700"
                         }`}
                       >
-                        {detail.is_ready ? '準備完了' : '未準備'}
+                        {detail.is_ready ? "準備完了" : "未準備"}
                       </span>
                       <button
                         onClick={handleToggleIsReady}
                         disabled={isUpdatingIsReady}
                         className={`relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
-                          detail.is_ready ? 'bg-green-600' : 'bg-gray-300'
-                        } ${isUpdatingIsReady ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={detail.is_ready ? '準備完了を解除' : '準備完了にする'}
+                          detail.is_ready ? "bg-green-600" : "bg-gray-300"
+                        } ${
+                          isUpdatingIsReady
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
+                        title={
+                          detail.is_ready ? "準備完了を解除" : "準備完了にする"
+                        }
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            detail.is_ready ? 'translate-x-4' : 'translate-x-0'
+                            detail.is_ready ? "translate-x-4" : "translate-x-0"
                           }`}
                         />
                       </button>
@@ -301,7 +374,9 @@ export function AnnotationPage() {
               {isReadyMessage && (
                 <p
                   className={`mt-3 text-center text-sm ${
-                    isReadyMessage.includes('失敗') ? 'text-red-500' : 'text-green-500'
+                    isReadyMessage.includes("失敗")
+                      ? "text-red-500"
+                      : "text-green-500"
                   }`}
                 >
                   {isReadyMessage}

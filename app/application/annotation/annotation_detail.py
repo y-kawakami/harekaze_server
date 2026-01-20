@@ -5,7 +5,7 @@ Requirements: 4.1, 5.1-5.7, 3.4
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import Literal
 
 from sqlalchemy import or_
@@ -50,6 +50,7 @@ class AnnotationDetailResponse:
     prev_id: int | None
     next_id: int | None
     is_ready: bool = False
+    bloom_status: str | None = None
 
 
 def get_annotation_detail(
@@ -154,6 +155,14 @@ def get_annotation_detail(
         db, entire_tree_id, filter_params
     )
 
+    # 開花状態を計算
+    bloom_status = _calculate_bloom_status(
+        photo_date,
+        flowering_date,
+        full_bloom_start_date,
+        full_bloom_end_date,
+    )
+
     return AnnotationDetailResponse(
         entire_tree_id=entire_tree.id,
         tree_id=entire_tree.tree_id,
@@ -170,7 +179,51 @@ def get_annotation_detail(
         prev_id=prev_id,
         next_id=next_id,
         is_ready=is_ready,
+        bloom_status=bloom_status,
     )
+
+
+def _calculate_bloom_status(
+    photo_date: datetime | None,
+    flowering_date_str: str | None,
+    full_bloom_start_str: str | None,
+    full_bloom_end_str: str | None,
+) -> str | None:
+    """開花状態を計算
+
+    Args:
+        photo_date: 撮影日時
+        flowering_date_str: 開花予想日（ISO形式文字列）
+        full_bloom_start_str: 満開開始予想日（ISO形式文字列）
+        full_bloom_end_str: 満開終了予想日（ISO形式文字列）
+
+    Returns:
+        開花状態の文字列、または計算不能な場合はNone
+    """
+    if not photo_date or not flowering_date_str:
+        return None
+
+    photo = photo_date.date()
+    flowering = date.fromisoformat(flowering_date_str)
+    full_bloom_start = (
+        date.fromisoformat(full_bloom_start_str) if full_bloom_start_str else None
+    )
+    full_bloom_end = (
+        date.fromisoformat(full_bloom_end_str) if full_bloom_end_str else None
+    )
+
+    if photo < flowering:
+        return "開花前"
+    elif photo < flowering + timedelta(days=3):
+        return "3分咲き"
+    elif full_bloom_start and photo < full_bloom_start:
+        return "5分咲き"
+    elif full_bloom_start and full_bloom_end and flowering <= photo <= full_bloom_end:
+        return "満開"
+    elif full_bloom_end and photo <= full_bloom_end + timedelta(days=3):
+        return "散り始め"
+    else:
+        return "葉桜"
 
 
 def _calculate_navigation(

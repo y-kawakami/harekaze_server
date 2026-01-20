@@ -3,19 +3,24 @@
  * Requirements: 6.2, 2.1-2.5, 3.1-3.6, 9.1, 9.2
  */
 
-import { useState, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import 'react-datepicker/dist/react-datepicker.css';
+import { useState, useEffect, useCallback } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import type {
   AnnotationListItem,
   AnnotationStats,
   Prefecture,
   StatusFilter,
   IsReadyFilter,
-} from '../types/api';
-import { getTrees, getPrefectures, exportCsv, updateIsReady } from '../api/client';
-import { useAuth } from '../hooks/useAuth';
+} from "../types/api";
+import {
+  getTrees,
+  getPrefectures,
+  exportCsv,
+  updateIsReady,
+} from "../api/client";
+import { useAuth } from "../hooks/useAuth";
 
 // 日付文字列 → Dateオブジェクト変換
 const parseDate = (str: string | null): Date | null => {
@@ -26,28 +31,28 @@ const parseDate = (str: string | null): Date | null => {
 // Dateオブジェクト → YYYY-MM-DD文字列変換
 const formatDate = (date: Date | null): string | null => {
   if (!date) return null;
-  return date.toISOString().split('T')[0];
+  return date.toISOString().split("T")[0];
 };
 
 const VITALITY_LABELS: Record<number, string> = {
-  1: 'とっても元気',
-  2: '元気',
-  3: '普通',
-  4: '少し気掛かり',
-  5: '気掛かり',
-  [-1]: '診断不可',
+  1: "とっても元気",
+  2: "元気",
+  3: "ふつう",
+  4: "少し気がかり",
+  5: "気がかり",
+  [-1]: "診断不可",
 };
 
 const STATUS_TABS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: '全て' },
-  { value: 'annotated', label: '入力済み' },
-  { value: 'unannotated', label: '未入力' },
+  { value: "all", label: "全て" },
+  { value: "annotated", label: "入力済み" },
+  { value: "unannotated", label: "未入力" },
 ];
 
 const IS_READY_TABS: { value: IsReadyFilter; label: string }[] = [
-  { value: 'all', label: '全て' },
-  { value: 'ready', label: '準備完了' },
-  { value: 'not_ready', label: '未準備' },
+  { value: "all", label: "全て" },
+  { value: "ready", label: "準備完了" },
+  { value: "not_ready", label: "未準備" },
 ];
 
 export function ListPage() {
@@ -63,13 +68,14 @@ export function ListPage() {
   const [isExporting, setIsExporting] = useState(false);
   const [updatingIsReady, setUpdatingIsReady] = useState<number | null>(null);
 
-  const status = (searchParams.get('status') as StatusFilter) || 'all';
-  const prefectureCode = searchParams.get('prefecture_code') || '';
-  const vitalityValue = searchParams.get('vitality_value');
-  const photoDateFrom = searchParams.get('photo_date_from') || '';
-  const photoDateTo = searchParams.get('photo_date_to') || '';
-  const isReadyFilter = (searchParams.get('is_ready_filter') as IsReadyFilter) || 'all';
-  const page = parseInt(searchParams.get('page') || '1', 10);
+  const status = (searchParams.get("status") as StatusFilter) || "all";
+  const prefectureCode = searchParams.get("prefecture_code") || "";
+  const vitalityValue = searchParams.get("vitality_value");
+  const photoDateFrom = searchParams.get("photo_date_from") || "";
+  const photoDateTo = searchParams.get("photo_date_to") || "";
+  const isReadyFilter =
+    (searchParams.get("is_ready_filter") as IsReadyFilter) || "all";
+  const page = parseInt(searchParams.get("page") || "1", 10);
   const perPage = 20;
 
   const fetchData = useCallback(async () => {
@@ -82,7 +88,7 @@ export function ListPage() {
           vitality_value: vitalityValue ? parseInt(vitalityValue, 10) : null,
           photo_date_from: photoDateFrom || null,
           photo_date_to: photoDateTo || null,
-          is_ready_filter: isAdmin ? (isReadyFilter || null) : null,
+          is_ready_filter: isAdmin ? isReadyFilter || null : null,
           page,
           per_page: perPage,
         }),
@@ -93,11 +99,21 @@ export function ListPage() {
       setTotal(treesResponse.total);
       setPrefectures(prefecturesResponse.prefectures);
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      console.error("Failed to fetch data:", error);
     } finally {
       setIsLoading(false);
     }
-  }, [status, prefectureCode, vitalityValue, photoDateFrom, photoDateTo, isReadyFilter, isAdmin, page, perPage]);
+  }, [
+    status,
+    prefectureCode,
+    vitalityValue,
+    photoDateFrom,
+    photoDateTo,
+    isReadyFilter,
+    isAdmin,
+    page,
+    perPage,
+  ]);
 
   useEffect(() => {
     fetchData();
@@ -110,11 +126,11 @@ export function ListPage() {
     } else {
       newParams.delete(key);
     }
-    if (key !== 'page') {
-      newParams.delete('page');
+    if (key !== "page") {
+      newParams.delete("page");
     }
-    if (key === 'status' && value !== 'annotated') {
-      newParams.delete('vitality_value');
+    if (key === "status" && value !== "annotated") {
+      newParams.delete("vitality_value");
     }
     setSearchParams(newParams);
   };
@@ -124,16 +140,16 @@ export function ListPage() {
     try {
       const blob = await exportCsv(true);
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'annotations.csv';
+      a.download = "annotations.csv";
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (error) {
-      console.error('CSV export failed:', error);
-      alert('CSVエクスポートに失敗しました');
+      console.error("CSV export failed:", error);
+      alert("CSVエクスポートに失敗しました");
     } finally {
       setIsExporting(false);
     }
@@ -141,13 +157,13 @@ export function ListPage() {
 
   const handleItemClick = (entireTreeId: number) => {
     const params = new URLSearchParams();
-    params.set('status', status);
-    if (prefectureCode) params.set('prefecture_code', prefectureCode);
-    if (vitalityValue) params.set('vitality_value', vitalityValue);
-    if (photoDateFrom) params.set('photo_date_from', photoDateFrom);
-    if (photoDateTo) params.set('photo_date_to', photoDateTo);
-    if (isReadyFilter && isReadyFilter !== 'all') {
-      params.set('is_ready_filter', isReadyFilter);
+    params.set("status", status);
+    if (prefectureCode) params.set("prefecture_code", prefectureCode);
+    if (vitalityValue) params.set("vitality_value", vitalityValue);
+    if (photoDateFrom) params.set("photo_date_from", photoDateFrom);
+    if (photoDateTo) params.set("photo_date_to", photoDateTo);
+    if (isReadyFilter && isReadyFilter !== "all") {
+      params.set("is_ready_filter", isReadyFilter);
     }
     navigate(`/annotation/${entireTreeId}?${params}`);
   };
@@ -178,14 +194,16 @@ export function ListPage() {
       setStats({
         ...stats,
         ready_count: newIsReady ? stats.ready_count + 1 : stats.ready_count - 1,
-        not_ready_count: newIsReady ? stats.not_ready_count - 1 : stats.not_ready_count + 1,
+        not_ready_count: newIsReady
+          ? stats.not_ready_count - 1
+          : stats.not_ready_count + 1,
       });
     }
 
     try {
       await updateIsReady(entireTreeId, newIsReady);
     } catch (error) {
-      console.error('Failed to update is_ready:', error);
+      console.error("Failed to update is_ready:", error);
       // 失敗時にロールバック
       setItems((prevItems) =>
         prevItems.map((item) =>
@@ -197,11 +215,15 @@ export function ListPage() {
       if (stats) {
         setStats({
           ...stats,
-          ready_count: currentIsReady ? stats.ready_count + 1 : stats.ready_count - 1,
-          not_ready_count: currentIsReady ? stats.not_ready_count - 1 : stats.not_ready_count + 1,
+          ready_count: currentIsReady
+            ? stats.ready_count + 1
+            : stats.ready_count - 1,
+          not_ready_count: currentIsReady
+            ? stats.not_ready_count - 1
+            : stats.not_ready_count + 1,
         });
       }
-      alert('準備状態の更新に失敗しました');
+      alert("準備状態の更新に失敗しました");
     } finally {
       setUpdatingIsReady(null);
     }
@@ -258,7 +280,7 @@ export function ListPage() {
               <div className="flex gap-3 text-xs">
                 {[1, 2, 3, 4, 5, -1].map((v) => (
                   <span key={v} className="px-2 py-1 bg-gray-100 rounded">
-                    {VITALITY_LABELS[v]}:{' '}
+                    {VITALITY_LABELS[v]}:{" "}
                     <strong>
                       {v === -1
                         ? stats.vitality_minus1_count
@@ -272,7 +294,7 @@ export function ListPage() {
                 disabled={isExporting}
                 className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white text-sm rounded-lg transition-colors"
               >
-                {isExporting ? 'エクスポート中...' : 'CSVエクスポート'}
+                {isExporting ? "エクスポート中..." : "CSVエクスポート"}
               </button>
             </div>
           </div>
@@ -286,11 +308,11 @@ export function ListPage() {
               {STATUS_TABS.map((tab) => (
                 <button
                   key={tab.value}
-                  onClick={() => updateFilter('status', tab.value)}
+                  onClick={() => updateFilter("status", tab.value)}
                   className={`px-4 py-2 text-sm font-medium transition-colors ${
                     status === tab.value
-                      ? 'bg-sakura-500 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50'
+                      ? "bg-sakura-500 text-white"
+                      : "bg-white text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   {tab.label}
@@ -304,11 +326,17 @@ export function ListPage() {
                 {IS_READY_TABS.map((tab) => (
                   <button
                     key={tab.value}
-                    onClick={() => updateFilter('is_ready_filter', tab.value === 'all' ? null : tab.value)}
+                    onClick={() =>
+                      updateFilter(
+                        "is_ready_filter",
+                        tab.value === "all" ? null : tab.value
+                      )
+                    }
                     className={`px-4 py-2 text-sm font-medium transition-colors ${
-                      isReadyFilter === tab.value || (tab.value === 'all' && !isReadyFilter)
-                        ? 'bg-green-600 text-white'
-                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                      isReadyFilter === tab.value ||
+                      (tab.value === "all" && !isReadyFilter)
+                        ? "bg-green-600 text-white"
+                        : "bg-white text-gray-700 hover:bg-gray-50"
                     }`}
                   >
                     {tab.label}
@@ -320,7 +348,9 @@ export function ListPage() {
             {/* Prefecture Filter */}
             <select
               value={prefectureCode}
-              onChange={(e) => updateFilter('prefecture_code', e.target.value || null)}
+              onChange={(e) =>
+                updateFilter("prefecture_code", e.target.value || null)
+              }
               className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
             >
               <option value="">全ての都道府県</option>
@@ -336,7 +366,9 @@ export function ListPage() {
               <span className="text-sm text-gray-600">撮影日:</span>
               <DatePicker
                 selected={parseDate(photoDateFrom || null)}
-                onChange={(date: Date | null) => updateFilter('photo_date_from', formatDate(date))}
+                onChange={(date: Date | null) =>
+                  updateFilter("photo_date_from", formatDate(date))
+                }
                 dateFormat="yyyy/MM/dd"
                 placeholderText="開始日"
                 isClearable
@@ -345,7 +377,9 @@ export function ListPage() {
               <span className="text-gray-400">〜</span>
               <DatePicker
                 selected={parseDate(photoDateTo || null)}
-                onChange={(date: Date | null) => updateFilter('photo_date_to', formatDate(date))}
+                onChange={(date: Date | null) =>
+                  updateFilter("photo_date_to", formatDate(date))
+                }
                 dateFormat="yyyy/MM/dd"
                 placeholderText="終了日"
                 isClearable
@@ -354,10 +388,12 @@ export function ListPage() {
             </div>
 
             {/* Vitality Filter (only for annotated) */}
-            {status === 'annotated' && (
+            {status === "annotated" && (
               <select
-                value={vitalityValue || ''}
-                onChange={(e) => updateFilter('vitality_value', e.target.value || null)}
+                value={vitalityValue || ""}
+                onChange={(e) =>
+                  updateFilter("vitality_value", e.target.value || null)
+                }
                 className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
               >
                 <option value="">全ての元気度</option>
@@ -401,12 +437,13 @@ export function ListPage() {
                     loading="lazy"
                   />
                   {/* Annotation status badge */}
-                  {item.annotation_status === 'annotated' && item.vitality_value && (
-                    <div className="absolute top-2 right-2 px-2 py-1 bg-sakura-500 text-white text-xs rounded">
-                      {VITALITY_LABELS[item.vitality_value]}
-                    </div>
-                  )}
-                  {item.annotation_status === 'unannotated' && (
+                  {item.annotation_status === "annotated" &&
+                    item.vitality_value && (
+                      <div className="absolute top-2 right-2 px-2 py-1 bg-sakura-500 text-white text-xs rounded">
+                        {VITALITY_LABELS[item.vitality_value]}
+                      </div>
+                    )}
+                  {item.annotation_status === "unannotated" && (
                     <div className="absolute top-2 right-2 px-2 py-1 bg-gray-500 text-white text-xs rounded">
                       未入力
                     </div>
@@ -415,10 +452,10 @@ export function ListPage() {
                   {isAdmin && (
                     <div
                       className={`absolute top-2 left-2 px-2 py-1 text-white text-xs rounded ${
-                        item.is_ready ? 'bg-green-600' : 'bg-orange-500'
+                        item.is_ready ? "bg-green-600" : "bg-orange-500"
                       }`}
                     >
-                      {item.is_ready ? '準備完了' : '未準備'}
+                      {item.is_ready ? "準備完了" : "未準備"}
                     </div>
                   )}
                 </div>
@@ -430,16 +467,28 @@ export function ListPage() {
                     {/* is_ready toggle (admin only) */}
                     {isAdmin && (
                       <button
-                        onClick={(e) => handleToggleIsReady(item.entire_tree_id, item.is_ready, e)}
+                        onClick={(e) =>
+                          handleToggleIsReady(
+                            item.entire_tree_id,
+                            item.is_ready,
+                            e
+                          )
+                        }
                         disabled={updatingIsReady === item.entire_tree_id}
                         className={`ml-2 relative inline-flex h-5 w-9 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1 ${
-                          item.is_ready ? 'bg-green-600' : 'bg-gray-300'
-                        } ${updatingIsReady === item.entire_tree_id ? 'opacity-50' : ''}`}
-                        title={item.is_ready ? '準備完了を解除' : '準備完了にする'}
+                          item.is_ready ? "bg-green-600" : "bg-gray-300"
+                        } ${
+                          updatingIsReady === item.entire_tree_id
+                            ? "opacity-50"
+                            : ""
+                        }`}
+                        title={
+                          item.is_ready ? "準備完了を解除" : "準備完了にする"
+                        }
                       >
                         <span
                           className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            item.is_ready ? 'translate-x-4' : 'translate-x-0'
+                            item.is_ready ? "translate-x-4" : "translate-x-0"
                           }`}
                         />
                       </button>
@@ -455,7 +504,7 @@ export function ListPage() {
         {totalPages > 1 && (
           <div className="flex justify-center gap-2 mt-6">
             <button
-              onClick={() => updateFilter('page', String(page - 1))}
+              onClick={() => updateFilter("page", String(page - 1))}
               disabled={page <= 1}
               className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >
@@ -465,7 +514,7 @@ export function ListPage() {
               {page} / {totalPages}
             </span>
             <button
-              onClick={() => updateFilter('page', String(page + 1))}
+              onClick={() => updateFilter("page", String(page + 1))}
               disabled={page >= totalPages}
               className="px-4 py-2 border rounded-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-50"
             >

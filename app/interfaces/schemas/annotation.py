@@ -97,6 +97,7 @@ class AnnotationDetailResponse(BaseModel):
     prev_id: Optional[int] = Field(None, description="前の画像ID")
     next_id: Optional[int] = Field(None, description="次の画像ID")
     is_ready: bool = Field(False, description="評価準備完了フラグ")
+    bloom_status: Optional[str] = Field(None, description="開花状態")
 
 
 class SaveAnnotationResponse(BaseModel):

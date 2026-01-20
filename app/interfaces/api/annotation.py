@@ -228,6 +228,7 @@ async def get_tree_detail(
         prev_id=result.prev_id,
         next_id=result.next_id,
         is_ready=result.is_ready,
+        bloom_status=result.bloom_status,
     )
 
 
