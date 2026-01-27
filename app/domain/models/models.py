@@ -400,3 +400,8 @@ class Admin(Base):
     updated_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc),
         onupdate=lambda: datetime.now(timezone.utc))
+
+
+# 循環インポートを避けるため、すべてのクラス定義後にVitalityAnnotationをインポート
+# これによりSQLAlchemyがEntireTree.vitality_annotationのリレーションを解決可能になる
+from app.domain.models.annotation import VitalityAnnotation  # noqa: E402, F401

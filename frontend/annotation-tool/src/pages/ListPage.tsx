@@ -363,8 +363,10 @@ export function ListPage() {
                         {getBloomStatusLabel(bloomStat.status)}
                       </div>
                       <div className="mt-1 space-x-2">
-                        <span>計: {bloomStat.total_count}</span>
-                        <span>準備完了: {bloomStat.ready_count}</span>
+                        <span>
+                          計: {isAdmin ? bloomStat.total_count : bloomStat.ready_count}
+                        </span>
+                        {isAdmin && <span>準備完了: {bloomStat.ready_count}</span>}
                         <span>入力済: {bloomStat.annotated_count}</span>
                       </div>
                     </div>

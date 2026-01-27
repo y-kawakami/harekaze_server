@@ -1197,3 +1197,650 @@ class TestIsReadyIntegrationFlow:
         ]
         assert et1.id not in not_ready_ids
         assert et2.id in not_ready_ids
+
+
+@pytest.mark.integration
+class TestBloomStatusFilteringAPI:
+    """bloom_status フィルタリングの統合テスト
+
+    Requirements: 4.1, 4.2, 4.3, 4.4, 5.1, 5.2, 5.3
+    """
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_list_with_bloom_status_filter_single(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """単一の bloom_status でフィルタリングできること (Req 4.1)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # bloom_status が異なる画像を作成
+        et_full_bloom = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/full_bloom.jpg",
+            thumb_obj_key="2024/04/01/full_bloom_thumb.jpg",
+            bloom_status="full_bloom",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et_falling = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6590,
+            longitude=139.7026,
+            image_obj_key="2024/04/01/falling.jpg",
+            thumb_obj_key="2024/04/01/falling_thumb.jpg",
+            bloom_status="falling",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et_full_bloom)
+        db.add(et_falling)
+        db.commit()
+        db.refresh(et_full_bloom)
+        db.refresh(et_falling)
+
+        # admin作成とis_ready設定
+        admin = Annotator(
+            username="bloom_filter_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "bloom_filter_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        client.patch(
+            f"/annotation_api/trees/{et_full_bloom.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+        client.patch(
+            f"/annotation_api/trees/{et_falling.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+
+        # bloom_status=full_bloom でフィルター
+        response = client.get(
+            "/annotation_api/trees",
+            params={"bloom_status": "full_bloom"},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        items = response.json()["items"]
+        item_ids = [item["entire_tree_id"] for item in items]
+        assert et_full_bloom.id in item_ids
+        assert et_falling.id not in item_ids
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_list_with_bloom_status_filter_multiple(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """カンマ区切りで複数の bloom_status を指定できること (Req 4.2)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # 3つの異なる bloom_status の画像を作成
+        et_full_bloom = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/full_bloom2.jpg",
+            thumb_obj_key="2024/04/01/full_bloom2_thumb.jpg",
+            bloom_status="full_bloom",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et_falling = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6590,
+            longitude=139.7026,
+            image_obj_key="2024/04/01/falling2.jpg",
+            thumb_obj_key="2024/04/01/falling2_thumb.jpg",
+            bloom_status="falling",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et_before_bloom = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6600,
+            longitude=139.7036,
+            image_obj_key="2024/04/01/before_bloom.jpg",
+            thumb_obj_key="2024/04/01/before_bloom_thumb.jpg",
+            bloom_status="before_bloom",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et_full_bloom)
+        db.add(et_falling)
+        db.add(et_before_bloom)
+        db.commit()
+        db.refresh(et_full_bloom)
+        db.refresh(et_falling)
+        db.refresh(et_before_bloom)
+
+        # admin作成
+        admin = Annotator(
+            username="bloom_multi_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "bloom_multi_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        for et in [et_full_bloom, et_falling, et_before_bloom]:
+            client.patch(
+                f"/annotation_api/trees/{et.id}/is_ready",
+                json={"is_ready": True},
+                headers=headers,
+            )
+
+        # 複数の bloom_status でフィルター
+        response = client.get(
+            "/annotation_api/trees",
+            params={"bloom_status": "full_bloom,falling"},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        items = response.json()["items"]
+        item_ids = [item["entire_tree_id"] for item in items]
+        assert et_full_bloom.id in item_ids
+        assert et_falling.id in item_ids
+        assert et_before_bloom.id not in item_ids
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_list_response_includes_bloom_status_field(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """レスポンスの各アイテムに bloom_status が含まれること (Req 4.3)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # bloom_status付きの画像を作成
+        et = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/bloom_field_test.jpg",
+            thumb_obj_key="2024/04/01/bloom_field_test_thumb.jpg",
+            bloom_status="30_percent",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et)
+        db.commit()
+        db.refresh(et)
+
+        # admin作成
+        admin = Annotator(
+            username="bloom_field_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "bloom_field_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        client.patch(
+            f"/annotation_api/trees/{et.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+
+        # 一覧取得
+        response = client.get("/annotation_api/trees", headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        items = response.json()["items"]
+        target_item = next(
+            (i for i in items if i["entire_tree_id"] == et.id), None
+        )
+        assert target_item is not None
+        assert "bloom_status" in target_item
+        assert target_item["bloom_status"] == "30_percent"
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_list_response_includes_bloom_status_stats(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """統計情報に bloom_status 別件数が含まれること (Req 4.4)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # 複数の bloom_status を持つ画像を作成
+        et1 = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/stats_test1.jpg",
+            thumb_obj_key="2024/04/01/stats_test1_thumb.jpg",
+            bloom_status="full_bloom",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et2 = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6590,
+            longitude=139.7026,
+            image_obj_key="2024/04/01/stats_test2.jpg",
+            thumb_obj_key="2024/04/01/stats_test2_thumb.jpg",
+            bloom_status="full_bloom",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        et3 = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6600,
+            longitude=139.7036,
+            image_obj_key="2024/04/01/stats_test3.jpg",
+            thumb_obj_key="2024/04/01/stats_test3_thumb.jpg",
+            bloom_status="falling",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et1)
+        db.add(et2)
+        db.add(et3)
+        db.commit()
+        db.refresh(et1)
+        db.refresh(et2)
+        db.refresh(et3)
+
+        # admin作成
+        admin = Annotator(
+            username="bloom_stats_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "bloom_stats_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        for et in [et1, et2, et3]:
+            client.patch(
+                f"/annotation_api/trees/{et.id}/is_ready",
+                json={"is_ready": True},
+                headers=headers,
+            )
+
+        # 一覧取得
+        response = client.get("/annotation_api/trees", headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        stats = response.json()["stats"]
+        assert "bloom_status_stats" in stats
+
+        # full_bloom と falling の統計を確認
+        bloom_stats = {s["status"]: s for s in stats["bloom_status_stats"]}
+        assert "full_bloom" in bloom_stats
+        assert "falling" in bloom_stats
+
+        # full_bloom は2件、falling は1件
+        assert bloom_stats["full_bloom"]["total_count"] == 2
+        assert bloom_stats["falling"]["total_count"] == 1
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_flowering_date_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_detail_includes_bloom_status(
+        self,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """詳細レスポンスに bloom_status が含まれること (Req 5.1, 5.2)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = "https://example.com/image.jpg"
+        mock_image_service.return_value = img_service
+
+        flowering_service = MagicMock()
+        flowering_service.find_nearest_spot.return_value = None
+        mock_flowering_date_service.return_value = flowering_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # bloom_status 付きの画像を作成
+        et = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/detail_bloom_test.jpg",
+            thumb_obj_key="2024/04/01/detail_bloom_test_thumb.jpg",
+            bloom_status="with_leaves",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et)
+        db.commit()
+        db.refresh(et)
+
+        # admin作成
+        admin = Annotator(
+            username="detail_bloom_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "detail_bloom_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # 詳細取得
+        response = client.get(
+            f"/annotation_api/trees/{et.id}",
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+        assert "bloom_status" in data
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_flowering_date_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_detail_navigation_with_bloom_status_filter(
+        self,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """bloom_status フィルター適用時のナビゲーションが正しく動作すること (Req 5.3)"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = "https://example.com/image.jpg"
+        mock_image_service.return_value = img_service
+
+        flowering_service = MagicMock()
+        flowering_service.find_nearest_spot.return_value = None
+        mock_flowering_date_service.return_value = flowering_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # 3つの full_bloom と1つの falling を作成
+        ets_full_bloom = []
+        for i in range(3):
+            et = EntireTree(
+                tree_id=sample_tree.id,
+                user_id=sample_user.id,
+                latitude=35.6580 + i * 0.001,
+                longitude=139.7016 + i * 0.001,
+                image_obj_key=f"2024/04/01/nav_full_bloom_{i}.jpg",
+                thumb_obj_key=f"2024/04/01/nav_full_bloom_{i}_thumb.jpg",
+                bloom_status="full_bloom",
+                created_at=datetime.now(timezone.utc),
+                updated_at=datetime.now(timezone.utc),
+            )
+            db.add(et)
+            ets_full_bloom.append(et)
+
+        et_falling = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6610,
+            longitude=139.7046,
+            image_obj_key="2024/04/01/nav_falling.jpg",
+            thumb_obj_key="2024/04/01/nav_falling_thumb.jpg",
+            bloom_status="falling",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et_falling)
+        db.commit()
+        for et in ets_full_bloom:
+            db.refresh(et)
+        db.refresh(et_falling)
+
+        # admin作成
+        admin = Annotator(
+            username="nav_bloom_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "nav_bloom_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        for et in ets_full_bloom + [et_falling]:
+            client.patch(
+                f"/annotation_api/trees/{et.id}/is_ready",
+                json={"is_ready": True},
+                headers=headers,
+            )
+
+        # full_bloom フィルターで中間の画像の詳細を取得
+        middle_id = ets_full_bloom[1].id
+        response = client.get(
+            f"/annotation_api/trees/{middle_id}",
+            params={"bloom_status": "full_bloom"},
+            headers=headers,
+        )
+
+        assert response.status_code == status.HTTP_200_OK
+        data = response.json()
+
+        # ナビゲーションは full_bloom 内のみ（falling は含まれない）
+        assert data["total_count"] == 3
+        # prev_id と next_id は full_bloom の画像のみ
+        if data["prev_id"] is not None:
+            assert data["prev_id"] in [et.id for et in ets_full_bloom]
+        if data["next_id"] is not None:
+            assert data["next_id"] in [et.id for et in ets_full_bloom]
+        assert data["prev_id"] != et_falling.id
+        assert data["next_id"] != et_falling.id
+
+    @patch("app.interfaces.api.annotation.get_image_service")
+    @patch("app.interfaces.api.annotation.get_municipality_service")
+    def test_list_with_null_bloom_status(
+        self,
+        mock_municipality_service,
+        mock_image_service,
+        client,
+        db,
+        sample_user,
+        sample_tree,
+    ):
+        """bloom_status が NULL の画像も一覧に表示されること"""
+        img_service = MagicMock()
+        img_service.get_image_url.return_value = \
+            "https://example.com/thumb.jpg"
+        mock_image_service.return_value = img_service
+
+        muni_service = MagicMock()
+        prefecture_mock = MagicMock()
+        prefecture_mock.name = "東京都"
+        muni_service.get_prefecture_by_code.return_value = prefecture_mock
+        mock_municipality_service.return_value = muni_service
+
+        # bloom_status が NULL の画像を作成
+        et_null = EntireTree(
+            tree_id=sample_tree.id,
+            user_id=sample_user.id,
+            latitude=35.6580,
+            longitude=139.7016,
+            image_obj_key="2024/04/01/null_bloom.jpg",
+            thumb_obj_key="2024/04/01/null_bloom_thumb.jpg",
+            bloom_status=None,
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(et_null)
+        db.commit()
+        db.refresh(et_null)
+
+        # admin作成
+        admin = Annotator(
+            username="null_bloom_admin",
+            hashed_password=pwd_context.hash("admin_pass"),
+            role="admin",
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.add(admin)
+        db.commit()
+
+        login_response = client.post(
+            "/annotation_api/login",
+            data={"username": "null_bloom_admin", "password": "admin_pass"},
+        )
+        token = login_response.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # is_ready を設定
+        client.patch(
+            f"/annotation_api/trees/{et_null.id}/is_ready",
+            json={"is_ready": True},
+            headers=headers,
+        )
+
+        # フィルターなしで一覧取得
+        response = client.get("/annotation_api/trees", headers=headers)
+
+        assert response.status_code == status.HTTP_200_OK
+        items = response.json()["items"]
+        target_item = next(
+            (i for i in items if i["entire_tree_id"] == et_null.id), None
+        )
+        assert target_item is not None
+        assert target_item["bloom_status"] is None
