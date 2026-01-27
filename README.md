@@ -206,6 +206,22 @@ python scripts/create_annotator.py delete ユーザー名
 python scripts/create_annotator.py create ユーザー名 パスワード --hash-only
 ```
 
+#### 開花状態更新スクリプト
+
+EntireTree テーブルの bloom_status カラムを一括更新するスクリプトです。
+撮影日と撮影場所から8段階の開花状態（開花前、開花、3分咲き、5分咲き、満開、散り始め、花＋若葉、葉のみ）を計算します。
+
+```bash
+# ドライランモード（実際の更新を行わず、計算結果のみ表示）
+python scripts/update_bloom_status.py --dry-run
+
+# 実行（デフォルトバッチサイズ: 1000）
+python scripts/update_bloom_status.py
+
+# バッチサイズを指定して実行
+python scripts/update_bloom_status.py --batch-size 500
+```
+
 ### APIエンドポイント
 
 | Method | Endpoint | 説明 |
