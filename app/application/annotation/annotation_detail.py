@@ -28,6 +28,7 @@ class AnnotationListFilter:
     photo_date_from: date | None = None
     photo_date_to: date | None = None
     is_ready_filter: bool | None = None
+    bloom_status_filter: list[str] | None = None  # 開花状態フィルター（複数指定可）
     annotator_role: str = "annotator"
 
 
@@ -310,6 +311,12 @@ def _calculate_navigation(
             EntireTree.photo_date <= datetime.combine(
                 filter_params.photo_date_to, datetime.max.time()
             )
+        )
+
+    # 開花状態フィルター
+    if filter_params.bloom_status_filter:
+        query = query.filter(
+            EntireTree.bloom_status.in_(filter_params.bloom_status_filter)
         )
 
     # 総件数

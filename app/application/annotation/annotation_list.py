@@ -27,6 +27,7 @@ class AnnotationListFilter:
     photo_date_from: date | None = None
     photo_date_to: date | None = None
     is_ready_filter: bool | None = None  # adminのみ使用可能
+    bloom_status_filter: list[str] | None = None  # 開花状態フィルター（複数指定可）
     page: int = 1
     per_page: int = 20
 
@@ -43,6 +44,17 @@ class AnnotationListItem:
     annotation_status: Literal["annotated", "unannotated"]
     vitality_value: int | None
     is_ready: bool
+    bloom_status: str | None = None
+
+
+@dataclass
+class BloomStatusStat:
+    """開花状態別統計"""
+
+    status: str
+    total_count: int
+    ready_count: int
+    annotated_count: int
 
 
 @dataclass
@@ -60,6 +72,7 @@ class AnnotationStats:
     vitality_minus1_count: int
     ready_count: int = 0
     not_ready_count: int = 0
+    bloom_status_counts: list[BloomStatusStat] | None = None
 
 
 @dataclass
@@ -171,6 +184,12 @@ def get_annotation_list(
             )
         )
 
+    # 開花状態フィルター
+    if filter_params.bloom_status_filter:
+        query = query.filter(
+            EntireTree.bloom_status.in_(filter_params.bloom_status_filter)
+        )
+
     # 総件数を取得（ページネーション前）
     total_count = query.count()
 
@@ -213,6 +232,9 @@ def get_annotation_list(
         # サムネイルURLを生成
         thumb_url = image_service.get_image_url(entire_tree.thumb_obj_key)
 
+        # 開花状態を取得
+        bloom_status: str | None = entire_tree.bloom_status
+
         items.append(
             AnnotationListItem(
                 entire_tree_id=entire_tree.id,
@@ -223,6 +245,7 @@ def get_annotation_list(
                 annotation_status=annotation_status,
                 vitality_value=vitality_value,
                 is_ready=is_ready,
+                bloom_status=bloom_status,
             )
         )
 
@@ -302,6 +325,9 @@ def get_annotation_stats(
     )
     not_ready_count = total_count - ready_count
 
+    # 開花状態別統計を計算
+    bloom_status_counts = _get_bloom_status_counts(db, is_ready_filter)
+
     return AnnotationStats(
         total_count=total_count,
         annotated_count=annotated_count,
@@ -314,4 +340,79 @@ def get_annotation_stats(
         vitality_minus1_count=vitality_counts[-1],
         ready_count=ready_count,
         not_ready_count=not_ready_count,
+        bloom_status_counts=bloom_status_counts,
     )
+
+
+def _get_bloom_status_counts(
+    db: Session, is_ready_filter: bool
+) -> list[BloomStatusStat]:
+    """開花状態別の統計情報を取得
+
+    GROUP BY を使用して1回のクエリで全ての統計を取得する。
+
+    Args:
+        db: DBセッション
+        is_ready_filter: annotatorロールの場合はTRUE
+
+    Returns:
+        開花状態別統計のリスト
+    """
+    from sqlalchemy import case
+
+    from app.domain.services.bloom_state_service import BLOOM_STATUS_LABELS
+
+    # 1回のクエリで全ての統計を取得
+    query = (
+        db.query(
+            EntireTree.bloom_status,
+            func.count(EntireTree.id).label('total_count'),
+            func.sum(
+                case((VitalityAnnotation.is_ready == True, 1), else_=0)  # noqa: E712
+            ).label('ready_count'),
+            func.sum(
+                case(
+                    (VitalityAnnotation.vitality_value.isnot(None), 1),
+                    else_=0
+                )
+            ).label('annotated_count'),
+        )
+        .outerjoin(
+            VitalityAnnotation,
+            EntireTree.id == VitalityAnnotation.entire_tree_id
+        )
+        .filter(EntireTree.bloom_status.isnot(None))
+        .group_by(EntireTree.bloom_status)
+    )
+
+    # annotatorロールの場合はis_ready=TRUEのレコードのみを対象
+    if is_ready_filter:
+        query = query.filter(
+            VitalityAnnotation.is_ready == True  # noqa: E712
+        )
+
+    # クエリ結果を辞書に変換
+    results = query.all()
+    stats_dict: dict[str, tuple[int, int, int]] = {
+        row[0]: (int(row[1]), int(row[2] or 0), int(row[3] or 0))
+        for row in results
+    }
+
+    # 全ての開花状態について統計を返す（データがない状態は0で埋める）
+    bloom_status_counts: list[BloomStatusStat] = []
+    for status_key in BLOOM_STATUS_LABELS.keys():
+        if status_key in stats_dict:
+            total, ready, annotated = stats_dict[status_key]
+        else:
+            total, ready, annotated = 0, 0, 0
+
+        bloom_status_counts.append(
+            BloomStatusStat(
+                status=status_key,
+                total_count=total,
+                ready_count=ready,
+                annotated_count=annotated,
+            )
+        )
+
+    return bloom_status_counts

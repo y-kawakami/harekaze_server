@@ -51,6 +51,7 @@ from app.interfaces.schemas.annotation import (
     AnnotationListResponse,
     AnnotationRequest,
     AnnotationStatsResponse,
+    BloomStatusStatsResponse,
     PrefectureListResponse,
     PrefectureResponse,
     SaveAnnotationResponse,
@@ -80,6 +81,8 @@ async def get_trees(
         None, description="撮影日終了（YYYY-MM-DD）"),
     is_ready_filter: Optional[bool] = Query(
         None, alias="is_ready", description="準備完了フィルター（adminのみ有効）"),
+    bloom_status: Optional[str] = Query(
+        None, description="開花状態フィルター（カンマ区切りで複数指定可）"),
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの件数"),
     current_annotator: Annotator = Depends(get_current_annotator),
@@ -95,9 +98,15 @@ async def get_trees(
     - photo_date_from: 撮影日開始（YYYY-MM-DD）
     - photo_date_to: 撮影日終了（YYYY-MM-DD）
     - is_ready: 準備完了フィルター（adminのみ有効）
+    - bloom_status: 開花状態フィルター（カンマ区切りで複数指定可）
     """
     image_service = get_image_service()
     municipality_service = get_municipality_service()
+
+    # bloom_status をカンマ区切りからリストに変換
+    bloom_status_filter: list[str] | None = None
+    if bloom_status:
+        bloom_status_filter = [s.strip() for s in bloom_status.split(",") if s.strip()]
 
     filter_params = AnnotationListFilter(
         status=status_filter,
@@ -106,6 +115,7 @@ async def get_trees(
         photo_date_from=photo_date_from,
         photo_date_to=photo_date_to,
         is_ready_filter=is_ready_filter,
+        bloom_status_filter=bloom_status_filter,
         page=page,
         per_page=per_page,
     )
@@ -129,6 +139,7 @@ async def get_trees(
                 annotation_status=item.annotation_status,
                 vitality_value=item.vitality_value,
                 is_ready=item.is_ready,
+                bloom_status=item.bloom_status,
             )
             for item in result.items
         ],
@@ -144,6 +155,15 @@ async def get_trees(
             vitality_minus1_count=result.stats.vitality_minus1_count,
             ready_count=result.stats.ready_count,
             not_ready_count=result.stats.not_ready_count,
+            bloom_status_stats=[
+                BloomStatusStatsResponse(
+                    status=stat.status,
+                    total_count=stat.total_count,
+                    ready_count=stat.ready_count,
+                    annotated_count=stat.annotated_count,
+                )
+                for stat in result.stats.bloom_status_counts or []
+            ],
         ),
         total=result.total,
         page=result.page,
@@ -167,6 +187,8 @@ async def get_tree_detail(
     is_ready_filter: Optional[bool] = Query(
         None, alias="is_ready",
         description="準備完了フィルター（adminのみ有効、ナビゲーション用）"),
+    bloom_status: Optional[str] = Query(
+        None, description="開花状態フィルター（カンマ区切りで複数指定可）"),
     current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationDetailResponse:
@@ -180,6 +202,11 @@ async def get_tree_detail(
     flowering_date_service = get_flowering_date_service()
     municipality_service = get_municipality_service()
 
+    # bloom_status をカンマ区切りからリストに変換
+    bloom_status_filter: list[str] | None = None
+    if bloom_status:
+        bloom_status_filter = [s.strip() for s in bloom_status.split(",") if s.strip()]
+
     filter_params = DetailFilter(
         status=status_filter,
         prefecture_code=prefecture_code,
@@ -187,6 +214,7 @@ async def get_tree_detail(
         photo_date_from=photo_date_from,
         photo_date_to=photo_date_to,
         is_ready_filter=is_ready_filter,
+        bloom_status_filter=bloom_status_filter,
         annotator_role=current_annotator.role,
     )
 

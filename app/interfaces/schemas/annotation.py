@@ -51,6 +51,15 @@ class AnnotationListItemResponse(BaseModel):
         ..., description="アノテーション状態")
     vitality_value: Optional[int] = Field(None, description="元気度（1-5または-1）")
     is_ready: bool = Field(False, description="評価準備完了フラグ")
+    bloom_status: Optional[str] = Field(None, description="開花状態")
+
+
+class BloomStatusStatsResponse(BaseModel):
+    """開花状態別統計"""
+    status: str = Field(..., description="開花状態名（英語キー）")
+    total_count: int = Field(..., description="総件数")
+    ready_count: int = Field(..., description="準備完了件数")
+    annotated_count: int = Field(..., description="アノテーション完了件数")
 
 
 class AnnotationStatsResponse(BaseModel):
@@ -66,6 +75,10 @@ class AnnotationStatsResponse(BaseModel):
     vitality_minus1_count: int = Field(..., description="診断不可の件数")
     ready_count: int = Field(0, description="準備完了件数")
     not_ready_count: int = Field(0, description="未準備件数")
+    bloom_status_stats: list[BloomStatusStatsResponse] = Field(
+        default_factory=list,
+        description="開花状態別統計"
+    )
 
 
 class AnnotationListResponse(BaseModel):
