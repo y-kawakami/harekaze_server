@@ -140,6 +140,13 @@ class EntireTree(Base):
                                                      timezone.utc),
                                                  nullable=False)
 
+    bloom_status: Mapped[Optional[str]] = mapped_column(
+        String(20),
+        nullable=True,
+        index=True,
+        comment="開花状態（8段階 or NULL）"
+    )
+
     user: Mapped["User"] = relationship("User")
     tree: Mapped["Tree"] = relationship("Tree", back_populates="entire_tree")
     vitality_annotation: Mapped[Optional["VitalityAnnotation"]] = relationship(
