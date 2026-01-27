@@ -7,7 +7,7 @@ Requirements: 1.1-1.13
 import csv
 from dataclasses import dataclass
 from datetime import date
-from typing import Literal, Optional
+from typing import Literal
 
 from loguru import logger
 
@@ -173,7 +173,7 @@ class BloomStateService:
 
     def get_prefecture_offsets(
         self, prefecture_code: str
-    ) -> Optional[PrefectureOffsets]:
+    ) -> PrefectureOffsets | None:
         """都道府県コードからオフセット値を取得
 
         Args:
@@ -217,8 +217,8 @@ class BloomStateService:
         photo_date: date,
         latitude: float,
         longitude: float,
-        prefecture_code: Optional[str],
-    ) -> Optional[BloomStatus]:
+        prefecture_code: str | None,
+    ) -> BloomStatus | None:
         """開花状態を計算
 
         Args:
