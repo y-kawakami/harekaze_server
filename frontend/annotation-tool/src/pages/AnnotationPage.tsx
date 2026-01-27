@@ -45,6 +45,7 @@ export function AnnotationPage() {
   const isReadyFilter =
     (searchParams.get("is_ready_filter") as "all" | "ready" | "not_ready") ||
     "all";
+  const bloomStatusFilter = searchParams.get("bloom_status") || "";
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -57,6 +58,7 @@ export function AnnotationPage() {
         photo_date_from: photoDateFrom || null,
         photo_date_to: photoDateTo || null,
         is_ready_filter: isReadyFilter,
+        bloom_status: bloomStatusFilter || null,
       });
       setDetail(result);
       setSelectedValue(result.current_vitality_value);
@@ -73,6 +75,7 @@ export function AnnotationPage() {
     photoDateFrom,
     photoDateTo,
     isReadyFilter,
+    bloomStatusFilter,
   ]);
 
   useEffect(() => {
@@ -108,6 +111,9 @@ export function AnnotationPage() {
     if (isReadyFilter && isReadyFilter !== "all") {
       params.set("is_ready_filter", isReadyFilter);
     }
+    if (bloomStatusFilter) {
+      params.set("bloom_status", bloomStatusFilter);
+    }
     navigate(`/annotation/${targetId}?${params}`);
   };
 
@@ -120,6 +126,9 @@ export function AnnotationPage() {
     if (photoDateTo) params.set("photo_date_to", photoDateTo);
     if (isReadyFilter && isReadyFilter !== "all") {
       params.set("is_ready_filter", isReadyFilter);
+    }
+    if (bloomStatusFilter) {
+      params.set("bloom_status", bloomStatusFilter);
     }
     return `/?${params}`;
   };
@@ -135,23 +144,44 @@ export function AnnotationPage() {
     return `${date.getMonth() + 1}/${date.getDate()}`;
   };
 
+  // DB値 → スタイルクラス（英語キー対応）
   const getBloomStatusStyle = (status: string | null) => {
     switch (status) {
-      case "開花前":
+      case "before_bloom":
         return "bg-gray-100 text-gray-700";
-      case "3分咲き":
+      case "blooming":
+        return "bg-pink-50 text-pink-600";
+      case "30_percent":
         return "bg-pink-100 text-pink-700";
-      case "5分咲き":
+      case "50_percent":
         return "bg-pink-200 text-pink-800";
-      case "満開":
+      case "full_bloom":
         return "bg-pink-500 text-white";
-      case "散り始め":
+      case "falling":
         return "bg-orange-100 text-orange-700";
-      case "葉桜":
+      case "with_leaves":
+        return "bg-lime-100 text-lime-700";
+      case "leaves_only":
         return "bg-green-100 text-green-700";
       default:
         return "bg-gray-50 text-gray-500";
     }
+  };
+
+  // 開花状態の日本語ラベルを取得
+  const getBloomStatusLabel = (status: string | null): string => {
+    const labels: Record<string, string> = {
+      before_bloom: "開花前",
+      blooming: "開花",
+      "30_percent": "3分咲き",
+      "50_percent": "5分咲き",
+      full_bloom: "8分咲き（満開）",
+      falling: "散り始め",
+      with_leaves: "花＋若葉（葉桜）",
+      leaves_only: "葉のみ",
+    };
+    if (!status) return "-";
+    return labels[status] || status;
   };
 
   // is_ready トグルハンドラ（管理者専用）
@@ -296,7 +326,7 @@ export function AnnotationPage() {
                         detail.bloom_status
                       )}`}
                     >
-                      {detail.bloom_status || "-"}
+                      {getBloomStatusLabel(detail.bloom_status)}
                     </span>
                   </dd>
                 </div>

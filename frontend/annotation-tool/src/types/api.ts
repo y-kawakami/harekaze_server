@@ -27,6 +27,50 @@ export interface AnnotationListItem {
   annotation_status: 'annotated' | 'unannotated';
   vitality_value: number | null;
   is_ready: boolean;
+  bloom_status: string | null;
+}
+
+// DB保存用の英語キー
+export type BloomStatus =
+  | 'before_bloom'
+  | 'blooming'
+  | '30_percent'
+  | '50_percent'
+  | 'full_bloom'
+  | 'falling'
+  | 'with_leaves'
+  | 'leaves_only';
+
+// UI表示用マッピング
+export const BLOOM_STATUS_LABELS: Record<BloomStatus, string> = {
+  before_bloom: '開花前',
+  blooming: '開花',
+  '30_percent': '3分咲き',
+  '50_percent': '5分咲き',
+  full_bloom: '8分咲き（満開）',
+  falling: '散り始め',
+  with_leaves: '花＋若葉（葉桜）',
+  leaves_only: '葉のみ',
+};
+
+// 全ての開花ステータス（フィルター用）
+export const ALL_BLOOM_STATUSES: BloomStatus[] = [
+  'before_bloom',
+  'blooming',
+  '30_percent',
+  '50_percent',
+  'full_bloom',
+  'falling',
+  'with_leaves',
+  'leaves_only',
+];
+
+// 開花状態別統計
+export interface BloomStatusStats {
+  status: string;
+  total_count: number;
+  ready_count: number;
+  annotated_count: number;
 }
 
 export interface AnnotationStats {
@@ -41,6 +85,7 @@ export interface AnnotationStats {
   vitality_minus1_count: number;
   ready_count: number;
   not_ready_count: number;
+  bloom_status_stats: BloomStatusStats[];
 }
 
 export interface AnnotationListResponse {
@@ -99,6 +144,7 @@ export interface ListFilter {
   page: number;
   per_page: number;
   is_ready_filter: IsReadyFilter | null;
+  bloom_status: string | null;
 }
 
 // is_ready 更新用リクエスト/レスポンス型

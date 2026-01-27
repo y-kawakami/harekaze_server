@@ -90,6 +90,9 @@ export async function getTrees(
   if (filter.is_ready_filter && filter.is_ready_filter !== 'all') {
     params.append('is_ready', filter.is_ready_filter === 'ready' ? 'true' : 'false');
   }
+  if (filter.bloom_status) {
+    params.append('bloom_status', filter.bloom_status);
+  }
 
   const response = await fetch(`${API_BASE}/trees?${params}`, {
     headers: getAuthHeaders(),
@@ -112,6 +115,9 @@ export async function getTreeDetail(
   if (filter.photo_date_to) params.append('photo_date_to', filter.photo_date_to);
   if (filter.is_ready_filter && filter.is_ready_filter !== 'all') {
     params.append('is_ready', filter.is_ready_filter === 'ready' ? 'true' : 'false');
+  }
+  if (filter.bloom_status) {
+    params.append('bloom_status', filter.bloom_status);
   }
 
   const response = await fetch(`${API_BASE}/trees/${entireTreeId}?${params}`, {

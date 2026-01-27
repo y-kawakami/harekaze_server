@@ -13,6 +13,11 @@ import type {
   Prefecture,
   StatusFilter,
   IsReadyFilter,
+  BloomStatus,
+} from "../types/api";
+import {
+  BLOOM_STATUS_LABELS,
+  ALL_BLOOM_STATUSES,
 } from "../types/api";
 import {
   getTrees,
@@ -55,6 +60,36 @@ const IS_READY_TABS: { value: IsReadyFilter; label: string }[] = [
   { value: "not_ready", label: "未準備" },
 ];
 
+// DB値 → スタイルクラス
+const getBloomStatusStyle = (status: string | null): string => {
+  switch (status) {
+    case "before_bloom":
+      return "bg-gray-100 text-gray-700";
+    case "blooming":
+      return "bg-pink-50 text-pink-600";
+    case "30_percent":
+      return "bg-pink-100 text-pink-700";
+    case "50_percent":
+      return "bg-pink-200 text-pink-800";
+    case "full_bloom":
+      return "bg-pink-500 text-white";
+    case "falling":
+      return "bg-orange-100 text-orange-700";
+    case "with_leaves":
+      return "bg-lime-100 text-lime-700";
+    case "leaves_only":
+      return "bg-green-100 text-green-700";
+    default:
+      return "bg-gray-50 text-gray-500";
+  }
+};
+
+// 開花状態の日本語ラベルを取得
+const getBloomStatusLabel = (status: string | null): string => {
+  if (!status) return "未設定";
+  return BLOOM_STATUS_LABELS[status as BloomStatus] || "未設定";
+};
+
 export function ListPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -75,6 +110,7 @@ export function ListPage() {
   const photoDateTo = searchParams.get("photo_date_to") || "";
   const isReadyFilter =
     (searchParams.get("is_ready_filter") as IsReadyFilter) || "all";
+  const bloomStatusFilter = searchParams.get("bloom_status") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const perPage = 20;
 
@@ -89,6 +125,7 @@ export function ListPage() {
           photo_date_from: photoDateFrom || null,
           photo_date_to: photoDateTo || null,
           is_ready_filter: isAdmin ? isReadyFilter || null : null,
+          bloom_status: bloomStatusFilter || null,
           page,
           per_page: perPage,
         }),
@@ -110,6 +147,7 @@ export function ListPage() {
     photoDateFrom,
     photoDateTo,
     isReadyFilter,
+    bloomStatusFilter,
     isAdmin,
     page,
     perPage,
@@ -164,6 +202,9 @@ export function ListPage() {
     if (photoDateTo) params.set("photo_date_to", photoDateTo);
     if (isReadyFilter && isReadyFilter !== "all") {
       params.set("is_ready_filter", isReadyFilter);
+    }
+    if (bloomStatusFilter) {
+      params.set("bloom_status", bloomStatusFilter);
     }
     navigate(`/annotation/${entireTreeId}?${params}`);
   };
@@ -278,16 +319,23 @@ export function ListPage() {
                 )}
               </div>
               <div className="flex gap-3 text-xs">
-                {[1, 2, 3, 4, 5, -1].map((v) => (
-                  <span key={v} className="px-2 py-1 bg-gray-100 rounded">
-                    {VITALITY_LABELS[v]}:{" "}
-                    <strong>
-                      {v === -1
-                        ? stats.vitality_minus1_count
-                        : stats[`vitality_${v}_count` as keyof AnnotationStats]}
-                    </strong>
-                  </span>
-                ))}
+                {[1, 2, 3, 4, 5, -1].map((v) => {
+                  let count: number;
+                  switch (v) {
+                    case 1: count = stats.vitality_1_count; break;
+                    case 2: count = stats.vitality_2_count; break;
+                    case 3: count = stats.vitality_3_count; break;
+                    case 4: count = stats.vitality_4_count; break;
+                    case 5: count = stats.vitality_5_count; break;
+                    default: count = stats.vitality_minus1_count;
+                  }
+                  return (
+                    <span key={v} className="px-2 py-1 bg-gray-100 rounded">
+                      {VITALITY_LABELS[v]}:{" "}
+                      <strong>{count}</strong>
+                    </span>
+                  );
+                })}
               </div>
               <button
                 onClick={handleExportCsv}
@@ -297,6 +345,33 @@ export function ListPage() {
                 {isExporting ? "エクスポート中..." : "CSVエクスポート"}
               </button>
             </div>
+            {/* 開花状態別統計 */}
+            {stats.bloom_status_stats && stats.bloom_status_stats.length > 0 && (
+              <div className="w-full mt-4 pt-4 border-t">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  開花状態別統計
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {stats.bloom_status_stats.map((bloomStat) => (
+                    <div
+                      key={bloomStat.status}
+                      className={`px-3 py-2 rounded-lg text-xs ${getBloomStatusStyle(
+                        bloomStat.status
+                      )}`}
+                    >
+                      <div className="font-medium">
+                        {getBloomStatusLabel(bloomStat.status)}
+                      </div>
+                      <div className="mt-1 space-x-2">
+                        <span>計: {bloomStat.total_count}</span>
+                        <span>準備完了: {bloomStat.ready_count}</span>
+                        <span>入力済: {bloomStat.annotated_count}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -405,6 +480,22 @@ export function ListPage() {
               </select>
             )}
 
+            {/* 開花状態フィルター */}
+            <select
+              value={bloomStatusFilter}
+              onChange={(e) =>
+                updateFilter("bloom_status", e.target.value || null)
+              }
+              className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
+            >
+              <option value="">全ての開花状態</option>
+              {ALL_BLOOM_STATUSES.map((status) => (
+                <option key={status} value={status}>
+                  {BLOOM_STATUS_LABELS[status]}
+                </option>
+              ))}
+            </select>
+
             <span className="text-sm text-gray-600 ml-auto">
               該当件数: <strong>{total}</strong>
             </span>
@@ -458,6 +549,14 @@ export function ListPage() {
                       {item.is_ready ? "準備完了" : "未準備"}
                     </div>
                   )}
+                  {/* 開花状態バッジ */}
+                  <div
+                    className={`absolute bottom-2 left-2 px-2 py-0.5 text-xs rounded ${getBloomStatusStyle(
+                      item.bloom_status
+                    )}`}
+                  >
+                    {getBloomStatusLabel(item.bloom_status)}
+                  </div>
                 </div>
                 <div className="p-2">
                   <div className="flex justify-between items-center">
