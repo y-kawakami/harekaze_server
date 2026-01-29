@@ -12,6 +12,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.domain.models.annotation import VitalityAnnotation
+from app.domain.models.flowering_date_spot import FloweringDateSpot
 from app.domain.models.models import EntireTree, Tree
 from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.image_service import ImageService
@@ -42,6 +43,7 @@ class AnnotationDetailResponse:
     photo_date: datetime | None
     prefecture_name: str
     location: str
+    nearest_spot_location: str | None
     flowering_date: str | None
     full_bloom_start_date: str | None
     full_bloom_end_date: str | None
@@ -136,15 +138,20 @@ def get_annotation_detail(
     flowering_date: str | None = None
     full_bloom_start_date: str | None = None
     full_bloom_end_date: str | None = None
+    nearest_spot: FloweringDateSpot | None = None
 
     if latitude and longitude:
         spot = flowering_date_service.find_nearest_spot(latitude, longitude)
         if spot and photo_date:
             # 撮影日の年に合わせて日付を調整
             target_year = photo_date.year
-            flowering_date = spot.flowering_date.replace(year=target_year).isoformat()
-            full_bloom_start_date = spot.full_bloom_date.replace(year=target_year).isoformat()
-            full_bloom_end_date = spot.full_bloom_end_date.replace(year=target_year).isoformat()
+            flowering_date = spot.flowering_date.replace(
+                year=target_year).isoformat()
+            full_bloom_start_date = spot.full_bloom_date.replace(
+                year=target_year).isoformat()
+            full_bloom_end_date = spot.full_bloom_end_date.replace(
+                year=target_year).isoformat()
+            nearest_spot = spot
 
     # 既存アノテーション値を取得
     current_vitality_value: int | None = None
@@ -166,6 +173,7 @@ def get_annotation_detail(
         photo_date=photo_date,
         prefecture_name=prefecture_name,
         location=location,
+        nearest_spot_location=nearest_spot.address if nearest_spot else None,
         flowering_date=flowering_date,
         full_bloom_start_date=full_bloom_start_date,
         full_bloom_end_date=full_bloom_end_date,
