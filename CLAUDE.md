@@ -39,11 +39,6 @@ Kiro-style Spec Driven Development implementation on AI-DLC (AI Development Life
 - Keep steering current and verify alignment with `/kiro:spec-status`
 - Follow the user's instructions precisely, and within that scope act autonomously: gather the necessary context and complete the requested work end-to-end in this run, asking questions only when essential information is missing or the instructions are critically ambiguous.
 
-## Development Environment
-- Python 実行は venv を使用: `source .venv/bin/activate` 後に実行、または直接 `.venv/bin/python` を使用
-- テスト実行: `uv run pytest` または `.venv/bin/pytest`
-- `.python-version` は変更しない（pyenv 用の設定ファイル）
-
 ## Steering Configuration
 - Load entire `.kiro/steering/` as project memory
 - Default files: `product.md`, `tech.md`, `structure.md`
