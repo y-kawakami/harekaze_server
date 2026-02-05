@@ -16,50 +16,41 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.application.annotation.annotation_detail import (
-    AnnotationListFilter as DetailFilter,
-    get_annotation_detail,
-)
-from app.application.annotation.annotation_list import (
-    AnnotationListFilter,
-    get_annotation_list,
-)
+from app.application.annotation.annotation_detail import \
+    AnnotationListFilter as DetailFilter
+from app.application.annotation.annotation_detail import get_annotation_detail
+from app.application.annotation.annotation_list import (AnnotationListFilter,
+                                                        get_annotation_list)
 from app.application.annotation.export_csv import export_annotation_csv
-from app.application.annotation.save_annotation import (
-    SaveAnnotationRequest,
-    save_annotation,
-)
-from app.application.annotation.update_is_ready import (
-    UpdateIsReadyBatchRequest as UpdateIsReadyBatchUseCaseRequest,
-    UpdateIsReadyRequest as UpdateIsReadyUseCaseRequest,
-    update_is_ready,
-    update_is_ready_batch,
-)
+from app.application.annotation.save_annotation import (SaveAnnotationRequest,
+                                                        save_annotation)
+from app.application.annotation.update_is_ready import \
+    UpdateIsReadyBatchRequest as UpdateIsReadyBatchUseCaseRequest
+from app.application.annotation.update_is_ready import \
+    UpdateIsReadyRequest as UpdateIsReadyUseCaseRequest
+from app.application.annotation.update_is_ready import (update_is_ready,
+                                                        update_is_ready_batch)
 from app.domain.models.annotation import Annotator
-from app.domain.services.flowering_date_service import (
-    get_flowering_date_service,
-)
+from app.domain.services.flowering_date_service import \
+    get_flowering_date_service
 from app.domain.services.image_service import get_image_service
-from app.domain.services.municipality_service import (
-    get_municipality_service,
-)
+from app.domain.services.municipality_service import get_municipality_service
 from app.infrastructure.database.database import get_db
-from app.interfaces.api.annotation_auth import get_current_annotator, require_admin
-from app.interfaces.schemas.annotation import (
-    AnnotationDetailResponse,
-    AnnotationListItemResponse,
-    AnnotationListResponse,
-    AnnotationRequest,
-    AnnotationStatsResponse,
-    BloomStatusStatsResponse,
-    PrefectureListResponse,
-    PrefectureResponse,
-    SaveAnnotationResponse,
-    UpdateIsReadyBatchRequest,
-    UpdateIsReadyBatchResponse,
-    UpdateIsReadyRequest,
-    UpdateIsReadyResponse,
-)
+from app.interfaces.api.annotation_auth import (get_current_annotator,
+                                                require_admin)
+from app.interfaces.schemas.annotation import (AnnotationDetailResponse,
+                                               AnnotationListItemResponse,
+                                               AnnotationListResponse,
+                                               AnnotationRequest,
+                                               AnnotationStatsResponse,
+                                               BloomStatusStatsResponse,
+                                               PrefectureListResponse,
+                                               PrefectureResponse,
+                                               SaveAnnotationResponse,
+                                               UpdateIsReadyBatchRequest,
+                                               UpdateIsReadyBatchResponse,
+                                               UpdateIsReadyRequest,
+                                               UpdateIsReadyResponse)
 
 router = APIRouter(
     prefix="",
@@ -106,7 +97,8 @@ async def get_trees(
     # bloom_status をカンマ区切りからリストに変換
     bloom_status_filter: list[str] | None = None
     if bloom_status:
-        bloom_status_filter = [s.strip() for s in bloom_status.split(",") if s.strip()]
+        bloom_status_filter = [s.strip()
+                               for s in bloom_status.split(",") if s.strip()]
 
     filter_params = AnnotationListFilter(
         status=status_filter,
@@ -205,7 +197,8 @@ async def get_tree_detail(
     # bloom_status をカンマ区切りからリストに変換
     bloom_status_filter: list[str] | None = None
     if bloom_status:
-        bloom_status_filter = [s.strip() for s in bloom_status.split(",") if s.strip()]
+        bloom_status_filter = [s.strip()
+                               for s in bloom_status.split(",") if s.strip()]
 
     filter_params = DetailFilter(
         status=status_filter,
@@ -247,6 +240,7 @@ async def get_tree_detail(
         photo_date=result.photo_date,
         prefecture_name=result.prefecture_name,
         location=result.location,
+        nearest_spot_location=result.nearest_spot_location,
         flowering_date=result.flowering_date,
         full_bloom_start_date=result.full_bloom_start_date,
         full_bloom_end_date=result.full_bloom_end_date,

@@ -99,6 +99,8 @@ class AnnotationDetailResponse(BaseModel):
     photo_date: Optional[datetime] = Field(None, description="撮影日")
     prefecture_name: str = Field(..., description="都道府県名")
     location: str = Field(..., description="撮影場所")
+    nearest_spot_location: Optional[str] = Field(
+        None, description="最寄りの開花予想地点")
     flowering_date: Optional[str] = Field(None, description="開花予想日")
     full_bloom_start_date: Optional[str] = Field(
         None, description="満開開始予想日")
