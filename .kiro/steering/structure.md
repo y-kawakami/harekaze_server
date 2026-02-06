@@ -14,7 +14,7 @@ interfaces → application → domain ← infrastructure
 **Purpose**: ビジネスロジック、エンティティ、ドメインサービス
 **Contents**:
 - `models/`: SQLAlchemyモデル定義（Tree, Stem, EntireTree等）
-- `services/`: ドメインサービス（AIService, ImageService等）
+- `services/`: ドメインサービス（AIService, ImageService, BloomStateService, FloweringDateService, LambdaService, MunicipalityService等）
 - `constants/`: 定数定義（都道府県コード、NGワード等）
 - `utils/`: ドメイン固有ユーティリティ
 
@@ -23,6 +23,9 @@ interfaces → application → domain ← infrastructure
 **Pattern**: 機能ドメインごとのサブディレクトリ
 - `tree/`: 木の登録・検索関連（create_tree, search_trees等）
 - `admin/`: 管理機能（検閲、一覧取得等）
+- `annotation/`: アノテーション機能（注釈、CSV出力等）
+- `info/`: 情報取得（開花日等）
+- `common/`: 共通ユーティリティ（ぼかし処理、定数等）
 - `share/`: シェア機能
 - `debug/`: デバッグ用エンドポイント
 
@@ -33,9 +36,16 @@ interfaces → application → domain ← infrastructure
 - `geocoding/`: Google Maps API連携
 - `images/`: AWS Rekognition連携
 
+### Tools (`/app/tools/`)
+**Purpose**: 画像処理等の低レベルツール
+- `face_analyzer.py`: OpenCVによる顔検出・ぼかし処理
+
 ### Interfaces Layer (`/app/interfaces/`)
 **Purpose**: 外部とのインターフェース定義
 - `api/`: FastAPIルーター（エンドポイント定義）
+  - 認証は機能別に分離: `auth.py`（一般）、`admin_auth.py`（管理者）、`annotation_auth.py`（アノテーター）
+  - `error_handlers.py`: グローバルエラーハンドリング
+  - `ping.py`: ヘルスチェックエンドポイント
 - `schemas/`: Pydanticスキーマ（リクエスト/レスポンス）
 - `share/`: シェアページ用テンプレート
 - `templates/`: Jinja2 HTMLテンプレート
@@ -73,5 +83,19 @@ from app.infrastructure.database.database import get_db
 - **ファクトリ関数**: `get_<service>()` パターンでインスタンス生成
 - **テスト**: 本番コードと同じ層構造を `tests/` に反映
 
+## Deployment Structure
+
+Docker経由で3つの独立サービスとしてデプロイ（`/Docker/`）:
+- `Dockerfile.appapi` / `Dockerfile.adminapi` / `Dockerfile.annotationapi`
+- `build-to-ecr.sh` でECRへプッシュ
+
+## Supporting Directories
+
+- `/scripts/`: デプロイ・管理スクリプト（deploy_*.sh, create_admin.py等）
+- `/master/`: マスターデータ（CSV/JSON）
+- `/query/`: SQL分析クエリ
+- `/alembic/`: DBマイグレーション
+
 ---
 _Document patterns, not file trees. New files following patterns shouldn't require updates_
+_updated_at: 2026-02-06_

@@ -56,6 +56,9 @@
 - **空間検索**: PostGIS互換のGeoAlchemy2によるPOINTジオメトリ
 - **検閲ワークフロー**: IntEnum (CensorshipStatus) による状態管理
 - **キャッシュ戦略**: GETエンドポイントに対して Cache-Control ヘッダー付与
+- **マルチサービスデプロイ**: 3つの独立したDockerイメージ（appapi, adminapi, annotationapi）をECRへデプロイ
+- **顔検出**: OpenCV（face_analyzer）による人物検出とぼかし処理
 
 ---
 _Document standards and patterns, not every dependency_
+_updated_at: 2026-02-06_
