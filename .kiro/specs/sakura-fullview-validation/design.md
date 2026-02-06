@@ -45,6 +45,8 @@ sequenceDiagram
     participant Rekognition as LabelDetector
     participant FVS as FullviewValidationService
     participant Bedrock as AWS Bedrock
+    participant S3 as S3 (ImageService)
+    participant DB as FullviewValidationLogRepository
     participant AISvc as AIService
 
     Client->>API: POST /trees (画像)
@@ -59,6 +61,8 @@ sequenceDiagram
     Bedrock-->>FVS: JSON判定結果
     FVS-->>CreateTree: FullviewValidationResult
     alt NG判定
+        CreateTree->>S3: upload_image(NG画像)
+        CreateTree->>DB: create(判定ログ)
         CreateTree-->>API: FullviewValidationError
     end
     CreateTree->>AISvc: analyze_tree_vitality (並列)
@@ -79,11 +83,11 @@ sequenceDiagram
 |-------|------------------|-----------------|-------|
 | Backend / Services | Python 3.12 + FastAPI 0.115 | API エンドポイント、アプリケーションロジック | 既存スタック |
 | AI / ML | AWS Bedrock Converse API + Claude Sonnet 4.5 | マルチモーダル画像判定 | モデル ID は環境変数で設定可能。デフォルト: `apac.anthropic.claude-sonnet-4-5-20250929-v1:0`（APAC クロスリージョン推論） |
-| AWS SDK | boto3 | Bedrock Runtime クライアント（同期） | 新規依存なし（既存で導入済み） |
+| AWS SDK | aioboto3 14.1.0 | Bedrock Runtime クライアント（非同期） | 既存で導入済み。v13.1.0+ で Bedrock Runtime `converse` をサポート |
 | Validation | Pydantic 2.x | リクエスト/レスポンススキーマ | 既存スタック |
 | Templating | Jinja2 | デバッグ HTML ページ | 既存スタック |
 
-> boto3（同期クライアント）を使用する理由: Bedrock Converse API の呼び出しはパイプライン内で逐次実行（NG 時は後続をスキップ）するため、`asyncio.to_thread` でラップして非同期コンテキストから呼び出す。aioboto3 は Bedrock Runtime の converse メソッドをサポートしていない可能性があるため、boto3 + スレッドプール方式を採用。
+> aioboto3（非同期クライアント）を使用する理由: プロジェクトに導入済みの aioboto3 v14.1.0 は Bedrock Runtime の `converse` メソッドをサポートしている（v13.1.0 で対応、GitHub Issue #341 で確認済み）。既存の `LabelDetector`（Rekognition）と同一の `async with session.client()` パターンで統一し、`asyncio.to_thread` によるスレッドプールのオーバーヘッドを回避する。
 >
 > **クロスリージョン推論**: Claude Sonnet 4.5 は東京リージョン（ap-northeast-1）にネイティブモデルとしてデプロイされていない。APAC クロスリージョン推論プロファイル（`apac.` プレフィックス）を使用し、APAC 内の 7 リージョン（ap-northeast-1/2/3, ap-south-1/2, ap-southeast-1/2）にルーティングされる。データは APAC 圏内に留まる。
 >
@@ -138,6 +142,7 @@ flowchart TD
 | 6.2 | API 失敗時のエラーログ・エラー返却 | FullviewValidationService | — | 判定フロー |
 | 6.3 | モデル ID を環境変数で設定可能 | FullviewValidationService | — | — |
 | 6.4 | プロンプト定義・構造化 JSON 受信 | FullviewValidationService | toolConfig スキーマ | — |
+| 運用 | NG 画像・判定結果の永続化 | FullviewValidationLog, FullviewValidationLogRepository | S3 + DB | パイプライン統合フロー |
 
 ## Components and Interfaces
 
@@ -150,6 +155,8 @@ flowchart TD
 | debug.py 拡張 | interfaces/api | デバッグ API エンドポイント | 4.1-4.2, 5.3 | validate_fullview (P0) | API |
 | FullviewValidationResponse | interfaces/schemas | API レスポンススキーマ | 1.2-1.4, 4.1 | — | — |
 | create_tree 統合 | application/tree | パイプラインへの組み込み | 3.1-3.3 | FullviewValidationService (P0) | — |
+| FullviewValidationLog | domain/models | NG 判定ログの永続化 | 運用要件 | — | — |
+| FullviewValidationLogRepository | infrastructure/repositories | NG ログの DB 操作 | 運用要件 | FullviewValidationLog (P0) | — |
 | tree_analysis.html 拡張 | interfaces/templates | デバッグページ UI 拡張 | 5.1-5.2 | — | — |
 | fullview_validation.html | interfaces/templates | 専用デバッグページ | 5.3 | — | — |
 
@@ -170,7 +177,7 @@ flowchart TD
 
 **Dependencies**
 - External: AWS Bedrock Runtime — Converse API によるマルチモーダル判定 (P0)
-- External: boto3 — Bedrock Runtime クライアント (P0)
+- External: aioboto3 — Bedrock Runtime 非同期クライアント (P0)
 
 **Contracts**: Service [x]
 
@@ -202,11 +209,11 @@ class FullviewValidationService:
 ```
 
 - **Preconditions**: `image_bytes` は有効な画像データ。`image_format` は Bedrock がサポートするフォーマット
-- **Postconditions**: `FullviewValidationResult` を返却。API 障害時は `is_valid=True` のフェイルオープン結果を返却
+- **Postconditions**: `FullviewValidationResult` を返却。API 障害時はフェイルオープン結果を返却: `FullviewValidationResult(is_valid=True, reason="Bedrock API エラーのためスキップ", confidence=0.0)`
 - **Invariants**: `confidence` は 0.0〜1.0 の範囲内
 
 **Implementation Notes**
-- `boto3.client('bedrock-runtime')` を使用し、`asyncio.to_thread` で非同期コンテキストから呼び出す
+- `aioboto3.Session().client('bedrock-runtime')` を使用し、`async with` パターンで非同期呼び出し（既存 `LabelDetector` と同一パターン）
 - `toolConfig` でツール定義を指定し、判定結果を構造化 JSON として取得
 - `inferenceConfig.temperature` は `0.0` に設定し再現性を最大化
 - シングルトンファクトリ `get_fullview_validation_service()` を提供
@@ -394,12 +401,51 @@ class FullviewValidationResponse(BaseModel):
 
 **Responsibilities & Constraints**
 - Rekognition ラベル検出（`Tree` 確認）の後に全景バリデーションを実行
-- NG 判定時は `FullviewValidationError` を送出し、元気度解析・S3 アップロード・DB 登録をスキップ
-- `create_tree` 関数の引数に `FullviewValidationService` を追加
+- NG 判定時は画像を S3 に保存し判定結果を DB に記録した後、`FullviewValidationError` を送出し、元気度解析・S3 アップロード・DB 登録をスキップ
+- `create_tree` 関数の引数に `FullviewValidationService`、`ImageService`、`FullviewValidationLogRepository` を追加
 
 **Implementation Notes**
 - 挿入位置: `create_tree.py` の行 131（Rekognition 検出後）と行 137（画像アップロード開始前）の間
 - `FullviewValidationService` は FastAPI `Depends` で注入し、`create_tree` に渡す
+- NG 判定時の永続化フロー:
+  1. `ImageService.upload_image()` で画像を S3 に保存（キー: `validation_ng/{YYYYMMDD}/{uuid}.jpg`）
+  2. `FullviewValidationLogRepository.create()` で判定結果を DB に記録
+  3. `FullviewValidationError` を送出
+
+### Infrastructure / Repositories Layer
+
+#### FullviewValidationLogRepository
+
+| Field | Detail |
+|-------|--------|
+| Intent | NG 判定ログの DB 永続化操作 |
+| Requirements | 運用要件（NG 画像・判定結果の保存） |
+
+**Responsibilities & Constraints**
+- `FullviewValidationLog` レコードの作成・検索を行う
+- 既存リポジトリパターン（`TreeRepository` 等）に準拠
+
+**Dependencies**
+- Inbound: create_tree パイプライン — NG 判定時の保存 (P0)
+- Outbound: FullviewValidationLog — SQLAlchemy モデル (P0)
+
+```python
+class FullviewValidationLogRepository:
+    def __init__(self, db: Session) -> None:
+        self.db = db
+
+    def create(
+        self,
+        image_obj_key: str,
+        is_valid: bool,
+        reason: str,
+        confidence: float,
+        model_id: str,
+    ) -> FullviewValidationLog: ...
+```
+
+- ファクトリ関数 `get_fullview_validation_log_repository(db: Session)` を提供
+- FastAPI `Depends` で `db: Session = Depends(get_db)` と組み合わせて注入
 
 ### Interfaces / Templates Layer
 
@@ -412,8 +458,19 @@ class FullviewValidationResponse(BaseModel):
 
 **Implementation Notes**
 - 既存の結果テーブルに全景バリデーション行（OK/NG、判定理由、信頼度）を追加
-- `analyze_tree_app` の返却値に全景バリデーション結果を含める必要がある（`TreeVitalityResponse` スキーマの拡張）
 - OK は緑色（`value-detected`）、NG は赤色（`value-not-detected`）で表示
+- `analyze_tree_app` の返却値に全景バリデーション結果を含めるため、`TreeVitalityResponse` スキーマを拡張する
+
+**TreeVitalityResponse スキーマ拡張**:
+```python
+class TreeVitalityResponse(BaseModel):
+    # ... 既存フィールド ...
+    fullview_validation: FullviewValidationResponse | None = Field(
+        None, description="全景バリデーション結果（未実行時は None）")
+```
+
+- `Optional` にすることで既存の `/debug/analyze_tree` API レスポンスとの後方互換性を確保
+- `analyze_tree_app` 内で `FullviewValidationService.validate()` を呼び出し、結果を設定する
 
 #### fullview_validation.html
 
@@ -431,10 +488,44 @@ class FullviewValidationResponse(BaseModel):
 
 ### Domain Model
 
-本機能は新規エンティティの永続化を行わない。判定結果は API レスポンスとしてのみ返却される。
-
 **Value Objects**:
 - `FullviewValidationResult` — 判定結果（`is_valid`, `reason`, `confidence`）を保持するデータクラス
+
+#### FullviewValidationLog（新規テーブル）
+
+NG 判定された画像と判定結果を永続化し、運用時の調査・プロンプト改善に利用する。
+
+```python
+class FullviewValidationLog(Base):
+    """全景バリデーション NG ログ"""
+    __tablename__ = "fullview_validation_logs"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    uid: Mapped[str] = mapped_column(String(36), unique=True, default=lambda: str(uuid.uuid4()))
+    image_obj_key: Mapped[str] = mapped_column(String(255), comment="S3 画像キー")
+    is_valid: Mapped[bool] = mapped_column(Boolean, index=True, comment="判定結果（True=OK, False=NG）")
+    reason: Mapped[str] = mapped_column(Text, comment="判定理由")
+    confidence: Mapped[float] = mapped_column(Double, comment="信頼度（0.0〜1.0）")
+    model_id: Mapped[str] = mapped_column(String(255), comment="使用した Bedrock モデル ID")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc))
+
+    __table_args__ = (
+        Index("idx_fvlog_is_valid", "is_valid"),
+        Index("idx_fvlog_created_at", "created_at"),
+    )
+```
+
+**設計ポイント**:
+- NG 判定のみを保存する（OK 判定は保存しない。ストレージコスト抑制のため）
+- `tree_id` の外部キーは設けない。NG 判定時はパイプラインが早期リターンし Tree レコードが作成されないため
+- `model_id` を記録し、モデル変更後の判定精度比較に活用
+- `image_obj_key` は S3 キー（相対パス）を格納。画像の取得は `TREE_IMAGE_PREFIX` + `image_obj_key` で行う
+
+**S3 画像保存**:
+- キーパターン: `validation_ng/{YYYYMMDD}/{uuid}.jpg`
+- プレフィックスに日付を含めることで、S3 上での期間別整理・ライフサイクルポリシー適用を容易にする
+- 既存の `ImageService.upload_image()` を流用する
 
 ### Data Contracts & Integration
 
@@ -502,8 +593,8 @@ class FullviewValidationResponse(BaseModel):
 | Error Type | Category | Response | Recovery |
 |-----------|----------|----------|----------|
 | FullviewValidationError | Business Logic (400) | error_code=114, reason, details(reason+confidence) | ユーザーが適切な全景写真を再撮影 |
-| Bedrock API 障害 | System (internal) | フェイルオープン（OK として後続処理を継続） | ログ記録、運用監視 |
-| Bedrock レスポンスパース失敗 | System (internal) | フェイルオープン | ログ記録、ツール定義スキーマの見直し |
+| Bedrock API 障害 | System (internal) | フェイルオープン: `is_valid=True, reason="Bedrock API エラーのためスキップ", confidence=0.0` | ログ記録、運用監視。`confidence=0.0` により API レスポンスからもフェイルオープン発生を識別可能 |
+| Bedrock レスポンスパース失敗 | System (internal) | フェイルオープン: `is_valid=True, reason="レスポンス解析エラーのためスキップ", confidence=0.0` | ログ記録、ツール定義スキーマの見直し |
 | 画像フォーマット不明 | User (400) | InvalidParamError | ユーザーが対応フォーマットの画像を再送 |
 
 ### Monitoring
@@ -523,7 +614,8 @@ class FullviewValidationResponse(BaseModel):
 - `POST /debug/validate_fullview` — 画像アップロード・判定結果返却の E2E テスト
 - `POST /debug/validate_fullview_html` — HTML レスポンスのレンダリング検証
 - `create_tree` パイプライン — 全景バリデーション NG 時の早期リターン検証
-- `create_tree` パイプライン — 全景バリデーション OK 時の後続処理継続検証
+- `create_tree` パイプライン — 全景バリデーション NG 時の S3 画像保存・DB ログ記録検証
+- `create_tree` パイプライン — 全景バリデーション OK 時の後続処理継続検証（ログ未記録の確認）
 
 ## Security Considerations
 
