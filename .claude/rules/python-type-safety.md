@@ -1,4 +1,51 @@
+---
+paths:
+  - "**/*.py"
+---
+
 # Python Type Safety Rules
+
+## Import Rules
+
+- **Prefer regular imports over `TYPE_CHECKING`**: Unless there is a circular import issue, use regular imports instead of `if TYPE_CHECKING:` blocks. This keeps the code simpler and more straightforward.
+
+## Avoid Dynamic Attribute Access
+
+When type information is available, avoid dynamic attribute checking:
+
+### Prohibited Patterns
+
+- **`hasattr(obj, "attr")`** - Use static type checking instead
+- **`getattr(obj, "attr", default)`** - Access attributes directly
+
+### Why Avoid These
+
+1. They bypass static type checking
+2. They hide potential bugs that type checkers would catch
+3. If type hints define an attribute, it should always exist
+
+### Correct Patterns
+
+```python
+# ❌ WRONG - dynamic check
+if hasattr(self, "_cache"):
+    self._cache.clear()
+
+# ✅ CORRECT - attribute is defined in type hints
+self._cache.clear()
+
+# ❌ WRONG - getattr with default
+value = getattr(self._config, "timeout", 3.0)
+
+# ✅ CORRECT - direct access
+value = self._config.timeout
+```
+
+### When Dynamic Access is Acceptable
+
+- Working with truly dynamic data (e.g., parsing unknown JSON)
+- Interacting with untyped third-party libraries
+- In such cases, add a comment: `# dynamic access required: <reason>`
 
 ## Avoid Unsafe Types
 
@@ -49,6 +96,5 @@ If `Any` is absolutely necessary (e.g., third-party library compatibility):
 
 ### Type Checking
 
-- Run `basedpyright` before committing
-- Use `/check-types` command to verify type annotations
+- Run `basedpyright`, `flake8`, and `ruff` before committing
 - Target: 0 type errors
