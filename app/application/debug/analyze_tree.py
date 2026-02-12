@@ -5,9 +5,15 @@ from loguru import logger
 
 from app.application.exceptions import ImageUploadError
 from app.domain.services.ai_service import AIService
+from app.domain.services.fullview_validation_service import (
+    FullviewValidationService,
+)
 from app.domain.services.image_service import ImageService
 from app.infrastructure.images.label_detector import LabelDetector
 from app.interfaces.schemas.debug import TreeVitalityResponse
+from app.interfaces.schemas.fullview_validation import (
+    FullviewValidationResponse,
+)
 
 
 async def analyze_tree_app(
@@ -15,6 +21,7 @@ async def analyze_tree_app(
     image_service: ImageService,
     label_detector: LabelDetector,
     ai_service: AIService,
+    fullview_validation_service: FullviewValidationService | None = None,
 ) -> TreeVitalityResponse:
     """
     桜の木全体の写真を解析する
@@ -95,6 +102,19 @@ async def analyze_tree_app(
             noleaf_image_url = image_service.get_image_url(
                 debug_noleaf_key)
 
+        # 全景バリデーション
+        fv_response: FullviewValidationResponse | None = None
+        if fullview_validation_service is not None:
+            fv_result = await fullview_validation_service.validate(
+                image_bytes=image_data,
+                image_format="jpeg",
+            )
+            fv_response = FullviewValidationResponse(
+                is_valid=fv_result.is_valid,
+                reason=fv_result.reason,
+                confidence=fv_result.confidence,
+            )
+
         # レスポンスを作成
         return TreeVitalityResponse(
             vitality=final_vitality,
@@ -106,7 +126,8 @@ async def analyze_tree_app(
             vitality_noleaf_real=noleaf_result.vitality_real,
             vitality_noleaf_weight=noleaf_weight,
             bloom_image_url=bloom_image_url,
-            noleaf_image_url=noleaf_image_url
+            noleaf_image_url=noleaf_image_url,
+            fullview_validation=fv_response,
         )
 
     except Exception as e:

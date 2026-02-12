@@ -6,7 +6,12 @@ from sqlalchemy.orm import Session
 import app.application.debug.analyze_stem
 import app.application.debug.analyze_tree
 import app.application.debug.blur_privacy
+import app.application.debug.validate_fullview
 from app.domain.services.ai_service import AIService, get_ai_service
+from app.domain.services.fullview_validation_service import (
+    FullviewValidationService,
+    get_fullview_validation_service,
+)
 from app.domain.services.image_service import ImageService, get_image_service
 from app.infrastructure.database.database import get_db
 from app.infrastructure.images.label_detector import (LabelDetector,
@@ -15,6 +20,9 @@ from app.interfaces.api.auth_utils import get_current_username
 from app.interfaces.schemas.debug import (BlurPrivacyResponse,
                                           StemAnalysisResponse,
                                           TreeVitalityResponse)
+from app.interfaces.schemas.fullview_validation import (
+    FullviewValidationResponse,
+)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/interfaces/templates")
@@ -131,6 +139,8 @@ async def analyze_tree(
         get_label_detector, use_cache=True),
     ai_service: AIService = Depends(
         get_ai_service, use_cache=True),
+    fullview_validation_service: FullviewValidationService = Depends(
+        get_fullview_validation_service, use_cache=True),
 ):
     """
     桜の木全体の写真を解析する
@@ -141,6 +151,7 @@ async def analyze_tree(
         image_service=image_service,
         label_detector=label_detector,
         ai_service=ai_service,
+        fullview_validation_service=fullview_validation_service,
     )
 
 
@@ -168,6 +179,8 @@ async def analyze_tree_html_post(
         get_label_detector, use_cache=True),
     ai_service: AIService = Depends(
         get_ai_service, use_cache=True),
+    fullview_validation_service: FullviewValidationService = Depends(
+        get_fullview_validation_service, use_cache=True),
 ):
     """
     桜の木全体の写真を解析し、結果をHTMLで表示する
@@ -179,6 +192,7 @@ async def analyze_tree_html_post(
             image_service=image_service,
             label_detector=label_detector,
             ai_service=ai_service,
+            fullview_validation_service=fullview_validation_service,
         )
 
         return templates.TemplateResponse(
@@ -188,6 +202,81 @@ async def analyze_tree_html_post(
     except Exception as e:
         return templates.TemplateResponse(
             "tree_analysis.html",
+            {"request": request, "result": None,
+                "error": f"エラーが発生しました: {str(e)}"}
+        )
+
+
+@router.post(
+    "/debug/validate_fullview",
+    response_model=FullviewValidationResponse,
+)
+async def validate_fullview(
+    image: UploadFile = File(
+        ...,
+        description="桜の写真"
+    ),
+    fullview_validation_service: FullviewValidationService = Depends(
+        get_fullview_validation_service, use_cache=True),
+):
+    """
+    全景バリデーションのみを実行する
+    """
+    image_data = await image.read()
+    return await app.application.debug.validate_fullview.validate_fullview_app(
+        image_data=image_data,
+        fullview_validation_service=fullview_validation_service,
+    )
+
+
+@router.get(
+    "/debug/validate_fullview_html",
+    response_class=HTMLResponse,
+)
+async def validate_fullview_html_get(
+    request: Request,
+    username: str = Depends(get_current_username),
+):
+    """
+    全景バリデーション専用デバッグページを表示する
+    """
+    return templates.TemplateResponse(
+        "fullview_validation.html",
+        {"request": request, "result": None}
+    )
+
+
+@router.post(
+    "/debug/validate_fullview_html",
+    response_class=HTMLResponse,
+)
+async def validate_fullview_html_post(
+    request: Request,
+    image: UploadFile = File(...),
+    username: str = Depends(get_current_username),
+    fullview_validation_service: FullviewValidationService = Depends(
+        get_fullview_validation_service, use_cache=True),
+):
+    """
+    全景バリデーションを実行し、結果をHTMLで表示する
+    """
+    try:
+        image_data = await image.read()
+        result = (
+            await app.application.debug.validate_fullview
+            .validate_fullview_app(
+                image_data=image_data,
+                fullview_validation_service=fullview_validation_service,
+            )
+        )
+
+        return templates.TemplateResponse(
+            "fullview_validation.html",
+            {"request": request, "result": result}
+        )
+    except Exception as e:
+        return templates.TemplateResponse(
+            "fullview_validation.html",
             {"request": request, "result": None,
                 "error": f"エラーが発生しました: {str(e)}"}
         )
@@ -237,6 +326,7 @@ async def blur_privacy_html_post(
     except Exception as e:
         return templates.TemplateResponse(
             "blur_privacy.html",
-            {"request": request, "result": None, "blur_strength": str(blur_strength),
+            {"request": request, "result": None,
+                "blur_strength": str(blur_strength),
                 "error": f"エラーが発生しました: {str(e)}"}
         )

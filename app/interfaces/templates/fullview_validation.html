@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>桜の木全体解析デバッグツール</title>
+    <title>全景バリデーションデバッグツール</title>
     <style>
         :root {
             --primary-color: #FF69B4;
@@ -39,12 +39,6 @@
             color: var(--primary-color);
             margin: 30px 0 20px;
             font-size: 24px;
-        }
-
-        h3 {
-            color: var(--primary-color);
-            margin: 25px 0 15px;
-            font-size: 20px;
         }
 
         .form-container {
@@ -168,13 +162,6 @@
             background-color: #f1f3f5;
         }
 
-        .result-image {
-            max-width: 100%;
-            margin-top: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
         .alert {
             padding: 15px 20px;
             border-radius: 6px;
@@ -185,12 +172,6 @@
             font-weight: bold;
         }
 
-        .success {
-            background-color: #E8F5E9;
-            color: var(--success-color);
-            border: 1px solid #C8E6C9;
-        }
-
         .value-detected {
             color: var(--success-color);
             font-weight: bold;
@@ -198,7 +179,7 @@
 
         .value-not-detected {
             color: var(--error-color);
-            font-style: italic;
+            font-weight: bold;
         }
 
         .loading-overlay {
@@ -245,42 +226,18 @@
             }
         }
 
-        /* ボタンのローディング状態 */
         .form-container form button[type="submit"].loading {
             position: relative;
             color: transparent;
         }
 
         .form-container form button[type="submit"].loading::after {
-            content: "解析中...";
+            content: "判定中...";
             position: absolute;
             left: 50%;
             top: 50%;
             transform: translate(-50%, -50%);
             color: white;
-        }
-
-        .images-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            margin-top: 20px;
-        }
-
-        .image-card {
-            flex: 1;
-            min-width: 300px;
-            max-width: 100%;
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-        }
-
-        .image-card h4 {
-            margin-top: 0;
-            color: var(--primary-color);
-            margin-bottom: 10px;
         }
     </style>
 </head>
@@ -288,30 +245,30 @@
 <body>
     <div class="loading-overlay">
         <div class="loading-spinner"></div>
-        <div class="loading-text">画像を解析中...</div>
+        <div class="loading-text">全景バリデーション判定中...</div>
     </div>
 
-    <h1>桜の木全体解析デバッグツール</h1>
+    <h1>全景バリデーションデバッグツール</h1>
 
     {% if error %}
     <div class="alert">{{ error }}</div>
     {% endif %}
 
     <div class="form-container">
-        <form id="analyzeForm" action="/sakura_camera/api/debug/analyze_tree_html" method="post"
+        <form id="validateForm" action="/sakura_camera/api/debug/validate_fullview_html" method="post"
             enctype="multipart/form-data">
             <div class="form-group">
-                <label for="image">桜の木全体の写真をアップロード</label>
+                <label for="image">桜の写真をアップロード</label>
                 <input type="file" id="image" name="image" accept="image/*" required>
-                <p class="help-text">※桜の木全体が写っている写真を選択してください。</p>
+                <p class="help-text">※桜の木全体が写っているかどうかを判定します。</p>
             </div>
-            <button type="submit" id="submitButton">解析する</button>
+            <button type="submit" id="submitButton">判定する</button>
         </form>
     </div>
 
     {% if result %}
     <div class="result-container">
-        <h2>解析結果</h2>
+        <h2>判定結果</h2>
         <table class="result-table">
             <tr>
                 <th>項目</th>
@@ -319,126 +276,41 @@
                 <th>説明</th>
             </tr>
             <tr>
-                <td>総合元気度（1-5）</td>
-                <td class="{{ 'value-detected' if result.vitality is not none else 'value-not-detected' }}">
-                    {{ result.vitality if result.vitality is not none else "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない</td>
-            </tr>
-            <tr>
-                <td>総合元気度（実数値）</td>
-                <td class="{{ 'value-detected' if result.vitality_real is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_real) if result.vitality_real is not none else "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない（実数値）</td>
-            </tr>
-            <tr>
-                <td>開花時元気度（1-5）</td>
-                <td class="{{ 'value-detected' if result.vitality_bloom is not none else 'value-not-detected' }}">
-                    {{ result.vitality_bloom if result.vitality_bloom is not none else "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない</td>
-            </tr>
-            <tr>
-                <td>開花時元気度（実数値）</td>
-                <td class="{{ 'value-detected' if result.vitality_bloom_real is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_bloom_real) if result.vitality_bloom_real is not none else
-                    "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない（実数値）</td>
-            </tr>
-            <tr>
-                <td>開花時元気度の重み</td>
-                <td
-                    class="{{ 'value-detected' if result.vitality_bloom_weight is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_bloom_weight) if result.vitality_bloom_weight is not none else
-                    "検出できませんでした" }}
-                </td>
-                <td>総合元気度の計算に使用される開花時元気度の重み</td>
-            </tr>
-            <tr>
-                <td>葉なし時元気度（1-5）</td>
-                <td class="{{ 'value-detected' if result.vitality_noleaf is not none else 'value-not-detected' }}">
-                    {{ result.vitality_noleaf if result.vitality_noleaf is not none else "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない</td>
-            </tr>
-            <tr>
-                <td>葉なし時元気度（実数値）</td>
-                <td class="{{ 'value-detected' if result.vitality_noleaf_real is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_noleaf_real) if result.vitality_noleaf_real is not none else
-                    "検出できませんでした" }}
-                </td>
-                <td>1: 元気 〜 5: 元気がない（実数値）</td>
-            </tr>
-            <tr>
-                <td>葉なし時元気度の重み</td>
-                <td
-                    class="{{ 'value-detected' if result.vitality_noleaf_weight is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_noleaf_weight) if result.vitality_noleaf_weight is not none else
-                    "検出できませんでした" }}
-                </td>
-                <td>総合元気度の計算に使用される葉なし時元気度の重み</td>
-            </tr>
-            {% if result.fullview_validation is not none %}
-            <tr>
                 <td>全景判定</td>
-                <td class="{{ 'value-detected' if result.fullview_validation.is_valid else 'value-not-detected' }}">
-                    {{ "OK" if result.fullview_validation.is_valid else "NG" }}
+                <td class="{{ 'value-detected' if result.is_valid else 'value-not-detected' }}">
+                    {{ "OK" if result.is_valid else "NG" }}
                 </td>
                 <td>桜の木の全景として適切かどうか</td>
             </tr>
             <tr>
-                <td>全景判定理由</td>
-                <td>{{ result.fullview_validation.reason }}</td>
+                <td>判定理由</td>
+                <td>{{ result.reason }}</td>
                 <td>判定の根拠となる理由</td>
             </tr>
             <tr>
-                <td>全景判定信頼度</td>
-                <td>{{ "%.2f"|format(result.fullview_validation.confidence) }}</td>
+                <td>信頼度</td>
+                <td>{{ "%.2f"|format(result.confidence) }}</td>
                 <td>判定の信頼度（0.0〜1.0）</td>
             </tr>
-            {% endif %}
         </table>
-
-        <div class="images-container">
-            {% if result.bloom_image_url %}
-            <div class="image-card">
-                <h4>開花時解析画像</h4>
-                <img src="{{ result.bloom_image_url }}" alt="開花時解析画像" class="result-image">
-            </div>
-            {% endif %}
-
-            {% if result.noleaf_image_url %}
-            <div class="image-card">
-                <h4>葉なし時解析画像</h4>
-                <img src="{{ result.noleaf_image_url }}" alt="葉なし時解析画像" class="result-image">
-            </div>
-            {% endif %}
-        </div>
     </div>
     {% endif %}
 
     <script>
-        document.getElementById('analyzeForm').addEventListener('submit', function (e) {
-            const button = document.getElementById('submitButton');
-            const loadingOverlay = document.querySelector('.loading-overlay');
+        document.getElementById('validateForm').addEventListener('submit', function (e) {
+            var button = document.getElementById('submitButton');
+            var loadingOverlay = document.querySelector('.loading-overlay');
 
-            // ボタンをローディング状態に
             button.classList.add('loading');
             button.disabled = true;
 
-            // オーバーレイを表示
             loadingOverlay.classList.add('active');
-
-            // フォームの送信は通常通り行う（e.preventDefault()は不要）
         });
 
-        // ページバック時にローディング状態をリセット
         window.addEventListener('pageshow', function (event) {
             if (event.persisted) {
-                const button = document.getElementById('submitButton');
-                const loadingOverlay = document.querySelector('.loading-overlay');
+                var button = document.getElementById('submitButton');
+                var loadingOverlay = document.querySelector('.loading-overlay');
 
                 button.classList.remove('loading');
                 button.disabled = false;

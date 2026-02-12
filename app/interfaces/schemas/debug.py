@@ -2,6 +2,10 @@ from typing import Optional
 
 from pydantic import BaseModel, Field
 
+from app.interfaces.schemas.fullview_validation import (
+    FullviewValidationResponse,
+)
+
 
 class BlurPrivacyResponse(BaseModel):
     image_url: str = Field(..., description="ぼかし処理後の画像のURL")
@@ -48,3 +52,5 @@ class TreeVitalityResponse(BaseModel):
         None, description="開花時解析画像のURL（デバッグ用）")
     noleaf_image_url: Optional[str] = Field(
         None, description="葉なし時解析画像のURL（デバッグ用）")
+    fullview_validation: Optional[FullviewValidationResponse] = Field(
+        None, description="全景バリデーション結果（未実行時は None）")
