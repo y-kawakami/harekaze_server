@@ -32,6 +32,8 @@ from app.domain.models.models import User
 from app.domain.services.ai_service import AIService, get_ai_service
 from app.domain.services.flowering_date_service import (
     FloweringDateService, get_flowering_date_service)
+from app.domain.services.fullview_validation_service import (
+    FullviewValidationService, get_fullview_validation_service)
 from app.domain.services.image_service import ImageService, get_image_service
 from app.domain.services.municipality_service import (MunicipalityService,
                                                       get_municipality_service)
@@ -39,6 +41,9 @@ from app.infrastructure.database.database import get_db
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
 from app.infrastructure.images.label_detector import (LabelDetector,
                                                       get_label_detector)
+from app.infrastructure.repositories.fullview_validation_log_repository import (
+    FullviewValidationLogRepository,
+    get_fullview_validation_log_repository)
 from app.interfaces.api.auth import get_current_user
 from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          KobuInfo, MushroomInfo, StemHoleInfo,
@@ -50,6 +55,12 @@ from app.interfaces.schemas.tree import (AreaCountResponse, AreaStatsResponse,
                                          TreeTotalCountResponse)
 
 router = APIRouter()
+
+
+def get_fullview_validation_log_repository_dependency(
+    db: Session = Depends(get_db),
+) -> FullviewValidationLogRepository:
+    return get_fullview_validation_log_repository(db)
 
 
 def get_geocoding_service_dependency(
@@ -94,7 +105,13 @@ async def create_tree(
         get_label_detector, use_cache=True),
     flowering_date_service: FloweringDateService = Depends(
         get_flowering_date_service, use_cache=True),
-    ai_service: AIService = Depends(get_ai_service, use_cache=True)
+    ai_service: AIService = Depends(get_ai_service, use_cache=True),
+    fullview_validation_service: FullviewValidationService = Depends(
+        get_fullview_validation_service, use_cache=True),
+    fullview_validation_log_repository: (
+        FullviewValidationLogRepository
+    ) = Depends(
+        get_fullview_validation_log_repository_dependency),
 ):
     """
     桜の木全体の写真を登録する。
@@ -112,6 +129,8 @@ async def create_tree(
         label_detector=label_detector,
         ai_service=ai_service,
         flowering_date_service=flowering_date_service,
+        fullview_validation_service=fullview_validation_service,
+        fullview_validation_log_repository=fullview_validation_log_repository,
         photo_date=date,
         is_approved_debug=APPROVED_DEBUG
     )

@@ -10,7 +10,9 @@ from loguru import logger
 from PIL import ImageOps
 from sqlalchemy.orm import Session
 
-from app.application.exceptions import (DatabaseError, ImageUploadError,
+from app.application.exceptions import (DatabaseError,
+                                        FullviewValidationError,
+                                        ImageUploadError,
                                         InvalidParamError,
                                         LocationNotFoundError,
                                         LocationNotInJapanError, NgWordError,
@@ -19,7 +21,13 @@ from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
 from app.domain.services.ai_service import AIService
 from app.domain.services.flowering_date_service import FloweringDateService
+from app.domain.services.fullview_validation_service import (
+    FullviewValidationService,
+)
 from app.domain.services.image_service import ImageService
+from app.infrastructure.repositories.fullview_validation_log_repository import (  # noqa: E501
+    FullviewValidationLogRepository,
+)
 from app.domain.utils import blur
 from app.domain.utils.date_utils import DateUtils
 from app.infrastructure.geocoding.geocoding_service import GeocodingService
@@ -42,6 +50,8 @@ async def create_tree(
     label_detector: LabelDetector,
     flowering_date_service: FloweringDateService,
     ai_service: AIService,
+    fullview_validation_service: FullviewValidationService,
+    fullview_validation_log_repository: FullviewValidationLogRepository,
     photo_date: Optional[str] = None,
     is_approved_debug: bool = False,
     detail_debug: bool = False
@@ -129,6 +139,46 @@ async def create_tree(
         raise TreeNotDetectedError()
     end_time = time_module.time()
     logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
+
+    # 全景バリデーション
+    start_time = time_module.time()
+    fv_result = await fullview_validation_service.validate(
+        image_bytes=image_data,
+        image_format="jpeg",
+    )
+    end_time = time_module.time()
+    logger.info(
+        "全景バリデーション処理: "
+        + f"{(end_time - start_time) * 1000:.2f}ms"
+    )
+
+    if not fv_result.is_valid:
+        # NG 画像を S3 に保存
+        ng_date = datetime.datetime.now().strftime("%Y%m%d")
+        ng_uuid = str(uuid.uuid4())
+        ng_image_key = f"validation_ng/{ng_date}/{ng_uuid}.jpg"
+        _ = await image_service.upload_image(
+            image_data, ng_image_key
+        )
+
+        # 判定結果を DB に記録
+        _ = fullview_validation_log_repository.create(
+            image_obj_key=ng_image_key,
+            is_valid=fv_result.is_valid,
+            reason=fv_result.reason,
+            confidence=fv_result.confidence,
+            model_id=fullview_validation_service.model_id,
+        )
+
+        logger.warning(
+            "全景バリデーション NG: "
+            + f"reason={fv_result.reason}, "
+            + f"confidence={fv_result.confidence:.2f}"
+        )
+        raise FullviewValidationError(
+            reason=fv_result.reason,
+            confidence=fv_result.confidence,
+        )
 
     # UIDを生成
     tree_id = str(uuid.uuid4())

@@ -143,6 +143,21 @@ class CanNotDetectedError(ApplicationError):
         )
 
 
+class FullviewValidationError(ApplicationError):
+    """全景バリデーション NG 判定時の例外"""
+
+    def __init__(self, reason: str, confidence: float) -> None:
+        super().__init__(
+            reason=reason,
+            error_code=114,
+            status=400,
+            details={
+                "validation_reason": reason,
+                "confidence": confidence,
+            },
+        )
+
+
 class ImageUploadError(ApplicationError):
     """画像アップロードに失敗した場合の例外"""
 
