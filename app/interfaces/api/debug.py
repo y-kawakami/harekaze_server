@@ -1,3 +1,5 @@
+from typing import Final
+
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
@@ -8,6 +10,10 @@ import app.application.debug.analyze_tree
 import app.application.debug.blur_privacy
 import app.application.debug.validate_fullview
 from app.domain.services.ai_service import AIService, get_ai_service
+from app.infrastructure.images.image_utils import (
+    exif_transpose_bytes,
+    resize_image_bytes,
+)
 from app.domain.services.fullview_validation_service import (
     FullviewValidationService,
     get_fullview_validation_service,
@@ -23,6 +29,18 @@ from app.interfaces.schemas.debug import (BlurPrivacyResponse,
 from app.interfaces.schemas.fullview_validation import (
     FullviewValidationResponse,
 )
+
+_DEBUG_MAX_LONG_EDGE: Final[int] = 2048
+
+
+def _preprocess_image(
+    image_data: bytes,
+    max_size: int = _DEBUG_MAX_LONG_EDGE,
+) -> bytes:
+    """EXIF回転と長辺リサイズを行う"""
+    image_data = exif_transpose_bytes(image_data)
+    return resize_image_bytes(image_data, max_size)
+
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/interfaces/templates")
@@ -47,6 +65,7 @@ async def blur_privacy(
     人物にぼかしをかける
     """
     image_data = await image.read()
+    image_data = _preprocess_image(image_data)
     return await app.application.debug.blur_privacy.blur_privacy_app(
         image_data=image_data,
         image_service=image_service,
@@ -71,6 +90,7 @@ async def analyze_stem(
     幹の写真を解析する
     """
     image_data = await image.read()
+    image_data = _preprocess_image(image_data)
     return await app.application.debug.analyze_stem.analyze_stem_app(
         image_data=image_data,
         image_service=image_service,
@@ -109,6 +129,7 @@ async def analyze_stem_html_post(
     """
     try:
         image_data = await image.read()
+        image_data = _preprocess_image(image_data)
         result = await app.application.debug.analyze_stem.analyze_stem_app(
             image_data=image_data,
             image_service=image_service,
@@ -146,6 +167,7 @@ async def analyze_tree(
     桜の木全体の写真を解析する
     """
     image_data = await image.read()
+    image_data = _preprocess_image(image_data)
     return await app.application.debug.analyze_tree.analyze_tree_app(
         image_data=image_data,
         image_service=image_service,
@@ -187,6 +209,7 @@ async def analyze_tree_html_post(
     """
     try:
         image_data = await image.read()
+        image_data = _preprocess_image(image_data)
         result = await app.application.debug.analyze_tree.analyze_tree_app(
             image_data=image_data,
             image_service=image_service,
@@ -223,6 +246,7 @@ async def validate_fullview(
     全景バリデーションのみを実行する
     """
     image_data = await image.read()
+    image_data = _preprocess_image(image_data)
     return await app.application.debug.validate_fullview.validate_fullview_app(
         image_data=image_data,
         fullview_validation_service=fullview_validation_service,
@@ -262,6 +286,7 @@ async def validate_fullview_html_post(
     """
     try:
         image_data = await image.read()
+        image_data = _preprocess_image(image_data)
         result = (
             await app.application.debug.validate_fullview
             .validate_fullview_app(
@@ -311,6 +336,7 @@ async def blur_privacy_html_post(
     """
     try:
         image_data = await image.read()
+        image_data = _preprocess_image(image_data)
         result = await app.application.debug.blur_privacy.blur_privacy_app(
             image_data=image_data,
             image_service=image_service,
