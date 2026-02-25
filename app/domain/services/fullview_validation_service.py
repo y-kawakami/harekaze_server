@@ -5,15 +5,13 @@ from typing import Final, Literal
 
 import aioboto3
 from loguru import logger
-
-from app.infrastructure.images.image_utils import (
-    resize_image_bytes,
-)
 from types_aiobotocore_bedrock_runtime.type_defs import (
     ContentBlockOutputTypeDef, ContentBlockTypeDef, ConverseResponseTypeDef,
     ImageBlockTypeDef, ImageSourceTypeDef, InferenceConfigurationTypeDef,
     MessageTypeDef, SystemContentBlockTypeDef, ToolChoiceTypeDef,
     ToolConfigurationTypeDef, ToolTypeDef)
+
+from app.infrastructure.images.image_utils import resize_image_bytes
 
 ImageFormatType = Literal["gif", "jpeg", "png", "webp"]
 
@@ -80,7 +78,7 @@ FULLVIEW_VALIDATION_TOOL: Final[ToolTypeDef] = {
     }
 }
 
-DEFAULT_MODEL_ID: Final[str] = "jp.anthropic.claude-sonnet-4-5-20250929-v1:0"
+DEFAULT_MODEL_ID: Final[str] = "jp.anthropic.claude-sonnet-4-6"
 
 _FULLVIEW_MAX_LONG_EDGE: Final[int] = 1024
 
