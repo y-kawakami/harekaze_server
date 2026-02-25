@@ -176,7 +176,21 @@ export function ListPage() {
   const handleExportCsv = async () => {
     setIsExporting(true);
     try {
-      const blob = await exportCsv(true);
+      // is_ready フィルターは admin の場合のみ送信
+      let isReadyParam: string | null = null;
+      if (isAdmin && isReadyFilter && isReadyFilter !== "all") {
+        isReadyParam = isReadyFilter === "ready" ? "true" : "false";
+      }
+
+      const blob = await exportCsv({
+        status,
+        prefecture_code: prefectureCode || null,
+        vitality_value: vitalityValue || null,
+        photo_date_from: photoDateFrom || null,
+        photo_date_to: photoDateTo || null,
+        is_ready: isReadyParam,
+        bloom_status: bloomStatusFilter || null,
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;

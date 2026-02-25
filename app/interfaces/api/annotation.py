@@ -316,9 +316,24 @@ async def get_prefectures(
 
 @router.get("/export/csv")
 async def export_csv(
-    include_undiagnosable: bool = Query(
-        True, description="診断不可（-1）を含めるか"),
-    _: Annotator = Depends(get_current_annotator),
+    status_filter: Literal["all", "annotated", "unannotated"] = Query(
+        "all", alias="status",
+        description="アノテーション状態フィルター"),
+    prefecture_code: Optional[str] = Query(
+        None, description="都道府県コード"),
+    vitality_value: Optional[int] = Query(
+        None, description="元気度（1-5または-1）"),
+    photo_date_from: Optional[date] = Query(
+        None, description="撮影日開始（YYYY-MM-DD）"),
+    photo_date_to: Optional[date] = Query(
+        None, description="撮影日終了（YYYY-MM-DD）"),
+    is_ready_filter: Optional[bool] = Query(
+        None, alias="is_ready",
+        description="準備完了フィルター（adminのみ有効）"),
+    bloom_status: Optional[str] = Query(
+        None,
+        description="開花状態フィルター（カンマ区切りで複数指定可）"),
+    current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> StreamingResponse:
     """
@@ -328,17 +343,35 @@ async def export_csv(
     - s3_path: S3パス（s3://bucket/prefix/key形式）
     - image_filename: 画像ファイル名
     - vitality_score: 元気度スコア（1-5または-1）
+    - bloom_status: 開花状態（日本語ラベル）
+    - annotated_at: アノテーション日時（JST）
     """
+    # bloom_status をカンマ区切りからリストに変換
+    bloom_status_list: list[str] | None = None
+    if bloom_status:
+        bloom_status_list = [
+            s.strip()
+            for s in bloom_status.split(",") if s.strip()
+        ]
+
     csv_content = export_annotation_csv(
         db=db,
-        include_undiagnosable=include_undiagnosable,
+        status=status_filter,
+        prefecture_code=prefecture_code,
+        vitality_value=vitality_value,
+        photo_date_from=photo_date_from,
+        photo_date_to=photo_date_to,
+        is_ready_filter=is_ready_filter,
+        bloom_status_filter=bloom_status_list,
+        annotator_role=current_annotator.role,
     )
 
     return StreamingResponse(
         iter([csv_content]),
         media_type="text/csv; charset=utf-8",
         headers={
-            "Content-Disposition": "attachment; filename=annotations.csv",
+            "Content-Disposition":
+                "attachment; filename=annotations.csv",
         },
     )
 

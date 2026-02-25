@@ -151,9 +151,25 @@ export async function getPrefectures(): Promise<PrefectureListResponse> {
   return handleResponse<PrefectureListResponse>(response);
 }
 
-export async function exportCsv(includeUndiagnosable: boolean = true): Promise<Blob> {
+export async function exportCsv(filters: {
+  status: string;
+  prefecture_code?: string | null;
+  vitality_value?: string | null;
+  photo_date_from?: string | null;
+  photo_date_to?: string | null;
+  is_ready?: string | null;
+  bloom_status?: string | null;
+}): Promise<Blob> {
   const params = new URLSearchParams();
-  params.append('include_undiagnosable', String(includeUndiagnosable));
+  if (filters.status) params.append('status', filters.status);
+  if (filters.prefecture_code) params.append('prefecture_code', filters.prefecture_code);
+  if (filters.vitality_value) params.append('vitality_value', filters.vitality_value);
+  if (filters.photo_date_from) params.append('photo_date_from', filters.photo_date_from);
+  if (filters.photo_date_to) params.append('photo_date_to', filters.photo_date_to);
+  if (filters.is_ready !== undefined && filters.is_ready !== null) {
+    params.append('is_ready', filters.is_ready);
+  }
+  if (filters.bloom_status) params.append('bloom_status', filters.bloom_status);
 
   const response = await fetch(`${API_BASE}/export/csv?${params}`, {
     headers: getAuthHeaders(),
