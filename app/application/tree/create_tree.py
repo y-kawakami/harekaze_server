@@ -6,7 +6,7 @@ import uuid
 from typing import Optional
 
 from loguru import logger
-from PIL import ImageOps
+from PIL import Image, ImageOps
 from sqlalchemy.orm import Session
 
 from app.application.exceptions import (DatabaseError,
@@ -151,12 +151,25 @@ async def create_tree(
     end_time = time_module.time()
     logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
 
-    # 全景バリデーション
+    # 全景バリデーション（既存PIL画像からリサイズしフル再展開を回避）
     start_time = time_module.time()
+    _FV_MAX_EDGE = 1024
+    if max(image.size) > _FV_MAX_EDGE:
+        w, h = image.size
+        ratio = _FV_MAX_EDGE / max(w, h)
+        fv_image = image.resize(
+            (int(w * ratio), int(h * ratio)),
+            Image.Resampling.LANCZOS,
+        )
+        fv_image_bytes = image_service.pil_to_bytes(fv_image, "jpeg")
+        del fv_image
+    else:
+        fv_image_bytes = image_data
     fv_result = await fullview_validation_service.validate(
-        image_bytes=image_data,
+        image_bytes=fv_image_bytes,
         image_format="jpeg",
     )
+    del fv_image_bytes
     end_time = time_module.time()
     logger.info(
         "全景バリデーション処理: "
