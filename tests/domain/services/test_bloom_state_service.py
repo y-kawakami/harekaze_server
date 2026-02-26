@@ -55,11 +55,13 @@ class TestPrefectureOffsets:
         offsets = PrefectureOffsets(
             flowering_to_3bu=2,
             flowering_to_5bu=3,
+            flowering_to_full_bloom=5,
             end_to_hanawakaba=5,
             end_to_hanomi=10,
         )
         assert offsets.flowering_to_3bu == 2
         assert offsets.flowering_to_5bu == 3
+        assert offsets.flowering_to_full_bloom == 5
         assert offsets.end_to_hanawakaba == 5
         assert offsets.end_to_hanomi == 10
 
@@ -80,6 +82,8 @@ class TestBloomStateServiceCSVParsing:
         assert offsets.flowering_to_3bu == 2
         # flowering_to_5bu = 4/20 - 4/17 = 3日
         assert offsets.flowering_to_5bu == 3
+        # flowering_to_full_bloom = 4/22 - 4/17 = 5日
+        assert offsets.flowering_to_full_bloom == 5
         # 散り始め4/27 -> 花＋若葉5/2: end_to_hanawakaba = 5/2 - 4/27 = 5日
         assert offsets.end_to_hanawakaba == 5
         # 散り始め4/27 -> 葉のみ5/7: end_to_hanomi = 5/7 - 4/27 = 10日

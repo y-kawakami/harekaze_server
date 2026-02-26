@@ -45,6 +45,7 @@ class PrefectureOffsets:
 
     flowering_to_3bu: int  # 開花→3分咲きオフセット（日）
     flowering_to_5bu: int  # 開花→5分咲きオフセット（日）
+    flowering_to_full_bloom: int  # 開花→8分咲き(満開)オフセット（日）
     end_to_hanawakaba: int  # 満開終了→花＋若葉オフセット（日）
     end_to_hanomi: int  # 満開終了→葉のみオフセット（日）
 
@@ -121,6 +122,9 @@ class BloomStateService:
                         five_bu_date = self._parse_date_string(
                             row[4].strip(), base_year
                         )
+                        full_bloom_date = self._parse_date_string(
+                            row[5].strip(), base_year
+                        )
                         falling_date = self._parse_date_string(
                             row[6].strip(), base_year
                         )
@@ -133,6 +137,7 @@ class BloomStateService:
                             flowering_date is None
                             or three_bu_date is None
                             or five_bu_date is None
+                            or full_bloom_date is None
                             or falling_date is None
                             or hanawakaba_date is None
                             or hanomi_date is None
@@ -145,6 +150,9 @@ class BloomStateService:
                         # オフセット値を計算
                         flowering_to_3bu = (three_bu_date - flowering_date).days
                         flowering_to_5bu = (five_bu_date - flowering_date).days
+                        flowering_to_full_bloom = (
+                            full_bloom_date - flowering_date
+                        ).days
                         # falling_date（散り始め）を基準に計算
                         end_to_hanawakaba = (hanawakaba_date - falling_date).days
                         end_to_hanomi = (hanomi_date - falling_date).days
@@ -152,6 +160,7 @@ class BloomStateService:
                         self._prefecture_offsets[prefecture_code] = PrefectureOffsets(
                             flowering_to_3bu=flowering_to_3bu,
                             flowering_to_5bu=flowering_to_5bu,
+                            flowering_to_full_bloom=flowering_to_full_bloom,
                             end_to_hanawakaba=end_to_hanawakaba,
                             end_to_hanomi=end_to_hanomi,
                         )

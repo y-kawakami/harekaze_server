@@ -6,7 +6,7 @@
   - 既存レコードへの影響がないことを確認する（デフォルト NULL）
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 2. (P) BloomStateService のオフセット基準期間対応
+- [x] 2. (P) BloomStateService のオフセット基準期間対応
   - PrefectureOffsets に開花→満開の基準日数（flowering_to_full_bloom）フィールドを追加する
   - CSV マスターデータのパース処理を拡張し、8分咲き/満開の日付データから基準日数を算出する
   - 既存の calculate_bloom_status() への影響がないことを確認する
