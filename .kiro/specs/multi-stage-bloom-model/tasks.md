@@ -1,6 +1,6 @@
 # Implementation Plan
 
-- [ ] 1. (P) EntireTree モデルと DB スキーマの拡張
+- [x] 1. (P) EntireTree モデルと DB スキーマの拡張
   - 3分咲き・5分咲きモデルの判定結果（vitality, vitality_real, weight）を保存する6カラムを EntireTree モデルに追加する
   - 対応する Alembic マイグレーションを作成し、全カラムを NULL 許可とする
   - 既存レコードへの影響がないことを確認する（デフォルト NULL）

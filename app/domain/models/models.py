@@ -120,6 +120,16 @@ class EntireTree(Base):
     vitality_bloom: Mapped[Optional[int]] = mapped_column(Integer)
     vitality_bloom_real: Mapped[Optional[float]] = mapped_column(Double)
     vitality_bloom_weight: Mapped[Optional[float]] = mapped_column(Double)
+    vitality_bloom_30: Mapped[Optional[int]] = mapped_column(Integer)
+    vitality_bloom_30_real: Mapped[Optional[float]] = mapped_column(
+        Double)
+    vitality_bloom_30_weight: Mapped[Optional[float]] = mapped_column(
+        Double)
+    vitality_bloom_50: Mapped[Optional[int]] = mapped_column(Integer)
+    vitality_bloom_50_real: Mapped[Optional[float]] = mapped_column(
+        Double)
+    vitality_bloom_50_weight: Mapped[Optional[float]] = mapped_column(
+        Double)
     latitude: Mapped[float] = mapped_column(Double)
     longitude: Mapped[float] = mapped_column(Double)
     image_obj_key: Mapped[str] = mapped_column(String(255))
