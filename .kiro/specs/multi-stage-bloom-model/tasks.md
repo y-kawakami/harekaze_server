@@ -12,7 +12,7 @@
   - 既存の calculate_bloom_status() への影響がないことを確認する
   - _Requirements: 2.1, 2.2_
 
-- [ ] 3. (P) AIService の新モデル呼び出し対応
+- [x] 3. (P) AIService の新モデル呼び出し対応
   - 3分咲きモデル（bloom_30_percent）の API 呼び出しメソッドを追加する
   - 5分咲きモデル（bloom_50_percent）の API 呼び出しメソッドを追加する
   - 既存の呼び出しパターン（_call_api_with_bytes）とレスポンス解析を踏襲する

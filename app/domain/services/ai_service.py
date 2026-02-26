@@ -61,6 +61,24 @@ class TreeVitalityNoleafResponse:
     data: Optional[TreeVitalityNoleafResult] = None
 
 
+@dataclass
+class TreeVitalityBloom30Result:
+    """木の活力（3分咲き時）分析の結果を表すデータクラス"""
+    vitality: int
+    vitality_real: float
+    vitality_probs: List[float]
+    debug_image_key: Optional[str] = None
+
+
+@dataclass
+class TreeVitalityBloom50Result:
+    """木の活力（5分咲き時）分析の結果を表すデータクラス"""
+    vitality: int
+    vitality_real: float
+    vitality_probs: List[float]
+    debug_image_key: Optional[str] = None
+
+
 class AIService:
     """
     AI分析サービスクラス
@@ -87,6 +105,12 @@ class AIService:
         self.api_path_stem = "/analyze/image/stem"
         self.api_path_vitality_bloom = "/analyze/image/vitality/bloom"
         self.api_path_vitality_noleaf = "/analyze/image/vitality/noleaf"
+        self.api_path_vitality_bloom_30 = (
+            "/analyze/image/vitality/bloom_30_percent"
+        )
+        self.api_path_vitality_bloom_50 = (
+            "/analyze/image/vitality/bloom_50_percent"
+        )
 
         # S3関連の設定（S3からの画像取得などで必要な場合）
         self.region_name = region_name
@@ -251,6 +275,106 @@ class AIService:
 
         # 結果を解析してデータクラスで返す
         return TreeVitalityNoleafResult(
+            vitality=result.get('vitality', 0),
+            vitality_real=result.get('vitality_real', 0.0),
+            vitality_probs=result.get('vitality_probs', []),
+            debug_image_key=result.get('debug_image_key')
+        )
+
+    async def analyze_tree_vitality_bloom_30(
+        self,
+        image_bytes: bytes,
+        filename: str,
+        output_bucket: str,
+        output_key: str
+    ) -> TreeVitalityBloom30Result:
+        """
+        木の活力（3分咲き時）分析用のAPIを呼び出し、結果を処理する
+
+        Args:
+            image_bytes: 分析する画像のバイトデータ
+            filename: ファイル名（拡張子を含む）
+            output_bucket: 結果画像を保存するS3バケット名
+            output_key: 出力ファイルのキー
+
+        Returns:
+            TreeVitalityBloom30Result: 木の活力分析の結果
+
+        Raises:
+            ValueError: APIの呼び出しに失敗した場合
+            ValueError: APIエンドポイントが設定されていない場合
+        """
+        if not self.api_endpoint:
+            raise ValueError("AI_API_ENDPOINTが設定されていません")
+
+        data = {
+            'output_bucket': output_bucket,
+            'output_key': output_key
+        }
+
+        response = await self._call_api_with_bytes(
+            self.api_path_vitality_bloom_30,
+            data, image_bytes, filename
+        )
+
+        if (isinstance(response, dict)
+                and 'status' in response
+                and 'data' in response):
+            result = response.get('data', {})
+        else:
+            result = response
+
+        return TreeVitalityBloom30Result(
+            vitality=result.get('vitality', 0),
+            vitality_real=result.get('vitality_real', 0.0),
+            vitality_probs=result.get('vitality_probs', []),
+            debug_image_key=result.get('debug_image_key')
+        )
+
+    async def analyze_tree_vitality_bloom_50(
+        self,
+        image_bytes: bytes,
+        filename: str,
+        output_bucket: str,
+        output_key: str
+    ) -> TreeVitalityBloom50Result:
+        """
+        木の活力（5分咲き時）分析用のAPIを呼び出し、結果を処理する
+
+        Args:
+            image_bytes: 分析する画像のバイトデータ
+            filename: ファイル名（拡張子を含む）
+            output_bucket: 結果画像を保存するS3バケット名
+            output_key: 出力ファイルのキー
+
+        Returns:
+            TreeVitalityBloom50Result: 木の活力分析の結果
+
+        Raises:
+            ValueError: APIの呼び出しに失敗した場合
+            ValueError: APIエンドポイントが設定されていない場合
+        """
+        if not self.api_endpoint:
+            raise ValueError("AI_API_ENDPOINTが設定されていません")
+
+        data = {
+            'output_bucket': output_bucket,
+            'output_key': output_key
+        }
+
+        response = await self._call_api_with_bytes(
+            self.api_path_vitality_bloom_50,
+            data, image_bytes, filename
+        )
+
+        if (isinstance(response, dict)
+                and 'status' in response
+                and 'data' in response):
+            result = response.get('data', {})
+        else:
+            result = response
+
+        return TreeVitalityBloom50Result(
             vitality=result.get('vitality', 0),
             vitality_real=result.get('vitality_real', 0.0),
             vitality_probs=result.get('vitality_probs', []),
