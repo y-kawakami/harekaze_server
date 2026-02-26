@@ -32,6 +32,8 @@ from app.domain.models.models import User
 from app.domain.services.ai_service import AIService, get_ai_service
 from app.domain.services.flowering_date_service import (
     FloweringDateService, get_flowering_date_service)
+from app.domain.services.multi_stage_bloom_service import (
+    MultiStageBloomService, get_multi_stage_bloom_service)
 from app.domain.services.fullview_validation_service import (
     FullviewValidationService, get_fullview_validation_service)
 from app.domain.services.image_service import ImageService, get_image_service
@@ -112,6 +114,8 @@ async def create_tree(
         FullviewValidationLogRepository
     ) = Depends(
         get_fullview_validation_log_repository_dependency),
+    multi_stage_bloom_service: MultiStageBloomService = Depends(
+        get_multi_stage_bloom_service, use_cache=True),
 ):
     """
     桜の木全体の写真を登録する。
@@ -131,6 +135,7 @@ async def create_tree(
         flowering_date_service=flowering_date_service,
         fullview_validation_service=fullview_validation_service,
         fullview_validation_log_repository=fullview_validation_log_repository,
+        multi_stage_bloom_service=multi_stage_bloom_service,
         photo_date=date,
         is_approved_debug=APPROVED_DEBUG
     )

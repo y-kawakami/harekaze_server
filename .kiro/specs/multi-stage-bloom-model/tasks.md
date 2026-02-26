@@ -43,15 +43,15 @@
   - Task 1 の完了が前提
   - _Requirements: 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 6. create_tree の統合改修
-- [ ] 6.1 多段階モデル判定フローの組み込み
+- [x] 6. create_tree の統合改修
+- [x] 6.1 多段階モデル判定フローの組み込み
   - FloweringDateService.find_nearest_spot() で最寄りスポットを取得し、MultiStageBloomService.determine_bloom_stage() で開花段階を判定する処理を組み込む
   - 判定結果に基づき、単一モデル段階では1モデル、ブレンド段階では2モデルを asyncio.gather で並列呼び出しする
   - MultiStageBloomService を依存性注入で受け取る
   - Task 3, 4.1 の完了が前提
   - _Requirements: 1.1, 3.1, 3.2, 3.3, 3.4_
 
-- [ ] 6.2 ブレンド計算と結果保存の実装
+- [x] 6.2 ブレンド計算と結果保存の実装
   - ブレンド段階での vitality_real の重み付き合算（model_a.vitality_real * weight_a + model_b.vitality_real * weight_b）を実装する
   - 単一モデル段階では使用モデルの重みを 1.0、未使用モデルの重みを 0.0 として保存する
   - ブレンド済み vitality_real を四捨五入して vitality（1〜5整数）を算出する
@@ -59,7 +59,7 @@
   - Task 5 の完了が前提
   - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 4.6, 5.1, 5.2, 5.3, 5.4_
 
-- [ ] 6.3 フォールバックとエラーハンドリングの実装
+- [x] 6.3 フォールバックとエラーハンドリングの実装
   - determine_bloom_stage() が None を返した場合に従来の estimate_vitality() による2モデルブレンド方式にフォールバックする
   - bloom_30/bloom_50 の API 呼び出し失敗時はエラーをログに記録しエラーレスポンスを返却する（フォールバックなし）
   - タイムアウト時は既存のリトライロジックに従う
