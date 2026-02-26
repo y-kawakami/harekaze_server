@@ -88,6 +88,97 @@
             border-color: var(--primary-color);
         }
 
+        input[type="text"],
+        input[type="number"],
+        input[type="date"] {
+            display: block;
+            width: 100%;
+            padding: 10px 12px;
+            background-color: white;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+            box-sizing: border-box;
+        }
+
+        input[type="text"]:hover,
+        input[type="number"]:hover,
+        input[type="date"]:hover {
+            border-color: var(--primary-color);
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(255, 105, 180, 0.2);
+        }
+
+        .radio-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin-top: 8px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: normal;
+            font-size: 15px;
+            cursor: pointer;
+            padding: 8px 14px;
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .radio-group label:hover {
+            border-color: var(--primary-color);
+            background-color: #FFF0F5;
+        }
+
+        .radio-group input[type="radio"]:checked + span {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .radio-group label:has(input:checked) {
+            border-color: var(--primary-color);
+            background-color: #FFF0F5;
+        }
+
+        .location-fields {
+            display: none;
+            margin-top: 15px;
+            padding: 20px;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            background-color: #FAFAFA;
+        }
+
+        .location-fields.visible {
+            display: block;
+        }
+
+        .location-fields .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .location-fields .form-row .field {
+            flex: 1;
+        }
+
+        .location-fields label {
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
         .form-container form button[type="submit"] {
             display: inline-block;
             padding: 12px 30px;
@@ -305,6 +396,61 @@
                 <input type="file" id="image" name="image" accept="image/*" required>
                 <p class="help-text">※桜の木全体が写っている写真を選択してください。</p>
             </div>
+
+            <div class="form-group">
+                <label>解析モード</label>
+                <div class="radio-group">
+                    <label>
+                        <input type="radio" name="mode" value="noleaf"
+                            {{ 'checked' if mode == 'noleaf' else '' }}>
+                        <span>枝のみ</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="mode" value="bloom_30"
+                            {{ 'checked' if mode == 'bloom_30' else '' }}>
+                        <span>3分咲き</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="mode" value="bloom_50"
+                            {{ 'checked' if mode == 'bloom_50' else '' }}>
+                        <span>5分咲き</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="mode" value="bloom"
+                            {{ 'checked' if mode == 'bloom' else '' }}>
+                        <span>満開</span>
+                    </label>
+                    <label>
+                        <input type="radio" name="mode" value="location_date"
+                            {{ 'checked' if mode == 'location_date' else '' }}>
+                        <span>緯度経度と撮影日</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="locationFields" class="location-fields {{ 'visible' if mode == 'location_date' else '' }}">
+                <div class="form-row">
+                    <div class="field">
+                        <label for="latitude">緯度</label>
+                        <input type="number" id="latitude" name="latitude" step="0.000001"
+                            placeholder="例: 35.681236" value="{{ latitude }}">
+                    </div>
+                    <div class="field">
+                        <label for="longitude">経度</label>
+                        <input type="number" id="longitude" name="longitude" step="0.000001"
+                            placeholder="例: 139.767125" value="{{ longitude }}">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="field">
+                        <label for="photo_date">撮影日</label>
+                        <input type="date" id="photo_date" name="photo_date"
+                            value="{{ photo_date }}">
+                    </div>
+                    <div class="field"></div>
+                </div>
+            </div>
+
             <button type="submit" id="submitButton">解析する</button>
         </form>
     </div>
@@ -318,6 +464,13 @@
                 <th>値</th>
                 <th>説明</th>
             </tr>
+            {% if result.bloom_stage is not none %}
+            <tr>
+                <td>開花段階</td>
+                <td class="value-detected">{{ result.bloom_stage }}</td>
+                <td>判定された開花段階</td>
+            </tr>
+            {% endif %}
             <tr>
                 <td>総合元気度（1-5）</td>
                 <td class="{{ 'value-detected' if result.vitality is not none else 'value-not-detected' }}">
@@ -332,54 +485,90 @@
                 </td>
                 <td>1: 元気 〜 5: 元気がない（実数値）</td>
             </tr>
+            {% if result.vitality_bloom is not none %}
             <tr>
                 <td>開花時元気度（1-5）</td>
-                <td class="{{ 'value-detected' if result.vitality_bloom is not none else 'value-not-detected' }}">
-                    {{ result.vitality_bloom if result.vitality_bloom is not none else "検出できませんでした" }}
-                </td>
+                <td class="value-detected">{{ result.vitality_bloom }}</td>
                 <td>1: 元気 〜 5: 元気がない</td>
             </tr>
             <tr>
                 <td>開花時元気度（実数値）</td>
-                <td class="{{ 'value-detected' if result.vitality_bloom_real is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_bloom_real) if result.vitality_bloom_real is not none else
-                    "検出できませんでした" }}
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_real) if result.vitality_bloom_real is not none else "-" }}
                 </td>
                 <td>1: 元気 〜 5: 元気がない（実数値）</td>
             </tr>
             <tr>
                 <td>開花時元気度の重み</td>
-                <td
-                    class="{{ 'value-detected' if result.vitality_bloom_weight is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_bloom_weight) if result.vitality_bloom_weight is not none else
-                    "検出できませんでした" }}
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_weight) if result.vitality_bloom_weight is not none else "-" }}
                 </td>
                 <td>総合元気度の計算に使用される開花時元気度の重み</td>
             </tr>
+            {% endif %}
+            {% if result.vitality_noleaf is not none %}
             <tr>
                 <td>葉なし時元気度（1-5）</td>
-                <td class="{{ 'value-detected' if result.vitality_noleaf is not none else 'value-not-detected' }}">
-                    {{ result.vitality_noleaf if result.vitality_noleaf is not none else "検出できませんでした" }}
-                </td>
+                <td class="value-detected">{{ result.vitality_noleaf }}</td>
                 <td>1: 元気 〜 5: 元気がない</td>
             </tr>
             <tr>
                 <td>葉なし時元気度（実数値）</td>
-                <td class="{{ 'value-detected' if result.vitality_noleaf_real is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_noleaf_real) if result.vitality_noleaf_real is not none else
-                    "検出できませんでした" }}
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_noleaf_real) if result.vitality_noleaf_real is not none else "-" }}
                 </td>
                 <td>1: 元気 〜 5: 元気がない（実数値）</td>
             </tr>
             <tr>
                 <td>葉なし時元気度の重み</td>
-                <td
-                    class="{{ 'value-detected' if result.vitality_noleaf_weight is not none else 'value-not-detected' }}">
-                    {{ "%.2f"|format(result.vitality_noleaf_weight) if result.vitality_noleaf_weight is not none else
-                    "検出できませんでした" }}
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_noleaf_weight) if result.vitality_noleaf_weight is not none else "-" }}
                 </td>
                 <td>総合元気度の計算に使用される葉なし時元気度の重み</td>
             </tr>
+            {% endif %}
+            {% if result.vitality_bloom_30 is not none %}
+            <tr>
+                <td>3分咲き時元気度（1-5）</td>
+                <td class="value-detected">{{ result.vitality_bloom_30 }}</td>
+                <td>1: 元気 〜 5: 元気がない</td>
+            </tr>
+            <tr>
+                <td>3分咲き時元気度（実数値）</td>
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_30_real) if result.vitality_bloom_30_real is not none else "-" }}
+                </td>
+                <td>1: 元気 〜 5: 元気がない（実数値）</td>
+            </tr>
+            <tr>
+                <td>3分咲き時元気度の重み</td>
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_30_weight) if result.vitality_bloom_30_weight is not none else "-" }}
+                </td>
+                <td>総合元気度の計算に使用される3分咲き時元気度の重み</td>
+            </tr>
+            {% endif %}
+            {% if result.vitality_bloom_50 is not none %}
+            <tr>
+                <td>5分咲き時元気度（1-5）</td>
+                <td class="value-detected">{{ result.vitality_bloom_50 }}</td>
+                <td>1: 元気 〜 5: 元気がない</td>
+            </tr>
+            <tr>
+                <td>5分咲き時元気度（実数値）</td>
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_50_real) if result.vitality_bloom_50_real is not none else "-" }}
+                </td>
+                <td>1: 元気 〜 5: 元気がない（実数値）</td>
+            </tr>
+            <tr>
+                <td>5分咲き時元気度の重み</td>
+                <td class="value-detected">
+                    {{ "%.2f"|format(result.vitality_bloom_50_weight) if result.vitality_bloom_50_weight is not none else "-" }}
+                </td>
+                <td>総合元気度の計算に使用される5分咲き時元気度の重み</td>
+            </tr>
+            {% endif %}
             {% if result.fullview_validation is not none %}
             <tr>
                 <td>全景判定</td>
@@ -415,30 +604,55 @@
                 <img src="{{ result.noleaf_image_url }}" alt="葉なし時解析画像" class="result-image">
             </div>
             {% endif %}
+
+            {% if result.bloom_30_image_url %}
+            <div class="image-card">
+                <h4>3分咲き時解析画像</h4>
+                <img src="{{ result.bloom_30_image_url }}" alt="3分咲き時解析画像" class="result-image">
+            </div>
+            {% endif %}
+
+            {% if result.bloom_50_image_url %}
+            <div class="image-card">
+                <h4>5分咲き時解析画像</h4>
+                <img src="{{ result.bloom_50_image_url }}" alt="5分咲き時解析画像" class="result-image">
+            </div>
+            {% endif %}
         </div>
     </div>
     {% endif %}
 
     <script>
-        document.getElementById('analyzeForm').addEventListener('submit', function (e) {
-            const button = document.getElementById('submitButton');
-            const loadingOverlay = document.querySelector('.loading-overlay');
+        function toggleLocationFields() {
+            var checked = document.querySelector('input[name="mode"]:checked');
+            var locationFields = document.getElementById('locationFields');
+            if (checked && checked.value === 'location_date') {
+                locationFields.classList.add('visible');
+            } else {
+                locationFields.classList.remove('visible');
+            }
+        }
 
-            // ボタンをローディング状態に
+        // ラジオボタンの変更イベント
+        document.querySelectorAll('input[name="mode"]').forEach(function (radio) {
+            radio.addEventListener('change', toggleLocationFields);
+        });
+
+        // フォーム送信時のローディング
+        document.getElementById('analyzeForm').addEventListener('submit', function (e) {
+            var button = document.getElementById('submitButton');
+            var loadingOverlay = document.querySelector('.loading-overlay');
+
             button.classList.add('loading');
             button.disabled = true;
-
-            // オーバーレイを表示
             loadingOverlay.classList.add('active');
-
-            // フォームの送信は通常通り行う（e.preventDefault()は不要）
         });
 
         // ページバック時にローディング状態をリセット
         window.addEventListener('pageshow', function (event) {
             if (event.persisted) {
-                const button = document.getElementById('submitButton');
-                const loadingOverlay = document.querySelector('.loading-overlay');
+                var button = document.getElementById('submitButton');
+                var loadingOverlay = document.querySelector('.loading-overlay');
 
                 button.classList.remove('loading');
                 button.disabled = false;

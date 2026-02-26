@@ -1,4 +1,3 @@
-import asyncio
 import datetime
 import html
 import os
@@ -19,12 +18,11 @@ from app.application.exceptions import (DatabaseError,
                                         TreeNotDetectedError)
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
+from app.application.tree.run_vitality_models import (
+    run_vitality_models,
+)
 from app.domain.services.ai_service import (
     AIService,
-    TreeVitalityBloom30Result,
-    TreeVitalityBloom50Result,
-    TreeVitalityBloomResult,
-    TreeVitalityNoleafResult,
 )
 from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.fullview_validation_service import (
@@ -45,13 +43,6 @@ from app.infrastructure.repositories.tree_repository import TreeRepository
 from app.interfaces.schemas.tree import TreeResponse
 
 STAGE = os.getenv("stage", "dev")
-
-_VitalityResult = (
-    TreeVitalityNoleafResult
-    | TreeVitalityBloomResult
-    | TreeVitalityBloom30Result
-    | TreeVitalityBloom50Result
-)
 
 
 async def create_tree(
@@ -243,229 +234,42 @@ async def create_tree(
     # 画像アップロード準備
     orig_suffix = str(uuid.uuid4())
     orig_image_key = f"{tree_id}/entire_orig_{orig_suffix}.jpg"
-    bucket_name = image_service.get_contents_bucket_name()
 
-    # 各モデルの結果・重みを初期化
-    noleaf_result_data: _VitalityResult | None = None
-    bloom_result_data: _VitalityResult | None = None
-    bloom_30_result_data: _VitalityResult | None = None
-    bloom_50_result_data: _VitalityResult | None = None
-    noleaf_weight: float = 0.0
-    bloom_weight: float = 0.0
-    bloom_30_weight: float | None = None
-    bloom_50_weight: float | None = None
-    debug_image_obj_key: str | None = None
-    secondary_debug_key: str | None = None
-    final_vitality = 0
-    final_vitality_real = 0.0
-
-    if bloom_stage_result is not None:
-        # === 多段階モデルフロー (Req 3.1-3.4, 4.1-4.6) ===
-        logger.info(
-            "多段階モデルフロー: "
-            + f"stage={bloom_stage_result.stage}, "
-            + "models="
-            + f"{[(m.model, m.weight) for m in bloom_stage_result.models]}"
-        )
-
-        models_needed = {
-            mw.model for mw in bloom_stage_result.models
-        }
-
-        # デバッグ画像キーの生成
-        debug_keys: dict[str, str] = {}
-        for mt in models_needed:
-            debug_keys[mt] = (
-                f"{tree_id}/entire_debug_{mt}"
-                + f"_{orig_suffix}.jpg"
-            )
-
-        # 画像アップロード + 必要なモデルのみ並列呼び出し
-        start_time = time_module.time()
-
-        # 各モデルのコルーチンを準備
-        upload_coro = image_service.upload_image(
-            image_data, orig_image_key
-        )
-        model_coros: dict[str, asyncio.Task[_VitalityResult]] = {}
-        for mt in models_needed:
-            dk = debug_keys[mt]
-            full_dk = image_service.get_full_object_key(dk)
-            if mt == "noleaf":
-                model_coros[mt] = asyncio.ensure_future(
-                    ai_service.analyze_tree_vitality_noleaf(
-                        image_bytes=image_data,
-                        filename="image.jpg",
-                        output_bucket=bucket_name,
-                        output_key=full_dk,
-                    )
-                )
-            elif mt == "bloom_30":
-                model_coros[mt] = asyncio.ensure_future(
-                    ai_service.analyze_tree_vitality_bloom_30(
-                        image_bytes=image_data,
-                        filename="image.jpg",
-                        output_bucket=bucket_name,
-                        output_key=full_dk,
-                    )
-                )
-            elif mt == "bloom_50":
-                model_coros[mt] = asyncio.ensure_future(
-                    ai_service.analyze_tree_vitality_bloom_50(
-                        image_bytes=image_data,
-                        filename="image.jpg",
-                        output_bucket=bucket_name,
-                        output_key=full_dk,
-                    )
-                )
-            else:
-                model_coros[mt] = asyncio.ensure_future(
-                    ai_service.analyze_tree_vitality_bloom(
-                        image_bytes=image_data,
-                        filename="image.jpg",
-                        output_bucket=bucket_name,
-                        output_key=full_dk,
-                    )
-                )
-
-        # アップロードとモデル呼び出しを並列実行
-        model_labels = list(model_coros.keys())
-        model_tasks = [model_coros[k] for k in model_labels]
-        all_results = await asyncio.gather(
-            upload_coro, *model_tasks
-        )
-
-        upload_result = all_results[0]
-        if upload_result is False:
-            logger.error("画像のアップロードに失敗しました")
-            raise ImageUploadError("internal")
-
-        # モデル結果をマッピング
-        model_results: dict[str, _VitalityResult] = {}
-        for i, label in enumerate(model_labels):
-            r = all_results[i + 1]
-            # asyncio.gather preserves order; results are vitality types
-            assert isinstance(  # noqa: S101
-                r,
-                (
-                    TreeVitalityNoleafResult,
-                    TreeVitalityBloomResult,
-                    TreeVitalityBloom30Result,
-                    TreeVitalityBloom50Result,
-                ),
-            )
-            model_results[label] = r
-
-        # 重み付きブレンド計算 (Req 4.5, 4.6)
-        final_vitality_real = 0.0
-        for mw in bloom_stage_result.models:
-            vr = model_results[mw.model].vitality_real
-            final_vitality_real += vr * mw.weight
-        final_vitality = max(
-            1, min(5, round(final_vitality_real))
-        )
-
-        # 各モデルの weight を取得（未使用=0.0）
-        weight_map = {
-            mw.model: mw.weight
-            for mw in bloom_stage_result.models
-        }
-        noleaf_weight = weight_map.get("noleaf", 0.0)
-        bloom_weight = weight_map.get("bloom", 0.0)
-        bloom_30_weight = weight_map.get("bloom_30", 0.0)
-        bloom_50_weight = weight_map.get("bloom_50", 0.0)
-
-        # 各モデルの結果を取得（未呼び出しは None）
-        noleaf_result_data = model_results.get("noleaf")
-        bloom_result_data = model_results.get("bloom")
-        bloom_30_result_data = model_results.get("bloom_30")
-        bloom_50_result_data = model_results.get("bloom_50")
-
-        # デバッグ画像キーの選定（主モデルを obj_key に）
-        primary_model = bloom_stage_result.models[0].model
-        debug_image_obj_key = debug_keys.get(primary_model)
-        if len(bloom_stage_result.models) > 1:
-            sec_model = bloom_stage_result.models[1].model
-            secondary_debug_key = debug_keys.get(sec_model)
-
-        end_time = time_module.time()
-        logger.info(
-            "多段階モデル解析処理: "
-            + f"{(end_time - start_time) * 1000:.2f}ms"
-        )
-        logger.info(
-            "多段階モデル結果: "
-            + f"stage={bloom_stage_result.stage}, "
-            + f"vitality={final_vitality}, "
-            + f"vitality_real={final_vitality_real:.4f}"
-        )
+    # フォールバック時の重み計算
+    if bloom_stage_result is None:
+        fb_weights = spot.estimate_vitality(target_datetime)
     else:
-        # === フォールバック: 従来の2モデルブレンド (Req 6.1, 6.2) ===
-        logger.warning(
-            "多段階判定不可のため従来の2モデルブレンドに"
-            + "フォールバック"
-        )
+        fb_weights = (0.5, 0.5)
 
-        start_time = time_module.time()
-        debug_bloom_key = (
-            f"{tree_id}/entire_debug_bloom_{orig_suffix}.jpg"
-        )
-        debug_noleaf_key = (
-            f"{tree_id}/entire_debug_noleaf_{orig_suffix}.jpg"
-        )
+    start_time = time_module.time()
+    model_result = await run_vitality_models(
+        image_data=image_data,
+        tree_id=tree_id,
+        orig_suffix=orig_suffix,
+        orig_image_key=orig_image_key,
+        image_service=image_service,
+        ai_service=ai_service,
+        bloom_stage_result=bloom_stage_result,
+        fallback_weights=fb_weights,
+    )
+    end_time = time_module.time()
+    logger.info(
+        "モデル解析処理: "
+        + f"{(end_time - start_time) * 1000:.2f}ms"
+    )
 
-        upload_result, bloom_result_fb, noleaf_result_fb = (
-            await asyncio.gather(
-                image_service.upload_image(
-                    image_data, orig_image_key
-                ),
-                ai_service.analyze_tree_vitality_bloom(
-                    image_bytes=image_data,
-                    filename="image.jpg",
-                    output_bucket=bucket_name,
-                    output_key=image_service.get_full_object_key(
-                        debug_bloom_key
-                    ),
-                ),
-                ai_service.analyze_tree_vitality_noleaf(
-                    image_bytes=image_data,
-                    filename="image.jpg",
-                    output_bucket=bucket_name,
-                    output_key=image_service.get_full_object_key(
-                        debug_noleaf_key
-                    ),
-                ),
-            )
-        )
-
-        if upload_result is False:
-            logger.error("画像のアップロードに失敗しました")
-            raise ImageUploadError("internal")
-
-        noleaf_weight, bloom_weight = spot.estimate_vitality(
-            target_datetime
-        )
-        logger.debug(
-            "フォールバック比率: "
-            + f"花なし {noleaf_weight}, "
-            + f"花あり {bloom_weight} "
-            + f"(対象日時: {target_datetime})"
-        )
-        final_vitality_real = (
-            noleaf_result_fb.vitality_real * noleaf_weight
-            + bloom_result_fb.vitality_real * bloom_weight
-        )
-        final_vitality = round(final_vitality_real)
-
-        noleaf_result_data = noleaf_result_fb
-        bloom_result_data = bloom_result_fb
-        debug_image_obj_key = debug_bloom_key
-
-        end_time = time_module.time()
-        logger.info(
-            "フォールバック解析処理: "
-            + f"{(end_time - start_time) * 1000:.2f}ms"
-        )
+    final_vitality = model_result.final_vitality
+    final_vitality_real = model_result.final_vitality_real
+    noleaf_result_data = model_result.noleaf_result
+    bloom_result_data = model_result.bloom_result
+    bloom_30_result_data = model_result.bloom_30_result
+    bloom_50_result_data = model_result.bloom_50_result
+    noleaf_weight = model_result.noleaf_weight
+    bloom_weight = model_result.bloom_weight
+    bloom_30_weight = model_result.bloom_30_weight
+    bloom_50_weight = model_result.bloom_50_weight
+    debug_image_obj_key = model_result.debug_image_obj_key
+    secondary_debug_key = model_result.debug_image_obj2_key
 
     # 人物をぼかす
     start_time = time_module.time()

@@ -48,9 +48,27 @@ class TreeVitalityResponse(BaseModel):
         None, description="葉なし時元気度（実数値）", ge=1, le=5)
     vitality_noleaf_weight: Optional[float] = Field(
         None, description="葉なし時元気度の重み", ge=0, le=1)
+    vitality_bloom_30: Optional[int] = Field(
+        None, description="3分咲き時元気度（1-5）", ge=1, le=5)
+    vitality_bloom_30_real: Optional[float] = Field(
+        None, description="3分咲き時元気度（実数値）", ge=1, le=5)
+    vitality_bloom_30_weight: Optional[float] = Field(
+        None, description="3分咲き時元気度の重み", ge=0, le=1)
+    vitality_bloom_50: Optional[int] = Field(
+        None, description="5分咲き時元気度（1-5）", ge=1, le=5)
+    vitality_bloom_50_real: Optional[float] = Field(
+        None, description="5分咲き時元気度（実数値）", ge=1, le=5)
+    vitality_bloom_50_weight: Optional[float] = Field(
+        None, description="5分咲き時元気度の重み", ge=0, le=1)
     bloom_image_url: Optional[str] = Field(
         None, description="開花時解析画像のURL（デバッグ用）")
     noleaf_image_url: Optional[str] = Field(
         None, description="葉なし時解析画像のURL（デバッグ用）")
+    bloom_30_image_url: Optional[str] = Field(
+        None, description="3分咲き時解析画像のURL（デバッグ用）")
+    bloom_50_image_url: Optional[str] = Field(
+        None, description="5分咲き時解析画像のURL（デバッグ用）")
+    bloom_stage: Optional[str] = Field(
+        None, description="判定された開花段階")
     fullview_validation: Optional[FullviewValidationResponse] = Field(
         None, description="全景バリデーション結果（未実行時は None）")
