@@ -37,7 +37,7 @@
   - フォールバック条件（None 返却）の各パターン（オフセット未取得、基準期間0）を検証する
   - _Requirements: 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8, 1.9, 1.10, 2.2, 2.3, 2.4_
 
-- [ ] 5. (P) TreeRepository の拡張
+- [x] 5. (P) TreeRepository の拡張
   - TreeRepository の create_tree() に3分咲き・5分咲きモデルの判定結果パラメータ（vitality, vitality_real, weight）を Optional で追加する
   - EntireTree オブジェクト生成時に新カラムへ値を設定する
   - Task 1 の完了が前提
