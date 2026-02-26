@@ -626,17 +626,25 @@
         function toggleLocationFields() {
             var checked = document.querySelector('input[name="mode"]:checked');
             var locationFields = document.getElementById('locationFields');
-            if (checked && checked.value === 'location_date') {
+            var inputs = locationFields.querySelectorAll('input');
+            var isLocation = checked && checked.value === 'location_date';
+            if (isLocation) {
                 locationFields.classList.add('visible');
             } else {
                 locationFields.classList.remove('visible');
             }
+            inputs.forEach(function (input) {
+                input.disabled = !isLocation;
+            });
         }
 
         // ラジオボタンの変更イベント
         document.querySelectorAll('input[name="mode"]').forEach(function (radio) {
             radio.addEventListener('change', toggleLocationFields);
         });
+
+        // 初期状態を設定
+        toggleLocationFields();
 
         // フォーム送信時のローディング
         document.getElementById('analyzeForm').addEventListener('submit', function (e) {

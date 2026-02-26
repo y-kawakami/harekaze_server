@@ -202,9 +202,16 @@ async def _run_multi_stage(
     for mw in bloom_stage_result.models:
         vr = model_results[mw.model].vitality_real
         final_vitality_real += vr * mw.weight
-    final_vitality = max(
-        1, min(5, round(final_vitality_real))
-    )
+
+    if len(bloom_stage_result.models) == 1:
+        # 単一モデル: argmax をそのまま使用
+        sole = model_results[bloom_stage_result.models[0].model]
+        final_vitality = sole.vitality
+    else:
+        # 複数モデルブレンド: 期待値を丸める
+        final_vitality = max(
+            1, min(5, round(final_vitality_real))
+        )
 
     # 各モデルの weight を取得（未使用=0.0）
     weight_map = {
