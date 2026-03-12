@@ -117,21 +117,11 @@ class MultiStageBloomService:
             )
 
         if days_from_flowering < corrected_3bu_days:
-            # 開花ブレンド期間 (Req 1.5)
-            progress = (
-                days_from_flowering / corrected_3bu_days
-                if corrected_3bu_days > 0
-                else 0.0
-            )
+            # 開花〜3分咲き前日は花なしモデルのみ (Req 1.5)
             return BloomStageResult(
                 stage="early_blend",
                 models=[
-                    ModelWeight(
-                        model="noleaf", weight=1.0 - progress
-                    ),
-                    ModelWeight(
-                        model="bloom_30", weight=progress
-                    ),
+                    ModelWeight(model="noleaf", weight=1.0)
                 ],
             )
 

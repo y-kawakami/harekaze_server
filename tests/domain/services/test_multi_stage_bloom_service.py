@@ -35,13 +35,13 @@ class TestBloomStageResult:
     def test_blend_result(self):
         """ブレンドモデルの結果を作成できること"""
         result = BloomStageResult(
-            stage="early_blend",
+            stage="late_blend",
             models=[
-                ModelWeight(model="noleaf", weight=0.6),
-                ModelWeight(model="bloom_30", weight=0.4),
+                ModelWeight(model="bloom", weight=0.6),
+                ModelWeight(model="noleaf", weight=0.4),
             ],
         )
-        assert result.stage == "early_blend"
+        assert result.stage == "late_blend"
         assert len(result.models) == 2
         total_weight = sum(m.weight for m in result.models)
         assert abs(total_weight - 1.0) < 1e-9
@@ -99,19 +99,14 @@ class TestDetermineBloomStageBasic:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        assert len(result.models) == 2
-        # 開花日当日: noleaf=1.0, bloom_30=0.0
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert noleaf.weight == 1.0
-        assert bloom_30.weight == 0.0
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_early_blend_midpoint(self, service):
         """開花ブレンド期間の中間点 (Req 1.5)"""
         # ratio=1.0 なので corrected_3bu=2日
-        # 開花日+1日 → progress = 1/2 = 0.5
+        # 開花日+1日 → noleaf のみ
         result = service.determine_bloom_stage(
             flowering_date=date(2025, 4, 17),
             full_bloom_date=date(2025, 4, 22),
@@ -121,12 +116,9 @@ class TestDetermineBloomStageBasic:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert abs(noleaf.weight - 0.5) < 1e-9
-        assert abs(bloom_30.weight - 0.5) < 1e-9
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_bloom_30_at_corrected_3bu_date(self, service):
         """補正済み3分咲きオフセット日は「3分咲き」(Req 1.6)"""
@@ -411,7 +403,7 @@ class TestBlendWeights:
             yield svc
 
     def test_early_blend_start(self, service):
-        """開花ブレンド開始時: noleaf=1.0, bloom_30=0.0"""
+        """開花ブレンド開始時: noleaf=1.0"""
         # ratio=1.0 (10/10), corrected_3bu=4
         result = service.determine_bloom_stage(
             flowering_date=date(2025, 4, 10),
@@ -422,16 +414,12 @@ class TestBlendWeights:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert noleaf.weight == 1.0
-        assert bloom_30.weight == 0.0
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_early_blend_quarter(self, service):
-        """開花ブレンド 1/4 時点: noleaf=0.75, bloom_30=0.25"""
-        # 1日目/4日 = 0.25
+        """開花ブレンド 1/4 時点: noleaf=1.0"""
         result = service.determine_bloom_stage(
             flowering_date=date(2025, 4, 10),
             full_bloom_date=date(2025, 4, 20),
@@ -441,16 +429,12 @@ class TestBlendWeights:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert abs(noleaf.weight - 0.75) < 1e-9
-        assert abs(bloom_30.weight - 0.25) < 1e-9
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_early_blend_half(self, service):
-        """開花ブレンド中間点: noleaf=0.5, bloom_30=0.5"""
-        # 2日目/4日 = 0.5
+        """開花ブレンド中間点: noleaf=1.0"""
         result = service.determine_bloom_stage(
             flowering_date=date(2025, 4, 10),
             full_bloom_date=date(2025, 4, 20),
@@ -460,16 +444,12 @@ class TestBlendWeights:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert abs(noleaf.weight - 0.5) < 1e-9
-        assert abs(bloom_30.weight - 0.5) < 1e-9
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_early_blend_three_quarter(self, service):
-        """開花ブレンド 3/4 時点: noleaf=0.25, bloom_30=0.75"""
-        # 3日目/4日 = 0.75
+        """開花ブレンド 3/4 時点: noleaf=1.0"""
         result = service.determine_bloom_stage(
             flowering_date=date(2025, 4, 10),
             full_bloom_date=date(2025, 4, 20),
@@ -479,12 +459,9 @@ class TestBlendWeights:
         )
         assert result is not None
         assert result.stage == "early_blend"
-        noleaf = next(m for m in result.models if m.model == "noleaf")
-        bloom_30 = next(
-            m for m in result.models if m.model == "bloom_30"
-        )
-        assert abs(noleaf.weight - 0.25) < 1e-9
-        assert abs(bloom_30.weight - 0.75) < 1e-9
+        assert len(result.models) == 1
+        assert result.models[0].model == "noleaf"
+        assert result.models[0].weight == 1.0
 
     def test_late_blend_start(self, service):
         """満開後ブレンド開始時: bloom=1.0, noleaf=0.0"""
