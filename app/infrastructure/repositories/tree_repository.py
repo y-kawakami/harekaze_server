@@ -576,116 +576,124 @@ class TreeRepository:
         Returns:
             List[AreaCountItem]: エリアごとの集計結果
         """
-        logger.info(f"エリアコードに基づく桜の本数集計開始: area_type={area_type}")
+        logger.info(
+            "エリアコードに基づく桜の本数集計開始: "
+            + f"area_type={area_type}"
+        )
 
-        # 検閲ステータスがAPPROVEDのツリーのみを対象とする
-        base_query = self.db.query(Tree).filter(
-            Tree.censorship_status == CensorshipStatus.APPROVED)
+        # area_type に応じたカラムを決定
+        group_col = (
+            Tree.prefecture_code if area_type == 'prefecture'
+            else Tree.municipality_code
+        )
 
-        # 各エリアの最新のツリーIDを取得するサブクエリ
-        latest_trees = (
-            base_query.with_entities(
-                Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
+        # Step 1: counts サブクエリ（1回のスキャンで count + max(id)）
+        counts_query = (
+            self.db.query(
+                group_col,
+                func.count(Tree.id).label('count'),
                 func.max(Tree.id).label('latest_tree_id')
             )
             .filter(
-                Tree.prefecture_code.in_(area_codes) if area_type == 'prefecture'
-                else Tree.municipality_code.in_(area_codes)
+                Tree.censorship_status == CensorshipStatus.APPROVED,
+                group_col.in_(area_codes)
             )
-            .group_by(Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code)
-            .subquery()
         )
 
-        # 最新ツリーの詳細情報を取得するサブクエリ
-        latest_tree_details = (
-            self.db.query(
-                Tree.id,
-                Tree.prefecture_code if area_type == 'prefecture' else Tree.municipality_code,
-                Tree.contributor.label('latest_contributor'),
-                Tree.contributor_censorship_status.label(
-                    'latest_contributor_censorship_status'),
-                EntireTree.thumb_obj_key.label('latest_image_thumb_url')
-            )
-            .join(latest_trees, Tree.id == latest_trees.c.latest_tree_id)
-            .join(EntireTree, Tree.id == EntireTree.tree_id)
-            .filter(EntireTree.censorship_status == CensorshipStatus.APPROVED)
-            .subquery()
-        )
-
-        # メインクエリの作成
-        if area_type == 'prefecture':
-            query = self.db.query(
-                Tree.prefecture_code,
-                func.count(Tree.id).label('count'),
-                func.max(latest_tree_details.c.latest_contributor).label(
-                    'latest_contributor'),
-                func.max(latest_tree_details.c.latest_contributor_censorship_status).label(
-                    'latest_contributor_censorship_status'),
-                func.max(latest_tree_details.c.latest_image_thumb_url).label(
-                    'latest_image_thumb_url')
-            ).outerjoin(
-                latest_tree_details,
-                Tree.prefecture_code == latest_tree_details.c.prefecture_code
-            ).filter(Tree.prefecture_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
-        else:  # municipality
-            query = self.db.query(
-                Tree.municipality_code,
-                func.count(Tree.id).label('count'),
-                func.max(latest_tree_details.c.latest_contributor).label(
-                    'latest_contributor'),
-                func.max(latest_tree_details.c.latest_contributor_censorship_status).label(
-                    'latest_contributor_censorship_status'),
-                func.max(latest_tree_details.c.latest_image_thumb_url).label(
-                    'latest_image_thumb_url')
-            ).outerjoin(
-                latest_tree_details,
-                Tree.municipality_code == latest_tree_details.c.municipality_code
-            ).filter(Tree.municipality_code.in_(area_codes), Tree.censorship_status == CensorshipStatus.APPROVED)
-
-        # フィルタ条件を適用
+        # フィルタ条件を counts_query に適用
         if vitality_range:
-            query = query.join(EntireTree).filter(
+            counts_query = counts_query.join(EntireTree).filter(
                 EntireTree.vitality.between(
                     vitality_range[0], vitality_range[1]),
                 EntireTree.censorship_status == CensorshipStatus.APPROVED)
         if age_range:
-            query = query.join(Stem).filter(
+            counts_query = counts_query.join(Stem).filter(
                 Stem.age.between(age_range[0], age_range[1]),
                 Stem.censorship_status == CensorshipStatus.APPROVED)
         if has_hole is not None:
             if has_hole:
-                query = query.join(StemHole).filter(
-                    StemHole.censorship_status == CensorshipStatus.APPROVED)
+                counts_query = counts_query.join(StemHole).filter(
+                    StemHole.censorship_status
+                    == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(StemHole).filter(
-                    StemHole.id.is_(None) | (StemHole.censorship_status != CensorshipStatus.APPROVED))
+                counts_query = counts_query.outerjoin(
+                    StemHole
+                ).filter(
+                    StemHole.id.is_(None)
+                    | (StemHole.censorship_status
+                       != CensorshipStatus.APPROVED))
         if has_tengusu is not None:
             if has_tengusu:
-                query = query.join(Tengus).filter(
-                    Tengus.censorship_status == CensorshipStatus.APPROVED)
+                counts_query = counts_query.join(Tengus).filter(
+                    Tengus.censorship_status
+                    == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Tengus).filter(
-                    Tengus.id.is_(None) | (Tengus.censorship_status != CensorshipStatus.APPROVED))
+                counts_query = counts_query.outerjoin(
+                    Tengus
+                ).filter(
+                    Tengus.id.is_(None)
+                    | (Tengus.censorship_status
+                       != CensorshipStatus.APPROVED))
         if has_mushroom is not None:
             if has_mushroom:
-                query = query.join(Mushroom).filter(
-                    Mushroom.censorship_status == CensorshipStatus.APPROVED)
+                counts_query = counts_query.join(Mushroom).filter(
+                    Mushroom.censorship_status
+                    == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Mushroom).filter(
-                    Mushroom.id.is_(None) | (Mushroom.censorship_status != CensorshipStatus.APPROVED))
+                counts_query = counts_query.outerjoin(
+                    Mushroom
+                ).filter(
+                    Mushroom.id.is_(None)
+                    | (Mushroom.censorship_status
+                       != CensorshipStatus.APPROVED))
         if has_kobu is not None:
             if has_kobu:
-                query = query.join(Kobu).filter(
-                    Kobu.censorship_status == CensorshipStatus.APPROVED)
+                counts_query = counts_query.join(Kobu).filter(
+                    Kobu.censorship_status
+                    == CensorshipStatus.APPROVED)
             else:
-                query = query.outerjoin(Kobu).filter(
-                    Kobu.id.is_(None) | (Kobu.censorship_status != CensorshipStatus.APPROVED))
+                counts_query = counts_query.outerjoin(
+                    Kobu
+                ).filter(
+                    Kobu.id.is_(None)
+                    | (Kobu.censorship_status
+                       != CensorshipStatus.APPROVED))
 
-        # グループ化
-        if area_type == 'prefecture':
-            query = query.group_by(Tree.prefecture_code)
-        else:  # municipality
-            query = query.group_by(Tree.municipality_code)
+        counts = counts_query.group_by(group_col).subquery()
+
+        # Step 2: details サブクエリ（PKルックアップで最新ツリーの詳細取得）
+        details = (
+            self.db.query(
+                Tree.id,
+                Tree.contributor.label('latest_contributor'),
+                Tree.contributor_censorship_status.label(
+                    'latest_contributor_censorship_status'),
+                func.max(EntireTree.thumb_obj_key).label(
+                    'latest_image_thumb_url')
+            )
+            .join(EntireTree, Tree.id == EntireTree.tree_id)
+            .filter(
+                EntireTree.censorship_status == CensorshipStatus.APPROVED
+            )
+            .group_by(Tree.id)
+            .subquery()
+        )
+
+        # Step 3: メインクエリ（GROUP BY 不要）
+        area_col = (
+            counts.c.prefecture_code if area_type == 'prefecture'
+            else counts.c.municipality_code
+        )
+        query = self.db.query(
+            area_col,
+            counts.c.count,
+            details.c.latest_contributor,
+            details.c.latest_contributor_censorship_status,
+            details.c.latest_image_thumb_url
+        ).outerjoin(
+            details,
+            counts.c.latest_tree_id == details.c.id
+        )
 
         results = query.all()
         logger.debug(f"集計結果: {len(results)}件")
