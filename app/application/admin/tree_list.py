@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import List, Optional, Tuple
 
-from sqlalchemy import or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session, joinedload
 
 from app.application.admin.common import create_tree_censor_item
@@ -81,16 +81,30 @@ def get_tree_list(
         detail_conditions.append(
             Tree.id.in_(
                 db.query(EntireTree.tree_id)
-                .filter(EntireTree.censorship_status.in_(detail_censorship_status))
+                .filter(
+                    EntireTree.censorship_status.in_(
+                        detail_censorship_status
+                    )
+                )
                 .scalar_subquery()
             )
         )
 
-        # Stemの検閲ステータス
+        # Stemの検閲ステータス（最新レコードのみ）
+        latest_stem_ids = (
+            db.query(func.max(Stem.id))
+            .group_by(Stem.tree_id)
+            .scalar_subquery()
+        )
         detail_conditions.append(
             Tree.id.in_(
                 db.query(Stem.tree_id)
-                .filter(Stem.censorship_status.in_(detail_censorship_status))
+                .filter(Stem.id.in_(latest_stem_ids))
+                .filter(
+                    Stem.censorship_status.in_(
+                        detail_censorship_status
+                    )
+                )
                 .scalar_subquery()
             )
         )
