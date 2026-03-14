@@ -13,12 +13,12 @@
   - 既存のTree作成ロジックを調査し、適切な箇所でversion値を指定する
   - _Requirements: 1.3_
 
-- [ ] 2. アノテーション一覧APIの拡張
-- [ ] 2.1 レスポンススキーマにversionフィールドを追加する
+- [x] 2. アノテーション一覧APIの拡張
+- [x] 2.1 レスポンススキーマにversionフィールドを追加する
   - 一覧レスポンスの各アイテムにTreeのversion値を含める
   - _Requirements: 2.1_
 
-- [ ] 2.2 versionsクエリパラメータによるフィルタ機能を実装する
+- [x] 2.2 versionsクエリパラメータによるフィルタ機能を実装する
   - 一覧取得エンドポイントにversionsクエリパラメータを追加する（カンマ区切り文字列、Optional）
   - カンマ区切り文字列をint型リストに変換するパース処理を実装する（既存のbloom_statusと同パターン）
   - version IN条件をクエリのフィルタチェーンに追加する
@@ -26,7 +26,7 @@
   - 2025年度のみ、2026年度のみ、両方選択、未選択の全パターンに対応する
   - _Requirements: 2.2, 2.3, 2.4, 2.5_
 
-- [ ] 2.3 Admin限定のmodel_vitalityフィルタを実装する
+- [x] 2.3 Admin限定のmodel_vitalityフィルタを実装する
   - 一覧取得エンドポイントにmodel_vitalityクエリパラメータを追加する（Optional[int]、Admin限定）
   - EntireTree.vitalityによるフィルタ条件を追加する（既存のvitality_valueフィルタとは別）
   - 非Adminユーザーの場合はmodel_vitalityパラメータを無視する

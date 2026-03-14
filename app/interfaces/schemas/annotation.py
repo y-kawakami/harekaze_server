@@ -52,6 +52,7 @@ class AnnotationListItemResponse(BaseModel):
     vitality_value: Optional[int] = Field(None, description="元気度（1-5または-1）")
     is_ready: bool = Field(False, description="評価準備完了フラグ")
     bloom_status: Optional[str] = Field(None, description="開花状態")
+    version: int = Field(202501, description="年度バージョン")
 
 
 class BloomStatusStatsResponse(BaseModel):

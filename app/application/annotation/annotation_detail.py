@@ -30,6 +30,8 @@ class AnnotationListFilter:
     photo_date_to: date | None = None
     is_ready_filter: bool | None = None
     bloom_status_filter: list[str] | None = None  # 開花状態フィルター（複数指定可）
+    versions_filter: list[int] | None = None  # 年度バージョンフィルター
+    model_vitality_filter: int | None = None  # Admin限定: 推論モデルvitalityフィルター
     annotator_role: str = "annotator"
 
 
@@ -277,6 +279,21 @@ def _calculate_navigation(
     if filter_params.bloom_status_filter:
         query = query.filter(
             EntireTree.bloom_status.in_(filter_params.bloom_status_filter)
+        )
+
+    # 年度バージョンフィルター
+    if filter_params.versions_filter:
+        query = query.filter(
+            Tree.version.in_(filter_params.versions_filter)
+        )
+
+    # Admin限定: 推論モデルvitalityフィルター
+    if (
+        filter_params.annotator_role == "admin"
+        and filter_params.model_vitality_filter is not None
+    ):
+        query = query.filter(
+            EntireTree.vitality == filter_params.model_vitality_filter
         )
 
     # 総件数

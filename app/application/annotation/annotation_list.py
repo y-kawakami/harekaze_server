@@ -28,6 +28,8 @@ class AnnotationListFilter:
     photo_date_to: date | None = None
     is_ready_filter: bool | None = None  # adminのみ使用可能
     bloom_status_filter: list[str] | None = None  # 開花状態フィルター（複数指定可）
+    versions_filter: list[int] | None = None  # 年度バージョンフィルター
+    model_vitality_filter: int | None = None  # Admin限定: 推論モデルvitalityフィルター
     page: int = 1
     per_page: int = 20
 
@@ -45,6 +47,7 @@ class AnnotationListItem:
     vitality_value: int | None
     is_ready: bool
     bloom_status: str | None = None
+    version: int = 202501
 
 
 @dataclass
@@ -190,6 +193,21 @@ def get_annotation_list(
             EntireTree.bloom_status.in_(filter_params.bloom_status_filter)
         )
 
+    # 年度バージョンフィルター
+    if filter_params.versions_filter:
+        query = query.filter(
+            Tree.version.in_(filter_params.versions_filter)
+        )
+
+    # Admin限定: 推論モデルvitalityフィルター
+    if (
+        annotator_role == "admin"
+        and filter_params.model_vitality_filter is not None
+    ):
+        query = query.filter(
+            EntireTree.vitality == filter_params.model_vitality_filter
+        )
+
     # 総件数を取得（ページネーション前）
     total_count = query.count()
 
@@ -235,6 +253,11 @@ def get_annotation_list(
         # 開花状態を取得
         bloom_status: str | None = entire_tree.bloom_status
 
+        # バージョンを取得
+        version: int = 202501
+        if entire_tree.tree:
+            version = entire_tree.tree.version
+
         items.append(
             AnnotationListItem(
                 entire_tree_id=entire_tree.id,
@@ -246,6 +269,7 @@ def get_annotation_list(
                 vitality_value=vitality_value,
                 is_ready=is_ready,
                 bloom_status=bloom_status,
+                version=version,
             )
         )
 

@@ -74,6 +74,10 @@ async def get_trees(
         None, alias="is_ready", description="準備完了フィルター（adminのみ有効）"),
     bloom_status: Optional[str] = Query(
         None, description="開花状態フィルター（カンマ区切りで複数指定可）"),
+    versions: Optional[str] = Query(
+        None, description="年度バージョンフィルター（カンマ区切り、例: 202501,202601）"),
+    model_vitality: Optional[int] = Query(
+        None, description="推論モデル元気度フィルター（Admin限定）"),
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの件数"),
     current_annotator: Annotator = Depends(get_current_annotator),
@@ -90,6 +94,8 @@ async def get_trees(
     - photo_date_to: 撮影日終了（YYYY-MM-DD）
     - is_ready: 準備完了フィルター（adminのみ有効）
     - bloom_status: 開花状態フィルター（カンマ区切りで複数指定可）
+    - versions: 年度バージョンフィルター（カンマ区切り）
+    - model_vitality: 推論モデル元気度フィルター（Admin限定）
     """
     image_service = get_image_service()
     municipality_service = get_municipality_service()
@@ -100,6 +106,14 @@ async def get_trees(
         bloom_status_filter = [s.strip()
                                for s in bloom_status.split(",") if s.strip()]
 
+    # versions をカンマ区切りからint型リストに変換
+    versions_filter: list[int] | None = None
+    if versions:
+        versions_filter = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+
     filter_params = AnnotationListFilter(
         status=status_filter,
         prefecture_code=prefecture_code,
@@ -108,6 +122,8 @@ async def get_trees(
         photo_date_to=photo_date_to,
         is_ready_filter=is_ready_filter,
         bloom_status_filter=bloom_status_filter,
+        versions_filter=versions_filter,
+        model_vitality_filter=model_vitality,
         page=page,
         per_page=per_page,
     )
@@ -132,6 +148,7 @@ async def get_trees(
                 vitality_value=item.vitality_value,
                 is_ready=item.is_ready,
                 bloom_status=item.bloom_status,
+                version=item.version,
             )
             for item in result.items
         ],
@@ -181,6 +198,10 @@ async def get_tree_detail(
         description="準備完了フィルター（adminのみ有効、ナビゲーション用）"),
     bloom_status: Optional[str] = Query(
         None, description="開花状態フィルター（カンマ区切りで複数指定可）"),
+    versions: Optional[str] = Query(
+        None, description="年度バージョンフィルター（カンマ区切り、ナビゲーション用）"),
+    model_vitality: Optional[int] = Query(
+        None, description="推論モデル元気度フィルター（Admin限定、ナビゲーション用）"),
     current_annotator: Annotator = Depends(get_current_annotator),
     db: Session = Depends(get_db),
 ) -> AnnotationDetailResponse:
@@ -200,6 +221,14 @@ async def get_tree_detail(
         bloom_status_filter = [s.strip()
                                for s in bloom_status.split(",") if s.strip()]
 
+    # versions をカンマ区切りからint型リストに変換
+    versions_filter: list[int] | None = None
+    if versions:
+        versions_filter = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+
     filter_params = DetailFilter(
         status=status_filter,
         prefecture_code=prefecture_code,
@@ -208,6 +237,8 @@ async def get_tree_detail(
         photo_date_to=photo_date_to,
         is_ready_filter=is_ready_filter,
         bloom_status_filter=bloom_status_filter,
+        versions_filter=versions_filter,
+        model_vitality_filter=model_vitality,
         annotator_role=current_annotator.role,
     )
 

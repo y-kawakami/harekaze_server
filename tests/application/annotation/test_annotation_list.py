@@ -848,3 +848,263 @@ class TestAnnotationStatsWithBloomStatus:
 
         # bloom_status_counts が含まれていることを確認
         assert hasattr(stats, 'bloom_status_counts')
+
+
+@pytest.fixture
+def sample_entire_tree_with_version(sample_tree):
+    """version付きのEntireTreeオブジェクト"""
+    sample_tree.version = 202501
+    entire_tree = Mock()
+    entire_tree.id = 105
+    entire_tree.tree_id = sample_tree.id
+    entire_tree.tree = sample_tree
+    entire_tree.thumb_obj_key = "test/thumb_v.jpg"
+    entire_tree.image_obj_key = "test/image_v.jpg"
+    entire_tree.bloom_status = None
+    entire_tree.vitality = None
+
+    annotation = Mock()
+    annotation.vitality_value = 3
+    annotation.is_ready = True
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+@pytest.fixture
+def sample_entire_tree_version_2026(sample_tree):
+    """version=202601のEntireTreeオブジェクト"""
+    tree_2026 = Mock()
+    tree_2026.id = 2
+    tree_2026.prefecture_code = "13"
+    tree_2026.location = "新宿区"
+    tree_2026.version = 202601
+    entire_tree = Mock()
+    entire_tree.id = 106
+    entire_tree.tree_id = tree_2026.id
+    entire_tree.tree = tree_2026
+    entire_tree.thumb_obj_key = "test/thumb_v2.jpg"
+    entire_tree.image_obj_key = "test/image_v2.jpg"
+    entire_tree.bloom_status = None
+    entire_tree.vitality = 3
+
+    annotation = Mock()
+    annotation.vitality_value = 4
+    annotation.is_ready = True
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+@pytest.mark.unit
+class TestGetAnnotationListWithVersion:
+    """年度バージョンフィルタ機能のテスト (タスク 2.1, 2.2)"""
+
+    def test_list_item_has_version_field(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_with_version,
+    ):
+        """一覧アイテムにversionフィールドが含まれる"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 1
+        query_mock.all.return_value = [sample_entire_tree_with_version]
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        item = result.items[0]
+        assert hasattr(item, 'version')
+        assert item.version == 202501
+
+    def test_filter_accepts_versions_parameter(self):
+        """AnnotationListFilterにversions_filterフィールドがある"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+        )
+
+        f = AnnotationListFilter(
+            status="all",
+            versions_filter=[202501],
+        )
+        assert f.versions_filter == [202501]
+
+    def test_filter_versions_default_is_none(self):
+        """versions_filterのデフォルトはNone"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+        )
+
+        f = AnnotationListFilter(status="all")
+        assert f.versions_filter is None
+
+    def test_filter_by_versions_applies_filter(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_with_version,
+    ):
+        """versionsフィルタが適用される"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 1
+        query_mock.all.return_value = [sample_entire_tree_with_version]
+
+        filter_params = AnnotationListFilter(
+            status="all",
+            versions_filter=[202501],
+        )
+
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result.total == 1
+        assert query_mock.filter.called
+
+
+@pytest.mark.unit
+class TestGetAnnotationListWithModelVitality:
+    """Admin限定model_vitalityフィルタのテスト (タスク 2.3)"""
+
+    def test_filter_accepts_model_vitality_parameter(self):
+        """AnnotationListFilterにmodel_vitality_filterフィールドがある"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+        )
+
+        f = AnnotationListFilter(
+            status="all",
+            model_vitality_filter=3,
+        )
+        assert f.model_vitality_filter == 3
+
+    def test_model_vitality_filter_default_is_none(self):
+        """model_vitality_filterのデフォルトはNone"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+        )
+
+        f = AnnotationListFilter(status="all")
+        assert f.model_vitality_filter is None
+
+    def test_admin_model_vitality_filter_applies(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_version_2026,
+    ):
+        """Admin権限でmodel_vitalityフィルタが適用される"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 1
+        query_mock.all.return_value = [sample_entire_tree_version_2026]
+
+        filter_params = AnnotationListFilter(
+            status="all",
+            model_vitality_filter=3,
+        )
+
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result.total == 1
+        assert query_mock.filter.called
+
+    def test_non_admin_model_vitality_filter_ignored(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_version_2026,
+    ):
+        """非Admin権限ではmodel_vitalityフィルタが無視される"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 1
+        query_mock.all.return_value = [sample_entire_tree_version_2026]
+
+        filter_params = AnnotationListFilter(
+            status="all",
+            model_vitality_filter=3,
+        )
+
+        # annotatorロールで呼び出し - フィルタは無視されるべき
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="annotator",
+        )
+
+        assert result.total == 1
