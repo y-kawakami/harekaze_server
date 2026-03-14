@@ -111,6 +111,8 @@ export function ListPage() {
   const isReadyFilter =
     (searchParams.get("is_ready_filter") as IsReadyFilter) || "all";
   const bloomStatusFilter = searchParams.get("bloom_status") || "";
+  const versionsParam = searchParams.get("versions") || "";
+  const modelVitalityParam = searchParams.get("model_vitality") || "";
   const page = parseInt(searchParams.get("page") || "1", 10);
   const perPage = 20;
 
@@ -126,6 +128,8 @@ export function ListPage() {
           photo_date_to: photoDateTo || null,
           is_ready_filter: isAdmin ? isReadyFilter || null : null,
           bloom_status: bloomStatusFilter || null,
+          versions: versionsParam || null,
+          model_vitality: modelVitalityParam ? parseInt(modelVitalityParam, 10) : null,
           page,
           per_page: perPage,
         }),
@@ -148,6 +152,8 @@ export function ListPage() {
     photoDateTo,
     isReadyFilter,
     bloomStatusFilter,
+    versionsParam,
+    modelVitalityParam,
     isAdmin,
     page,
     perPage,
@@ -219,6 +225,12 @@ export function ListPage() {
     }
     if (bloomStatusFilter) {
       params.set("bloom_status", bloomStatusFilter);
+    }
+    if (versionsParam) {
+      params.set("versions", versionsParam);
+    }
+    if (modelVitalityParam) {
+      params.set("model_vitality", modelVitalityParam);
     }
     navigate(`/annotation/${entireTreeId}?${params}`);
   };
@@ -511,6 +523,70 @@ export function ListPage() {
                 </option>
               ))}
             </select>
+          </div>
+
+          {/* 年度フィルター・推論モデル元気度フィルター */}
+          <div className="flex flex-wrap gap-4 items-center mt-3 pt-3 border-t">
+            {/* 年度チェックボックス */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-600">年度:</span>
+              {[
+                { value: "202501", label: "2025年度" },
+                { value: "202601", label: "2026年度" },
+              ].map((ver) => {
+                const selectedVersions = versionsParam
+                  ? versionsParam.split(",")
+                  : [];
+                const isChecked = selectedVersions.includes(ver.value);
+                return (
+                  <label
+                    key={ver.value}
+                    className="flex items-center gap-1 text-sm cursor-pointer"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => {
+                        let newVersions: string[];
+                        if (isChecked) {
+                          newVersions = selectedVersions.filter(
+                            (v) => v !== ver.value
+                          );
+                        } else {
+                          newVersions = [...selectedVersions, ver.value];
+                        }
+                        updateFilter(
+                          "versions",
+                          newVersions.length > 0
+                            ? newVersions.join(",")
+                            : null
+                        );
+                      }}
+                      className="rounded border-gray-300 text-sakura-500 focus:ring-sakura-500"
+                    />
+                    {ver.label}
+                  </label>
+                );
+              })}
+            </div>
+
+            {/* 推論モデル元気度フィルター (Admin限定) */}
+            {isAdmin && (
+              <select
+                value={modelVitalityParam}
+                onChange={(e) =>
+                  updateFilter("model_vitality", e.target.value || null)
+                }
+                className="px-3 py-2 border rounded-lg text-sm focus:ring-2 focus:ring-sakura-500 focus:border-sakura-500 outline-none"
+              >
+                <option value="">推論モデル元気度</option>
+                {[1, 2, 3, 4, 5].map((v) => (
+                  <option key={v} value={v}>
+                    {VITALITY_LABELS[v]}
+                  </option>
+                ))}
+              </select>
+            )}
 
             <span className="text-sm text-gray-600 ml-auto">
               該当件数: <strong>{total}</strong>
@@ -572,6 +648,16 @@ export function ListPage() {
                     )}`}
                   >
                     {getBloomStatusLabel(item.bloom_status)}
+                  </div>
+                  {/* バージョンバッジ */}
+                  <div
+                    className={`absolute bottom-2 right-2 px-2 py-0.5 text-xs rounded ${
+                      item.version === 202501
+                        ? "bg-blue-100 text-blue-700"
+                        : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
+                    {item.version === 202501 ? "2025年度" : "2026年度"}
                   </div>
                 </div>
                 <div className="p-2">

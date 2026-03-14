@@ -46,6 +46,8 @@ export function AnnotationPage() {
     (searchParams.get("is_ready_filter") as "all" | "ready" | "not_ready") ||
     "all";
   const bloomStatusFilter = searchParams.get("bloom_status") || "";
+  const versionsParam = searchParams.get("versions") || "";
+  const modelVitalityParam = searchParams.get("model_vitality") || "";
 
   const fetchDetail = useCallback(async () => {
     if (!id) return;
@@ -59,6 +61,8 @@ export function AnnotationPage() {
         photo_date_to: photoDateTo || null,
         is_ready_filter: isReadyFilter,
         bloom_status: bloomStatusFilter || null,
+        versions: versionsParam || null,
+        model_vitality: modelVitalityParam ? parseInt(modelVitalityParam, 10) : null,
       });
       setDetail(result);
       setSelectedValue(result.current_vitality_value);
@@ -76,6 +80,8 @@ export function AnnotationPage() {
     photoDateTo,
     isReadyFilter,
     bloomStatusFilter,
+    versionsParam,
+    modelVitalityParam,
   ]);
 
   useEffect(() => {
@@ -114,6 +120,12 @@ export function AnnotationPage() {
     if (bloomStatusFilter) {
       params.set("bloom_status", bloomStatusFilter);
     }
+    if (versionsParam) {
+      params.set("versions", versionsParam);
+    }
+    if (modelVitalityParam) {
+      params.set("model_vitality", modelVitalityParam);
+    }
     navigate(`/annotation/${targetId}?${params}`);
   };
 
@@ -129,6 +141,12 @@ export function AnnotationPage() {
     }
     if (bloomStatusFilter) {
       params.set("bloom_status", bloomStatusFilter);
+    }
+    if (versionsParam) {
+      params.set("versions", versionsParam);
+    }
+    if (modelVitalityParam) {
+      params.set("model_vitality", modelVitalityParam);
     }
     return `/?${params}`;
   };
@@ -343,6 +361,18 @@ export function AnnotationPage() {
                   </dd>
                 </div>
                 <div className="flex justify-between">
+                  <dt className="text-gray-500">3分咲き日</dt>
+                  <dd className="text-gray-800">
+                    {formatDateShort(detail.bloom_30_date)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-gray-500">5分咲き日</dt>
+                  <dd className="text-gray-800">
+                    {formatDateShort(detail.bloom_50_date)}
+                  </dd>
+                </div>
+                <div className="flex justify-between">
                   <dt className="text-gray-500">満開開始日</dt>
                   <dd className="text-gray-800">
                     {formatDateShort(detail.full_bloom_start_date)}
@@ -413,6 +443,88 @@ export function AnnotationPage() {
                 </p>
               )}
             </div>
+
+            {/* 診断値（推論モデル）- Admin限定 */}
+            {isAdmin && detail.diagnostics && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">
+                  診断値（推論モデル）
+                </h2>
+                <dl className="space-y-2 text-sm">
+                  {[
+                    { key: "vitality" as const, label: "元気度" },
+                    { key: "vitality_noleaf" as const, label: "花なし元気度" },
+                    { key: "vitality_noleaf_weight" as const, label: "花なし重み" },
+                    { key: "vitality_bloom" as const, label: "開花元気度" },
+                    { key: "vitality_bloom_weight" as const, label: "開花重み" },
+                    { key: "vitality_bloom_30" as const, label: "3分咲き元気度" },
+                    { key: "vitality_bloom_30_weight" as const, label: "3分咲き重み" },
+                    { key: "vitality_bloom_50" as const, label: "5分咲き元気度" },
+                    { key: "vitality_bloom_50_weight" as const, label: "5分咲き重み" },
+                  ].map(({ key, label }) => {
+                    const val = detail.diagnostics![key];
+                    const isWeight = key.endsWith("_weight");
+                    return (
+                      <div key={key} className="flex justify-between">
+                        <dt className="text-gray-500">{label}</dt>
+                        <dd className="text-gray-800">
+                          {val !== null && val !== undefined
+                            ? isWeight
+                              ? val.toFixed(2)
+                              : val
+                            : "-"}
+                        </dd>
+                      </div>
+                    );
+                  })}
+                </dl>
+              </div>
+            )}
+
+            {/* デバッグ画像 - Admin限定 */}
+            {isAdmin && detail.debug_images && (
+              <div className="bg-white rounded-lg shadow-sm p-6">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">
+                  デバッグ画像
+                </h2>
+                <dl className="space-y-3 text-sm">
+                  <div className="flex justify-between items-center">
+                    <dt className="text-gray-500">花なし</dt>
+                    <dd>
+                      {detail.debug_images.noleaf_url ? (
+                        <a
+                          href={detail.debug_images.noleaf_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sakura-500 hover:text-sakura-600 underline"
+                        >
+                          画像を表示 ↗
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">画像なし</span>
+                      )}
+                    </dd>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <dt className="text-gray-500">開花</dt>
+                    <dd>
+                      {detail.debug_images.bloom_url ? (
+                        <a
+                          href={detail.debug_images.bloom_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sakura-500 hover:text-sakura-600 underline"
+                        >
+                          画像を表示 ↗
+                        </a>
+                      ) : (
+                        <span className="text-gray-400">画像なし</span>
+                      )}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            )}
 
             {/* Navigation */}
             <div className="flex gap-3">
