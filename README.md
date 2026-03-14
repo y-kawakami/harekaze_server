@@ -234,6 +234,35 @@ python scripts/update_bloom_status.py --batch-size 500
 | GET | `/annotation_api/prefectures` | 都道府県一覧取得 |
 | GET | `/annotation_api/export/csv` | CSVエクスポート |
 
+## 負荷テスト
+
+`create_tree` API に対して、指定間隔で繰り返しリクエストを送る負荷テストスクリプトです。
+
+### 前提
+
+- `scripts/test_images/` に画像ファイルを配置してください（リクエストごとにランダムに選択されます）
+
+### 使い方
+
+```bash
+# 5秒間隔で10回リクエスト
+python scripts/load_test_create_tree.py --interval 5 --count 10
+
+# 3秒間隔で無限ループ（Ctrl+C で停止）
+python scripts/load_test_create_tree.py --interval 3
+
+# ベースURLを指定
+python scripts/load_test_create_tree.py --base-url https://example.com/sakura_camera --interval 5 --count 5
+```
+
+### CLI引数
+
+| 引数 | デフォルト | 説明 |
+|------|-----------|------|
+| `--interval` | 5 | リクエスト間隔（秒） |
+| `--count` | 無限 | リクエスト回数 |
+| `--base-url` | `https://dev.kb6rvv06ctr2.com/sakura_camera` | ベースURL |
+
 ## テスト
 
 ### テスト環境のセットアップ

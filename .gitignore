@@ -30,6 +30,7 @@ app/stem_smoothness/
 app/tree_vitality_noleaf/
 app/trunk_segmentation/
 app/branch_segmentation/
+scripts/test_images/
 
 logs/
 
