@@ -26,12 +26,12 @@ def get_flowering_date(
     Returns:
         FloweringDateResponse: 開花日情報
     """
-    logger.info(f"開花日情報の取得開始: 位置=({latitude}, {longitude})")
+    logger.debug(f"開花日情報の取得開始: 位置=({latitude}, {longitude})")
 
     spot = flowering_date_service.find_nearest_spot(latitude, longitude)
 
     if spot:
-        logger.info(f"開花日情報の取得完了: 住所={spot.address}")
+        logger.debug(f"開花日情報の取得完了: 住所={spot.address}")
 
         return FloweringDateResponse(
             spot_id=int(spot.spot_id),

@@ -1108,3 +1108,320 @@ class TestGetAnnotationListWithModelVitality:
         )
 
         assert result.total == 1
+
+
+@pytest.mark.unit
+class TestVersionsParameterParsing:
+    """Task 5.1: versionsパラメータのパース処理テスト"""
+
+    def test_parse_single_version(self):
+        """単一バージョン文字列のパース"""
+        versions = "202501"
+        result = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+        assert result == [202501]
+
+    def test_parse_multiple_versions(self):
+        """複数バージョン文字列のパース"""
+        versions = "202501,202601"
+        result = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+        assert result == [202501, 202601]
+
+    def test_parse_versions_with_spaces(self):
+        """スペース付きバージョン文字列のパース"""
+        versions = " 202501 , 202601 "
+        result = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+        assert result == [202501, 202601]
+
+    def test_parse_versions_with_trailing_comma(self):
+        """末尾カンマ付きバージョン文字列のパース"""
+        versions = "202501,"
+        result = [
+            int(v.strip())
+            for v in versions.split(",") if v.strip()
+        ]
+        assert result == [202501]
+
+    def test_parse_invalid_version_raises_error(self):
+        """不正な値（非整数）はValueErrorを発生"""
+        versions = "abc"
+        with pytest.raises(ValueError):
+            [
+                int(v.strip())
+                for v in versions.split(",") if v.strip()
+            ]
+
+    def test_none_versions_no_filter(self):
+        """versions=NoneのときフィルタなしでNone"""
+        versions = None
+        versions_filter = None
+        if versions:
+            versions_filter = [
+                int(v.strip())
+                for v in versions.split(",") if v.strip()
+            ]
+        assert versions_filter is None
+
+    def test_filter_by_both_versions(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_with_version,
+        sample_entire_tree_version_2026,
+    ):
+        """両方のバージョンでフィルタすると両方返却される"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 2
+        query_mock.all.return_value = [
+            sample_entire_tree_with_version,
+            sample_entire_tree_version_2026,
+        ]
+
+        filter_params = AnnotationListFilter(
+            status="all",
+            versions_filter=[202501, 202601],
+        )
+
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result.total == 2
+        assert len(result.items) == 2
+        versions_in_result = {item.version for item in result.items}
+        assert versions_in_result == {202501, 202601}
+
+    def test_no_versions_filter_returns_all(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        sample_entire_tree_with_version,
+        sample_entire_tree_version_2026,
+    ):
+        """versions未指定時は全件表示"""
+        from app.application.annotation.annotation_list import (
+            AnnotationListFilter,
+            get_annotation_list,
+        )
+
+        query_mock = MagicMock()
+        mock_db.query.return_value = query_mock
+        query_mock.join.return_value = query_mock
+        query_mock.outerjoin.return_value = query_mock
+        query_mock.options.return_value = query_mock
+        query_mock.filter.return_value = query_mock
+        query_mock.order_by.return_value = query_mock
+        query_mock.offset.return_value = query_mock
+        query_mock.limit.return_value = query_mock
+        query_mock.count.return_value = 2
+        query_mock.all.return_value = [
+            sample_entire_tree_with_version,
+            sample_entire_tree_version_2026,
+        ]
+
+        filter_params = AnnotationListFilter(
+            status="all",
+            versions_filter=None,
+        )
+
+        result = get_annotation_list(
+            db=mock_db,
+            image_service=mock_image_service,
+            municipality_service=mock_municipality_service,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result.total == 2
+        assert len(result.items) == 2
+
+
+@pytest.mark.unit
+class TestAnnotationSchemasSerialization:
+    """Task 5.2: スキーマのシリアライズテスト"""
+
+    def test_diagnostics_response_serialization(self):
+        """DiagnosticsResponseのシリアライズ"""
+        from app.interfaces.schemas.annotation import (
+            DiagnosticsResponse,
+        )
+
+        diag = DiagnosticsResponse(
+            vitality=3,
+            vitality_noleaf=4,
+            vitality_noleaf_weight=0.8,
+            vitality_bloom=2,
+            vitality_bloom_weight=0.6,
+            vitality_bloom_30=3,
+            vitality_bloom_30_weight=0.5,
+            vitality_bloom_50=4,
+            vitality_bloom_50_weight=0.7,
+        )
+        data = diag.model_dump()
+        assert data["vitality"] == 3
+        assert data["vitality_noleaf"] == 4
+        assert data["vitality_noleaf_weight"] == 0.8
+        assert data["vitality_bloom"] == 2
+        assert data["vitality_bloom_weight"] == 0.6
+        assert data["vitality_bloom_30"] == 3
+        assert data["vitality_bloom_30_weight"] == 0.5
+        assert data["vitality_bloom_50"] == 4
+        assert data["vitality_bloom_50_weight"] == 0.7
+
+    def test_diagnostics_response_all_none(self):
+        """DiagnosticsResponseの全フィールドnull"""
+        from app.interfaces.schemas.annotation import (
+            DiagnosticsResponse,
+        )
+
+        diag = DiagnosticsResponse()
+        data = diag.model_dump()
+        assert all(v is None for v in data.values())
+
+    def test_debug_images_response_serialization(self):
+        """DebugImagesResponseのシリアライズ"""
+        from app.interfaces.schemas.annotation import (
+            DebugImagesResponse,
+        )
+
+        debug = DebugImagesResponse(
+            noleaf_url="https://example.com/noleaf.jpg",
+            bloom_url="https://example.com/bloom.jpg",
+        )
+        data = debug.model_dump()
+        assert data["noleaf_url"] == "https://example.com/noleaf.jpg"
+        assert data["bloom_url"] == "https://example.com/bloom.jpg"
+
+    def test_debug_images_response_all_none(self):
+        """DebugImagesResponseの全フィールドnull"""
+        from app.interfaces.schemas.annotation import (
+            DebugImagesResponse,
+        )
+
+        debug = DebugImagesResponse()
+        data = debug.model_dump()
+        assert data["noleaf_url"] is None
+        assert data["bloom_url"] is None
+
+    def test_annotation_list_item_has_version(self):
+        """AnnotationListItemResponseにversionフィールドがある"""
+        from app.interfaces.schemas.annotation import (
+            AnnotationListItemResponse,
+        )
+
+        item = AnnotationListItemResponse(
+            entire_tree_id=1,
+            tree_id=1,
+            thumb_url="https://example.com/thumb.jpg",
+            prefecture_name="東京都",
+            location="渋谷区",
+            annotation_status="unannotated",
+            vitality_value=None,
+            is_ready=False,
+            bloom_status=None,
+            version=202601,
+        )
+        data = item.model_dump()
+        assert data["version"] == 202601
+
+    def test_detail_response_with_diagnostics_and_debug(self):
+        """AnnotationDetailResponseにdiagnosticsとdebug_images"""
+        from app.interfaces.schemas.annotation import (
+            AnnotationDetailResponse,
+            DebugImagesResponse,
+            DiagnosticsResponse,
+        )
+
+        detail = AnnotationDetailResponse(
+            entire_tree_id=1,
+            tree_id=1,
+            image_url="https://example.com/image.jpg",
+            photo_date=None,
+            prefecture_name="東京都",
+            location="渋谷区",
+            nearest_spot_location=None,
+            flowering_date=None,
+            full_bloom_start_date=None,
+            full_bloom_end_date=None,
+            current_vitality_value=None,
+            current_index=0,
+            total_count=1,
+            prev_id=None,
+            next_id=None,
+            is_ready=True,
+            bloom_status=None,
+            bloom_30_date="2024-03-30",
+            bloom_50_date="2024-04-02",
+            diagnostics=DiagnosticsResponse(vitality=3),
+            debug_images=DebugImagesResponse(
+                noleaf_url="https://example.com/noleaf.jpg",
+            ),
+        )
+        data = detail.model_dump()
+        assert data["bloom_30_date"] == "2024-03-30"
+        assert data["bloom_50_date"] == "2024-04-02"
+        assert data["diagnostics"]["vitality"] == 3
+        assert (
+            data["debug_images"]["noleaf_url"]
+            == "https://example.com/noleaf.jpg"
+        )
+
+    def test_detail_response_without_admin_fields(self):
+        """非Admin時はdiagnosticsとdebug_imagesがnull"""
+        from app.interfaces.schemas.annotation import (
+            AnnotationDetailResponse,
+        )
+
+        detail = AnnotationDetailResponse(
+            entire_tree_id=1,
+            tree_id=1,
+            image_url="https://example.com/image.jpg",
+            photo_date=None,
+            prefecture_name="東京都",
+            location="渋谷区",
+            nearest_spot_location=None,
+            flowering_date=None,
+            full_bloom_start_date=None,
+            full_bloom_end_date=None,
+            current_vitality_value=None,
+            current_index=0,
+            total_count=1,
+            prev_id=None,
+            next_id=None,
+            is_ready=True,
+            bloom_status=None,
+            bloom_30_date=None,
+            bloom_50_date=None,
+            diagnostics=None,
+            debug_images=None,
+        )
+        data = detail.model_dump()
+        assert data["diagnostics"] is None
+        assert data["debug_images"] is None

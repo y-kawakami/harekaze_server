@@ -1,9 +1,11 @@
 import os
+import sys
 
 from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBasic
+from loguru import logger
 from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.interfaces.api import (admin_auth, admin_censorship, annotation,
@@ -13,6 +15,10 @@ from app.interfaces.api.error_handlers import register_error_handlers
 from app.interfaces.share import share
 
 load_dotenv()
+
+logger.remove()
+logger.add(sys.stderr, level="INFO")
+
 STAGE = os.getenv("stage", "dev")
 
 

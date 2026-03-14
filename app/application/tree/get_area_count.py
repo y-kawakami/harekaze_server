@@ -53,7 +53,7 @@ def get_area_count(
     Raises:
         InvalidParamError: パラメータが不正な場合
     """
-    logger.info(
+    logger.debug(
         f"エリアごとの桜の本数取得開始: area_type={area_type}, lat={latitude}, lon={longitude}, radius={radius}m")
 
     # area_typeのバリデーション
@@ -155,6 +155,6 @@ def get_area_count(
 
     # 合計を計算
     total = sum(area.count for area in area_counts)
-    logger.info(f"集計完了: 合計{total}件のデータを取得")
+    logger.debug(f"集計完了: 合計{total}件のデータを取得")
 
     return AreaCountResponse(total=total, areas=area_counts)

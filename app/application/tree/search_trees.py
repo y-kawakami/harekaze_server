@@ -66,7 +66,7 @@ def search_trees(
             reason="市区町村コードと位置検索（緯度・経度・検索範囲）は同時に指定できません"
         )
 
-    logger.info(
+    logger.debug(
         "木の検索を開始: {}",
         "市区町村コード={}".format(municipality_code) if municipality_code else "位置=({}, {}), 範囲={}m".format(
             latitude, longitude, radius)
@@ -105,7 +105,7 @@ def search_trees(
         offset=(page - 1) * per_page,
         limit=per_page
     )
-    logger.info(f"検索完了: {total}件中{len(trees)}件を取得")
+    logger.debug(f"検索完了: {total}件中{len(trees)}件を取得")
 
     # レスポンスの作成
     # 検索結果の木のリストを作成

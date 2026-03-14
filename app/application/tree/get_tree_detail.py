@@ -34,7 +34,7 @@ def get_tree_detail(
     Raises:
         TreeNotFoundError: 指定された木が見つからない場合
     """
-    logger.info(f"木の詳細情報取得開始: tree_id={tree_id}")
+    logger.debug(f"木の詳細情報取得開始: tree_id={tree_id}")
 
     repository = TreeRepository(db)
     tree = repository.get_tree(tree_id)
@@ -159,5 +159,5 @@ def get_tree_detail(
             censorship_status=tree.kobus[0].censorship_status
         )
 
-    logger.info(f"木の詳細情報取得完了: tree_id={tree_id}")
+    logger.debug(f"木の詳細情報取得完了: tree_id={tree_id}")
     return response

@@ -590,7 +590,7 @@ class TreeRepository:
         Returns:
             List[AreaCountItem]: エリアごとの集計結果
         """
-        logger.info(
+        logger.debug(
             "エリアコードに基づく桜の本数集計開始: "
             + f"area_type={area_type}"
         )

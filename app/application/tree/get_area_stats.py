@@ -47,7 +47,7 @@ def get_area_stats(
             reason="都道府県コードと市区町村コードのいずれか一方のみを指定してください"
         )
 
-    logger.info(
+    logger.debug(
         f"地域の統計情報取得開始: prefecture_code={prefecture_code}, municipality_code={municipality_code}")
 
     if not municipality_code and not prefecture_code:
@@ -99,7 +99,7 @@ def get_area_stats(
         municipality_code=municipality_code
     )
 
-    logger.info(
+    logger.debug(
         f"関連エンティティの取得完了: "
         f"stem_holes={len(related_entities.stem_holes)}件, "
         f"tengus={len(related_entities.tengus)}件, "
@@ -183,5 +183,5 @@ def get_area_stats(
         kobu_images=kobu_images
     )
 
-    logger.info(f"統計情報の取得が完了: location={location}")
+    logger.debug(f"統計情報の取得が完了: location={location}")
     return response
