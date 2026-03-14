@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
@@ -71,6 +71,12 @@ class TreeRepository:
         vitality_bloom_50_weight: Optional[float] = None,
         debug_image_obj_key: Optional[str] = None,
         debug_image_obj2_key: Optional[str] = None,
+        bloom_status: Optional[str] = None,
+        flowering_date: date | None = None,
+        bloom_30_date: date | None = None,
+        bloom_50_date: date | None = None,
+        full_bloom_date: date | None = None,
+        full_bloom_end_date: date | None = None,
     ) -> Tree:
         """
         新しい木を作成する
@@ -135,6 +141,12 @@ class TreeRepository:
             photo_date=photo_date,
             debug_image_obj_key=debug_image_obj_key,
             debug_image_obj2_key=debug_image_obj2_key,
+            bloom_status=bloom_status,
+            flowering_date=flowering_date,
+            bloom_30_date=bloom_30_date,
+            bloom_50_date=bloom_50_date,
+            full_bloom_date=full_bloom_date,
+            full_bloom_end_date=full_bloom_end_date,
         )
         self.db.add(entire_tree)
         self.db.commit()

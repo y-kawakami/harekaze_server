@@ -5,13 +5,16 @@ Requirements: 3.1, 3.2, 3.3, 3.4, 3.5
 """
 
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from typing import cast
 from unittest.mock import MagicMock, patch
 
 import pytest
 
 from app.domain.models.models import EntireTree
+from app.domain.services.bloom_state_service import (
+    BloomStatusResult,
+)
 
 
 class MockTree:
@@ -31,6 +34,11 @@ class MockEntireTree:
     longitude: float
     photo_date: datetime
     bloom_status: str | None
+    flowering_date: date | None
+    bloom_30_date: date | None
+    bloom_50_date: date | None
+    full_bloom_date: date | None
+    full_bloom_end_date: date | None
     tree: MockTree | None
 
     def __init__(
@@ -50,6 +58,11 @@ class MockEntireTree:
             else datetime(2025, 4, 20, tzinfo=timezone.utc)
         )
         self.bloom_status = bloom_status
+        self.flowering_date = None
+        self.bloom_30_date = None
+        self.bloom_50_date = None
+        self.full_bloom_date = None
+        self.full_bloom_end_date = None
         self.tree = tree if tree is not None else MockTree()
 
 
@@ -73,8 +86,22 @@ class TestUpdateBloomStatusScript:
         ) as mock_service_getter:
             mock_service = MagicMock()
             mock_service.calculate_bloom_status.side_effect = [
-                "full_bloom",
-                "blooming",
+                BloomStatusResult(
+                    status="full_bloom",
+                    flowering_date=date(2025, 4, 17),
+                    bloom_30_date=date(2025, 4, 19),
+                    bloom_50_date=date(2025, 4, 20),
+                    full_bloom_date=date(2025, 4, 22),
+                    full_bloom_end_date=date(2025, 4, 26),
+                ),
+                BloomStatusResult(
+                    status="blooming",
+                    flowering_date=date(2025, 4, 17),
+                    bloom_30_date=date(2025, 4, 19),
+                    bloom_50_date=date(2025, 4, 20),
+                    full_bloom_date=date(2025, 4, 22),
+                    full_bloom_end_date=date(2025, 4, 26),
+                ),
             ]
             mock_service_getter.return_value = mock_service
 
@@ -99,7 +126,16 @@ class TestUpdateBloomStatusScript:
             "scripts.update_bloom_status.get_bloom_state_service"
         ) as mock_service_getter:
             mock_service = MagicMock()
-            mock_service.calculate_bloom_status.return_value = "full_bloom"
+            mock_service.calculate_bloom_status.return_value = (
+                BloomStatusResult(
+                    status="full_bloom",
+                    flowering_date=date(2025, 4, 17),
+                    bloom_30_date=date(2025, 4, 19),
+                    bloom_50_date=date(2025, 4, 20),
+                    full_bloom_date=date(2025, 4, 22),
+                    full_bloom_end_date=date(2025, 4, 26),
+                )
+            )
             mock_service_getter.return_value = mock_service
 
             stats = process_batch(
@@ -153,7 +189,14 @@ class TestUpdateBloomStatusScript:
             # 1件目でエラー、2件目は成功
             mock_service.calculate_bloom_status.side_effect = [
                 Exception("Test error"),
-                "full_bloom",
+                BloomStatusResult(
+                    status="full_bloom",
+                    flowering_date=date(2025, 4, 17),
+                    bloom_30_date=date(2025, 4, 19),
+                    bloom_50_date=date(2025, 4, 20),
+                    full_bloom_date=date(2025, 4, 22),
+                    full_bloom_end_date=date(2025, 4, 26),
+                ),
             ]
             mock_service_getter.return_value = mock_service
 

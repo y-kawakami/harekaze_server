@@ -114,20 +114,35 @@ def process_batch(
             photo_date_only = record.photo_date.date()
 
             # bloom_status を計算
-            bloom_status = bloom_service.calculate_bloom_status(
+            bloom_result = bloom_service.calculate_bloom_status(
                 photo_date=photo_date_only,
                 latitude=record.latitude,
                 longitude=record.longitude,
                 prefecture_code=prefecture_code,
             )
 
-            if bloom_status is None:
+            if bloom_result is None:
                 stats["skipped"] += 1
                 continue
 
             # 更新
             if not dry_run:
-                record.bloom_status = bloom_status
+                record.bloom_status = bloom_result.status
+                record.flowering_date = (
+                    bloom_result.flowering_date
+                )
+                record.bloom_30_date = (
+                    bloom_result.bloom_30_date
+                )
+                record.bloom_50_date = (
+                    bloom_result.bloom_50_date
+                )
+                record.full_bloom_date = (
+                    bloom_result.full_bloom_date
+                )
+                record.full_bloom_end_date = (
+                    bloom_result.full_bloom_end_date
+                )
             stats["updated"] += 1
 
         except Exception as e:

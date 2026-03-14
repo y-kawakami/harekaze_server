@@ -24,6 +24,10 @@ from app.application.tree.run_vitality_models import (
 from app.domain.services.ai_service import (
     AIService,
 )
+from app.domain.services.bloom_state_service import (
+    BloomStatusResult,
+    get_bloom_state_service,
+)
 from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.fullview_validation_service import (
     FullviewValidationService,
@@ -322,6 +326,36 @@ async def create_tree(
     end_time = time_module.time()
     logger.info(f"画像とサムネイルのアップロード: {(end_time - start_time) * 1000:.2f}ms")
 
+    # bloom_status をリアルタイム計算
+    bloom_state_service = get_bloom_state_service()
+    bloom_result: BloomStatusResult | None = (
+        bloom_state_service.calculate_bloom_status(
+            photo_date=photo_date_value,
+            latitude=latitude,
+            longitude=longitude,
+            prefecture_code=address.prefecture_code,
+        )
+    )
+    bloom_status = (
+        bloom_result.status if bloom_result else None
+    )
+    flowering_date_val = (
+        bloom_result.flowering_date if bloom_result else None
+    )
+    bloom_30_date_val = (
+        bloom_result.bloom_30_date if bloom_result else None
+    )
+    bloom_50_date_val = (
+        bloom_result.bloom_50_date if bloom_result else None
+    )
+    full_bloom_date_val = (
+        bloom_result.full_bloom_date if bloom_result else None
+    )
+    full_bloom_end_date_val = (
+        bloom_result.full_bloom_end_date
+        if bloom_result else None
+    )
+
     # DBに登録
     start_time = time_module.time()
     try:
@@ -388,6 +422,12 @@ async def create_tree(
             photo_date=parsed_photo_date,
             debug_image_obj_key=debug_image_obj_key,
             debug_image_obj2_key=secondary_debug_key,
+            bloom_status=bloom_status,
+            flowering_date=flowering_date_val,
+            bloom_30_date=bloom_30_date_val,
+            bloom_50_date=bloom_50_date_val,
+            full_bloom_date=full_bloom_date_val,
+            full_bloom_end_date=full_bloom_end_date_val,
         )
 
         # デバッグモードでの自動承認

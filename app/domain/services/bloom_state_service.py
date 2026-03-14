@@ -40,6 +40,18 @@ BLOOM_STATUS_LABELS: dict[str, str] = {
 
 
 @dataclass
+class BloomStatusResult:
+    """開花状態判定結果"""
+
+    status: BloomStatus
+    flowering_date: date
+    bloom_30_date: date
+    bloom_50_date: date
+    full_bloom_date: date
+    full_bloom_end_date: date
+
+
+@dataclass
 class PrefectureOffsets:
     """都道府県別オフセット値"""
 
@@ -227,7 +239,7 @@ class BloomStateService:
         latitude: float,
         longitude: float,
         prefecture_code: str | None,
-    ) -> BloomStatus | None:
+    ) -> BloomStatusResult | None:
         """開花状態を計算
 
         Args:
@@ -237,7 +249,7 @@ class BloomStateService:
             prefecture_code: 都道府県コード（Treeから取得）
 
         Returns:
-            8段階の開花状態、または計算不能な場合 None
+            BloomStatusResult、または計算不能な場合 None
         """
         # 都道府県コードがない場合は計算不可
         if not prefecture_code:
@@ -279,23 +291,36 @@ class BloomStateService:
         # 葉のみ開始 = full_bloom_end + end_to_hanomi
         hanomi_start = full_bloom_end + timedelta(days=offsets.end_to_hanomi)
 
+        # 共通の日付情報を構築するヘルパー
+        def _result(
+            status: BloomStatus,
+        ) -> BloomStatusResult:
+            return BloomStatusResult(
+                status=status,
+                flowering_date=flowering_date,
+                bloom_30_date=three_bu_start,
+                bloom_50_date=five_bu_start,
+                full_bloom_date=full_bloom_start,
+                full_bloom_end_date=full_bloom_end,
+            )
+
         # ステータス判定
         if photo_date < flowering_date:
-            return "before_bloom"
+            return _result("before_bloom")
         elif photo_date < three_bu_start:
-            return "blooming"
+            return _result("blooming")
         elif photo_date < five_bu_start:
-            return "30_percent"
+            return _result("30_percent")
         elif photo_date < full_bloom_start:
-            return "50_percent"
+            return _result("50_percent")
         elif photo_date < full_bloom_end:
-            return "full_bloom"
+            return _result("full_bloom")
         elif photo_date < hanawakaba_start:
-            return "falling"
+            return _result("falling")
         elif photo_date < hanomi_start:
-            return "with_leaves"
+            return _result("with_leaves")
         else:
-            return "leaves_only"
+            return _result("leaves_only")
 
 
 # シングルトンパターンを実装

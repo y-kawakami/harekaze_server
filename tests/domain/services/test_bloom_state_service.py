@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 from app.domain.services.bloom_state_service import (
     BloomStateService,
+    BloomStatusResult,
     BLOOM_STATUS_LABELS,
     PrefectureOffsets,
     get_bloom_state_service,
@@ -132,7 +133,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "before_bloom"
+            assert result is not None
+            assert result.status == "before_bloom"
 
     def test_blooming(self, service_with_mock):
         """開花日から3分咲きオフセット-1日までは「開花」を返すこと (Req 1.5)"""
@@ -156,7 +158,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "blooming"
+            assert result is not None
+            assert result.status == "blooming"
 
             # 開花日+1日
             result = service.calculate_bloom_status(
@@ -165,7 +168,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "blooming"
+            assert result is not None
+            assert result.status == "blooming"
 
     def test_30_percent(self, service_with_mock):
         """3分咲き期間は「3分咲き」を返すこと (Req 1.6)"""
@@ -188,7 +192,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "30_percent"
+            assert result is not None
+            assert result.status == "30_percent"
 
     def test_50_percent(self, service_with_mock):
         """5分咲き期間は「5分咲き」を返すこと (Req 1.7)"""
@@ -211,7 +216,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "50_percent"
+            assert result is not None
+            assert result.status == "50_percent"
 
             result = service.calculate_bloom_status(
                 photo_date=date(2025, 4, 21),
@@ -219,7 +225,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "50_percent"
+            assert result is not None
+            assert result.status == "50_percent"
 
     def test_full_bloom(self, service_with_mock):
         """満開期間は「8分咲き（満開）」を返すこと (Req 1.8)"""
@@ -241,7 +248,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "full_bloom"
+            assert result is not None
+            assert result.status == "full_bloom"
 
             result = service.calculate_bloom_status(
                 photo_date=date(2025, 4, 25),
@@ -249,7 +257,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "full_bloom"
+            assert result is not None
+            assert result.status == "full_bloom"
 
     def test_falling(self, service_with_mock):
         """散り始め期間は「散り始め」を返すこと (Req 1.9)"""
@@ -272,7 +281,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "falling"
+            assert result is not None
+            assert result.status == "falling"
 
             result = service.calculate_bloom_status(
                 photo_date=date(2025, 4, 30),
@@ -280,7 +290,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "falling"
+            assert result is not None
+            assert result.status == "falling"
 
     def test_with_leaves(self, service_with_mock):
         """花＋若葉期間は「花＋若葉（葉桜）」を返すこと (Req 1.10)"""
@@ -303,7 +314,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "with_leaves"
+            assert result is not None
+            assert result.status == "with_leaves"
 
             result = service.calculate_bloom_status(
                 photo_date=date(2025, 5, 5),
@@ -311,7 +323,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "with_leaves"
+            assert result is not None
+            assert result.status == "with_leaves"
 
     def test_leaves_only(self, service_with_mock):
         """葉のみ期間は「葉のみ」を返すこと (Req 1.11)"""
@@ -334,7 +347,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "leaves_only"
+            assert result is not None
+            assert result.status == "leaves_only"
 
             result = service.calculate_bloom_status(
                 photo_date=date(2025, 6, 1),
@@ -342,7 +356,8 @@ class TestBloomStateServiceCalculation:
                 longitude=140.7,
                 prefecture_code="02",
             )
-            assert result == "leaves_only"
+            assert result is not None
+            assert result.status == "leaves_only"
 
 
 @pytest.mark.unit

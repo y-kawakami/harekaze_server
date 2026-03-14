@@ -1,4 +1,5 @@
 import uuid
+from datetime import date as date_type
 from datetime import datetime, time, timezone
 from enum import IntEnum
 from typing import TYPE_CHECKING, List, Optional
@@ -7,8 +8,8 @@ if TYPE_CHECKING:
     from app.domain.models.annotation import VitalityAnnotation
 
 from geoalchemy2.types import Geometry
-from sqlalchemy import (Boolean, DateTime, Double, ForeignKey, Index,
-                        Integer, Numeric, String, Text, Time)
+from sqlalchemy import (Boolean, Date, DateTime, Double, ForeignKey,
+                        Index, Integer, Numeric, String, Text, Time)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.infrastructure.database.database import Base
@@ -156,6 +157,16 @@ class EntireTree(Base):
         index=True,
         comment="開花状態（8段階 or NULL）"
     )
+    flowering_date: Mapped[date_type | None] = mapped_column(
+        Date, nullable=True, comment="開花日")
+    bloom_30_date: Mapped[date_type | None] = mapped_column(
+        Date, nullable=True, comment="3分咲き日")
+    bloom_50_date: Mapped[date_type | None] = mapped_column(
+        Date, nullable=True, comment="5分咲き日")
+    full_bloom_date: Mapped[date_type | None] = mapped_column(
+        Date, nullable=True, comment="満開開始日")
+    full_bloom_end_date: Mapped[date_type | None] = mapped_column(
+        Date, nullable=True, comment="満開終了日")
 
     user: Mapped["User"] = relationship("User")
     tree: Mapped["Tree"] = relationship("Tree", back_populates="entire_tree")
