@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import html
 import os
@@ -19,8 +20,10 @@ from app.application.exceptions import (DatabaseError,
 from app.domain.constants.ngwords import is_ng_word
 from app.domain.models.models import CensorshipStatus, User
 from app.application.tree.run_vitality_models import (
+    VitalityModelResult,
     run_vitality_models,
 )
+from app.domain.models.bounding_box import BoundingBox
 from app.domain.services.ai_service import (
     AIService,
 )
@@ -30,6 +33,7 @@ from app.domain.services.bloom_state_service import (
 )
 from app.domain.services.flowering_date_service import FloweringDateService
 from app.domain.services.fullview_validation_service import (
+    FullviewValidationResult,
     FullviewValidationService,
 )
 from app.domain.services.image_service import ImageService
@@ -114,7 +118,9 @@ async def create_tree(
     if address.country != "日本":
         logger.warning(f"日本国内の場所を指定してください: ({latitude}, {longitude})")
         raise LocationNotInJapanError(latitude=latitude, longitude=longitude)
-    if address.detail is None or address.prefecture_code is None or address.municipality_code is None:
+    if (address.detail is None
+            or address.prefecture_code is None
+            or address.municipality_code is None):
         logger.warning(f"住所情報が不足しています: ({latitude}, {longitude})")
         raise LocationNotFoundError(latitude=latitude, longitude=longitude)
     end_time = time_module.time()
@@ -145,41 +151,144 @@ async def create_tree(
     end_time = time_module.time()
     logger.info(f"画像の前処理: {(end_time - start_time) * 1000:.2f}ms")
 
-    # ラベル検出
-    start_time = time_module.time()
-    labels = await label_detector.detect(image, ['Tree', 'Person'])
-    print(labels)
-    if "Tree" not in labels:
-        logger.warning(f"Entire:木が検出できません: ユーザーID={current_user.id}")
-        raise TreeNotDetectedError()
-    end_time = time_module.time()
-    logger.info(f"ラベル検出処理: {(end_time - start_time) * 1000:.2f}ms")
+    # UIDを生成（並列パイプラインで使用）
+    tree_id = str(uuid.uuid4())
+    logger.debug(f"生成されたツリーUID: {tree_id}")
+    orig_suffix = str(uuid.uuid4())
+    orig_image_key = f"{tree_id}/entire_orig_{orig_suffix}.jpg"
+    target_datetime = parsed_photo_date or datetime.datetime.now()
+    photo_date_value = target_datetime.date()
 
-    # 全景バリデーション（既存PIL画像からリサイズしフル再展開を回避）
-    start_time = time_module.time()
-    _FV_MAX_EDGE = 1024
-    if max(image.size) > _FV_MAX_EDGE:
-        w, h = image.size
-        ratio = _FV_MAX_EDGE / max(w, h)
-        fv_image = image.resize(
-            (int(w * ratio), int(h * ratio)),
-            Image.Resampling.LANCZOS,
+    # --- パイプラインA: 全景バリデーション ---
+    async def _run_fullview_validation() -> (
+        "FullviewValidationResult"
+    ):
+        fv_start = time_module.time()
+        _FV_MAX_EDGE = 1024
+        if max(image.size) > _FV_MAX_EDGE:
+            w, h = image.size
+            ratio = _FV_MAX_EDGE / max(w, h)
+            fv_image = image.resize(
+                (int(w * ratio), int(h * ratio)),
+                Image.Resampling.LANCZOS,
+            )
+            fv_image_bytes = image_service.pil_to_bytes(
+                fv_image, "jpeg"
+            )
+            del fv_image
+        else:
+            fv_image_bytes = image_data
+        result = await fullview_validation_service.validate(
+            image_bytes=fv_image_bytes,
+            image_format="jpeg",
         )
-        fv_image_bytes = image_service.pil_to_bytes(fv_image, "jpeg")
-        del fv_image
-    else:
-        fv_image_bytes = image_data
-    fv_result = await fullview_validation_service.validate(
-        image_bytes=fv_image_bytes,
-        image_format="jpeg",
+        del fv_image_bytes
+        fv_end = time_module.time()
+        logger.info(
+            "全景バリデーション処理: "
+            + f"{(fv_end - fv_start) * 1000:.2f}ms"
+        )
+        return result
+
+    # --- パイプラインB: ラベル検出→スポット→開花判定→活力度モデル ---
+    async def _run_detection_and_models() -> (
+        "tuple[dict[str, list[BoundingBox]], VitalityModelResult]"
+    ):
+        # ラベル検出
+        det_start = time_module.time()
+        det_labels = await label_detector.detect(
+            image, ['Tree', 'Person']
+        )
+        print(det_labels)
+        if "Tree" not in det_labels:
+            logger.warning(
+                "Entire:木が検出できません: "
+                + f"ユーザーID={current_user.id}"
+            )
+            raise TreeNotDetectedError()
+        det_end = time_module.time()
+        logger.info(
+            "ラベル検出処理: "
+            + f"{(det_end - det_start) * 1000:.2f}ms"
+        )
+
+        # 最寄りの観測地点を取得
+        spot_start = time_module.time()
+        det_spot = flowering_date_service.find_nearest_spot(
+            latitude, longitude
+        )
+        if det_spot is None:
+            logger.warning(
+                "最寄りの観測地点が見つかりません: "
+                + f"({latitude}, {longitude})"
+            )
+            raise LocationNotFoundError(
+                latitude=latitude, longitude=longitude
+            )
+        spot_end = time_module.time()
+        logger.info(
+            "最寄りスポット取得: "
+            + f"{(spot_end - spot_start) * 1000:.2f}ms"
+        )
+
+        # 多段階開花モデル判定
+        bloom_start = time_module.time()
+        det_bloom_stage = (
+            multi_stage_bloom_service.determine_bloom_stage(
+                flowering_date=det_spot.flowering_date,
+                full_bloom_date=det_spot.full_bloom_date,
+                full_bloom_end_date=det_spot.full_bloom_end_date,
+                prefecture_code=address.prefecture_code,
+                photo_date=photo_date_value,
+            )
+        )
+        bloom_end = time_module.time()
+        logger.info(
+            "開花段階判定: "
+            + f"{(bloom_end - bloom_start) * 1000:.2f}ms"
+        )
+
+        # フォールバック時の重み計算
+        if det_bloom_stage is None:
+            fb_weights = det_spot.estimate_vitality(
+                target_datetime
+            )
+        else:
+            fb_weights = (0.5, 0.5)
+
+        # 活力度モデル解析
+        model_start = time_module.time()
+        det_model_result = await run_vitality_models(
+            image_data=image_data,
+            tree_id=tree_id,
+            orig_suffix=orig_suffix,
+            orig_image_key=orig_image_key,
+            image_service=image_service,
+            ai_service=ai_service,
+            bloom_stage_result=det_bloom_stage,
+            fallback_weights=fb_weights,
+        )
+        model_end = time_module.time()
+        logger.info(
+            "モデル解析処理: "
+            + f"{(model_end - model_start) * 1000:.2f}ms"
+        )
+
+        return (det_labels, det_model_result)
+
+    # --- 並列実行 ---
+    start_time = time_module.time()
+    fv_result, (labels, model_result) = await asyncio.gather(
+        _run_fullview_validation(),
+        _run_detection_and_models(),
     )
-    del fv_image_bytes
     end_time = time_module.time()
     logger.info(
-        "全景バリデーション処理: "
+        "並列パイプライン合計: "
         + f"{(end_time - start_time) * 1000:.2f}ms"
     )
 
+    # 全景バリデーション NG 判定
     if not fv_result.is_valid:
         # NG 画像を S3 に保存
         ng_date = datetime.datetime.now().strftime("%Y%m%d")
@@ -207,73 +316,6 @@ async def create_tree(
             reason=fv_result.reason,
             confidence=fv_result.confidence,
         )
-
-    # UIDを生成
-    tree_id = str(uuid.uuid4())
-    logger.debug(f"生成されたツリーUID: {tree_id}")
-
-    # 最寄りの観測地点を取得（モデル選択に先行して必要）
-    start_time = time_module.time()
-    spot = flowering_date_service.find_nearest_spot(latitude, longitude)
-    if spot is None:
-        logger.warning(
-            "最寄りの観測地点が見つかりません: "
-            + f"({latitude}, {longitude})"
-        )
-        raise LocationNotFoundError(
-            latitude=latitude, longitude=longitude
-        )
-    target_datetime = parsed_photo_date or datetime.datetime.now()
-    end_time = time_module.time()
-    logger.info(
-        "最寄りスポット取得: "
-        + f"{(end_time - start_time) * 1000:.2f}ms"
-    )
-
-    # 多段階開花モデル判定 (Req 1.1-1.10, 2.2-2.4)
-    start_time = time_module.time()
-    photo_date_value = target_datetime.date()
-    bloom_stage_result = (
-        multi_stage_bloom_service.determine_bloom_stage(
-            flowering_date=spot.flowering_date,
-            full_bloom_date=spot.full_bloom_date,
-            full_bloom_end_date=spot.full_bloom_end_date,
-            prefecture_code=address.prefecture_code,
-            photo_date=photo_date_value,
-        )
-    )
-    end_time = time_module.time()
-    logger.info(
-        "開花段階判定: "
-        + f"{(end_time - start_time) * 1000:.2f}ms"
-    )
-
-    # 画像アップロード準備
-    orig_suffix = str(uuid.uuid4())
-    orig_image_key = f"{tree_id}/entire_orig_{orig_suffix}.jpg"
-
-    # フォールバック時の重み計算
-    if bloom_stage_result is None:
-        fb_weights = spot.estimate_vitality(target_datetime)
-    else:
-        fb_weights = (0.5, 0.5)
-
-    start_time = time_module.time()
-    model_result = await run_vitality_models(
-        image_data=image_data,
-        tree_id=tree_id,
-        orig_suffix=orig_suffix,
-        orig_image_key=orig_image_key,
-        image_service=image_service,
-        ai_service=ai_service,
-        bloom_stage_result=bloom_stage_result,
-        fallback_weights=fb_weights,
-    )
-    end_time = time_module.time()
-    logger.info(
-        "モデル解析処理: "
-        + f"{(end_time - start_time) * 1000:.2f}ms"
-    )
 
     final_vitality = model_result.final_vitality
     final_vitality_real = model_result.final_vitality_real

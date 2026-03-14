@@ -134,9 +134,9 @@ npm run dev
 
 #### 3. アクセス
 
-| 画面 | URL |
-|------|-----|
-| アノテーションツール | http://localhost:3000 |
+| 画面                       | URL                        |
+| -------------------------- | -------------------------- |
+| アノテーションツール       | http://localhost:3000      |
 | API ドキュメント (Swagger) | http://localhost:8000/docs |
 
 開発モードでは、Viteのプロキシ設定により `/annotation_api` へのリクエストは自動的にバックエンド（ポート8000）に転送されます。
@@ -186,8 +186,8 @@ server {
 
 マイグレーション実行時に以下の初期アカウントが作成されます：
 
-| ユーザー名 | パスワード |
-|-----------|-----------|
+| ユーザー名  | パスワード       |
+| ----------- | ---------------- |
 | `annotator` | `annotation2026` |
 
 #### アノテーター管理スクリプト
@@ -224,15 +224,15 @@ python scripts/update_bloom_status.py --batch-size 500
 
 ### APIエンドポイント
 
-| Method | Endpoint | 説明 |
-|--------|----------|------|
-| POST | `/annotation_api/login` | ログイン |
-| GET | `/annotation_api/me` | 現在のアノテーター情報取得 |
-| GET | `/annotation_api/trees` | 桜画像一覧取得（フィルタリング対応） |
-| GET | `/annotation_api/trees/{id}` | 桜画像詳細取得 |
-| POST | `/annotation_api/trees/{id}/annotation` | アノテーション保存 |
-| GET | `/annotation_api/prefectures` | 都道府県一覧取得 |
-| GET | `/annotation_api/export/csv` | CSVエクスポート |
+| Method | Endpoint                                | 説明                                 |
+| ------ | --------------------------------------- | ------------------------------------ |
+| POST   | `/annotation_api/login`                 | ログイン                             |
+| GET    | `/annotation_api/me`                    | 現在のアノテーター情報取得           |
+| GET    | `/annotation_api/trees`                 | 桜画像一覧取得（フィルタリング対応） |
+| GET    | `/annotation_api/trees/{id}`            | 桜画像詳細取得                       |
+| POST   | `/annotation_api/trees/{id}/annotation` | アノテーション保存                   |
+| GET    | `/annotation_api/prefectures`           | 都道府県一覧取得                     |
+| GET    | `/annotation_api/export/csv`            | CSVエクスポート                      |
 
 ## 負荷テスト
 
@@ -257,11 +257,11 @@ python scripts/load_test_create_tree.py --base-url https://example.com/sakura_ca
 
 ### CLI引数
 
-| 引数 | デフォルト | 説明 |
-|------|-----------|------|
-| `--interval` | 5 | リクエスト間隔（秒） |
-| `--count` | 無限 | リクエスト回数 |
-| `--base-url` | `https://dev.kb6rvv06ctr2.com/sakura_camera` | ベースURL |
+| 引数         | デフォルト                                   | 説明                 |
+| ------------ | -------------------------------------------- | -------------------- |
+| `--interval` | 5                                            | リクエスト間隔（秒） |
+| `--count`    | 無限                                         | リクエスト回数       |
+| `--base-url` | `https://dev.kb6rvv06ctr2.com/sakura_camera` | ベースURL            |
 
 ## テスト
 
@@ -504,3 +504,37 @@ FROM mushrooms m
 JOIN trees t ON m.tree_id = t.id
 GROUP BY DATE_FORMAT(DATE_ADD(t.created_at, INTERVAL 9 HOUR), '%Y-%m-%d')
 ORDER BY `日付(JST)`;
+
+
+
+### create_tree 速度改善
+
+#### 改善前
+
+==================================================
+Summary
+==================================================
+Total requests : 30
+Status codes   : 200=24, 400=6
+Min            : 6.65s
+Max            : 10.16s
+Avg            : 8.61s
+Median (p50)   : 8.74s
+p95            : 9.85s
+p99            : 10.16s
+==================================================
+
+#### 改善後
+
+==================================================
+Summary
+==================================================
+Total requests : 30
+Status codes   : 200=22, 400=8
+Min            : 5.57s
+Max            : 8.30s
+Avg            : 6.68s
+Median (p50)   : 6.68s
+p95            : 7.98s
+p99            : 8.30s
+==================================================
