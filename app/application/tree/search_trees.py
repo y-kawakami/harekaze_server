@@ -72,22 +72,27 @@ def search_trees(
             latitude, longitude, radius)
     )
 
-    # 元気度の範囲を設定
+    # 元気度の範囲を設定（フルレンジ1-5の場合はJOINを回避）
     vitality_range = None
     if vitality_min is not None or vitality_max is not None:
-        vitality_range = (
-            vitality_min or 1,
-            vitality_max or 5
-        )
-        logger.debug(f"元気度の範囲を指定: {vitality_range}")
+        vmin = vitality_min or 1
+        vmax = vitality_max or 5
+        if not (vmin == 1 and vmax == 5):
+            vitality_range = (vmin, vmax)
+            logger.debug(
+                f"元気度の範囲を指定: {vitality_range}"
+            )
 
+    # 年齢の範囲を設定（フルレンジ0-1000の場合はJOINを回避）
     age_range = None
     if age_min is not None or age_max is not None:
-        age_range = (
-            age_min or 0,
-            age_max or 1000
-        )
-        logger.debug(f"年齢の範囲を指定: {age_range}")
+        amin = age_min or 0
+        amax = age_max or 1000
+        if not (amin == 0 and amax == 1000):
+            age_range = (amin, amax)
+            logger.debug(
+                f"年齢の範囲を指定: {age_range}"
+            )
 
     # リポジトリで検索を実行
     repository = TreeRepository(db)

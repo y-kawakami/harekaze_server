@@ -1,10 +1,11 @@
+import math
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, timedelta
 from typing import Dict, List, Optional, Tuple
 
 from loguru import logger
 from sqlalchemy import and_, case, func, or_
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, contains_eager, joinedload
 
 from app.domain.models.area_stats import AreaStats
 from app.domain.models.models import (CensorshipStatus, EntireTree, Kobu,
@@ -290,68 +291,152 @@ class TreeRepository:
         offset: int = 0,
         limit: int = 20
     ) -> tuple[List[Tree], int]:
-        # 検閲ステータスがAPPROVEDのものだけを対象とするベースクエリを作成
+        # 検閲ステータスがAPPROVEDのものだけを対象とするベースクエリ
         query = self.db.query(Tree).filter(
-            Tree.censorship_status == CensorshipStatus.APPROVED)
+            Tree.censorship_status == CensorshipStatus.APPROVED
+        )
 
         # 市区町村コードまたは位置による検索
         if municipality_code is not None:
-            query = query.filter(Tree.municipality_code == municipality_code)
-        elif latitude is not None and longitude is not None and radius is not None:
+            query = query.filter(
+                Tree.municipality_code == municipality_code
+            )
+        elif (
+            latitude is not None
+            and longitude is not None
+            and radius is not None
+        ):
+            # Step 1: バウンディングボックスで絞り込み（空間インデックス利用）
+            lat_delta = radius / 111320
+            lon_delta = radius / (
+                111320 * math.cos(math.radians(latitude))
+            )
+            min_lat = latitude - lat_delta
+            max_lat = latitude + lat_delta
+            min_lon = longitude - lon_delta
+            max_lon = longitude + lon_delta
+            bbox_wkt = (
+                f"POLYGON(({min_lon} {min_lat},"
+                + f" {max_lon} {min_lat},"
+                + f" {max_lon} {max_lat},"
+                + f" {min_lon} {max_lat},"
+                + f" {min_lon} {min_lat}))"
+            )
+            query = query.filter(
+                func.MBRContains(
+                    func.ST_GeomFromText(bbox_wkt),
+                    Tree.position,
+                )
+            )
+            # Step 2: 正確な距離でフィルタリング
+            point_wkt = f"POINT({longitude} {latitude})"
             query = query.filter(
                 func.ST_Distance_Sphere(
                     Tree.position,
-                    func.ST_GeomFromText(f'POINT({longitude} {latitude})')
+                    func.ST_GeomFromText(point_wkt),
                 ) <= radius
             )
 
+        # eager loadオプションの構築
+        entire_tree_eager = joinedload(Tree.entire_tree)
+        stem_eager = joinedload(Tree.stem)
+
         if vitality_range:
-            # EntireTreeテーブルと結合して元気度条件を適用（検閲ステータスも考慮）
+            # 明示JOINでフィルタ + contains_eagerで結果を取得
             query = query.join(EntireTree).filter(
                 EntireTree.vitality >= vitality_range[0],
                 EntireTree.vitality <= vitality_range[1],
-                EntireTree.censorship_status == CensorshipStatus.APPROVED
+                EntireTree.censorship_status
+                == CensorshipStatus.APPROVED,
+            )
+            entire_tree_eager = contains_eager(
+                Tree.entire_tree
             )
 
-        # age_rangeが指定されている場合のみstemテーブルと結合（検閲ステータスも考慮）
         if age_range:
             query = query.join(Stem).filter(
                 Stem.age >= age_range[0],
                 Stem.age <= age_range[1],
-                Stem.censorship_status == CensorshipStatus.APPROVED
+                Stem.censorship_status
+                == CensorshipStatus.APPROVED,
             )
+            stem_eager = contains_eager(Tree.stem)
 
         if has_hole is not None:
             if has_hole:
                 query = query.join(StemHole).filter(
-                    StemHole.censorship_status == CensorshipStatus.APPROVED)
+                    StemHole.censorship_status
+                    == CensorshipStatus.APPROVED
+                )
             else:
                 query = query.outerjoin(StemHole).filter(
-                    StemHole.id.is_(None) | (StemHole.censorship_status != CensorshipStatus.APPROVED))
+                    StemHole.id.is_(None)
+                    | (
+                        StemHole.censorship_status
+                        != CensorshipStatus.APPROVED
+                    )
+                )
         if has_tengusu is not None:
             if has_tengusu:
                 query = query.join(Tengus).filter(
-                    Tengus.censorship_status == CensorshipStatus.APPROVED)
+                    Tengus.censorship_status
+                    == CensorshipStatus.APPROVED
+                )
             else:
                 query = query.outerjoin(Tengus).filter(
-                    Tengus.id.is_(None) | (Tengus.censorship_status != CensorshipStatus.APPROVED))
+                    Tengus.id.is_(None)
+                    | (
+                        Tengus.censorship_status
+                        != CensorshipStatus.APPROVED
+                    )
+                )
         if has_mushroom is not None:
             if has_mushroom:
                 query = query.join(Mushroom).filter(
-                    Mushroom.censorship_status == CensorshipStatus.APPROVED)
+                    Mushroom.censorship_status
+                    == CensorshipStatus.APPROVED
+                )
             else:
                 query = query.outerjoin(Mushroom).filter(
-                    Mushroom.id.is_(None) | (Mushroom.censorship_status != CensorshipStatus.APPROVED))
+                    Mushroom.id.is_(None)
+                    | (
+                        Mushroom.censorship_status
+                        != CensorshipStatus.APPROVED
+                    )
+                )
         if has_kobu is not None:
             if has_kobu:
                 query = query.join(Kobu).filter(
-                    Kobu.censorship_status == CensorshipStatus.APPROVED)
+                    Kobu.censorship_status
+                    == CensorshipStatus.APPROVED
+                )
             else:
                 query = query.outerjoin(Kobu).filter(
-                    Kobu.id.is_(None) | (Kobu.censorship_status != CensorshipStatus.APPROVED))
+                    Kobu.id.is_(None)
+                    | (
+                        Kobu.censorship_status
+                        != CensorshipStatus.APPROVED
+                    )
+                )
 
-        total = query.count()
-        trees = query.offset(offset).limit(limit).all()
+        # COUNT + SELECTの二重実行を回避:
+        # IDサブクエリで重いフィルタは1回だけ実行
+        id_query = query.with_entities(Tree.id)
+        total = id_query.count()
+
+        id_subquery = (
+            id_query.offset(offset).limit(limit).subquery()
+        )
+        trees = (
+            self.db.query(Tree)
+            .options(entire_tree_eager, stem_eager)
+            .filter(
+                Tree.id.in_(
+                    self.db.query(id_subquery.c.id)
+                )
+            )
+            .all()
+        )
         return trees, total
 
     def get_prefecture_stats(self, prefecture_code: str) -> PrefectureStats | None:
