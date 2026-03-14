@@ -12,7 +12,6 @@
 - Admin限定で診断値表示・元気度フィルタ・デバッグ画像URLを提供する
 
 ### Non-Goals
-- フロントエンド（UI）の実装（API設計のみ）
 - version値の自動判定ロジック（固定値`202601`を使用）
 - デバッグ画像のS3アップロード処理（既存Lambda処理の範囲）
 
@@ -436,3 +435,183 @@ graph LR
 3. **Phase 3**: フロントエンドデプロイ（チェックボックスUI追加）
 
 ロールバック: versionカラムのDROPで対応可能（APIはversionsパラメータ無視で動作継続）
+
+## フロントエンド設計
+
+### 技術スタック
+
+| Layer | Choice / Version | Role |
+|-------|------------------|------|
+| Framework | React 18.2 + TypeScript | コンポーネントベースUI |
+| Styling | Tailwind CSS 3.4 | ユーティリティファーストCSS |
+| Routing | React Router DOM 6.21 | SPA ルーティング |
+| Build | Vite 5 | 開発サーバー・ビルド |
+
+### 変更対象ファイル
+
+| ファイル | 変更内容 | 要件 |
+|---------|---------|------|
+| `types/api.ts` | 型定義追加（version, diagnostics, debug_images, ListFilter拡張） | 全要件 |
+| `api/client.ts` | APIクライアントにversions, model_vitalityパラメータ送信を追加 | 2, 5 |
+| `pages/ListPage.tsx` | 年度チェックボックス、model_vitalityフィルタ、versionバッジ追加 | 2, 5 |
+| `pages/AnnotationPage.tsx` | bloom日表示、診断値セクション、デバッグ画像リンク追加 | 3, 4, 6 |
+
+### 型定義拡張（types/api.ts）
+
+```typescript
+// AnnotationListItem に追加
+export interface AnnotationListItem {
+  // ... 既存フィールド ...
+  version: number;  // 追加: Tree.version
+}
+
+// AnnotationDetail に追加
+export interface AnnotationDetail {
+  // ... 既存フィールド ...
+  bloom_30_date: string | null;      // 追加: 3分咲き日
+  bloom_50_date: string | null;      // 追加: 5分咲き日
+  diagnostics: Diagnostics | null;   // 追加: Admin限定
+  debug_images: DebugImages | null;  // 追加: Admin限定
+}
+
+// 新規インターフェース
+export interface Diagnostics {
+  vitality: number | null;
+  vitality_noleaf: number | null;
+  vitality_noleaf_weight: number | null;
+  vitality_bloom: number | null;
+  vitality_bloom_weight: number | null;
+  vitality_bloom_30: number | null;
+  vitality_bloom_30_weight: number | null;
+  vitality_bloom_50: number | null;
+  vitality_bloom_50_weight: number | null;
+}
+
+export interface DebugImages {
+  noleaf_url: string | null;
+  bloom_url: string | null;
+}
+
+// ListFilter に追加
+export interface ListFilter {
+  // ... 既存フィールド ...
+  versions: string | null;         // 追加: カンマ区切り ("202501,202601")
+  model_vitality: number | null;   // 追加: Admin限定
+}
+```
+
+### 一覧画面（ListPage.tsx）設計
+
+#### 年度チェックボックス（Req 2.1-2.5）
+
+フィルタセクションに年度チェックボックスを追加する。
+
+- `2025年度`、`2026年度` のチェックボックスを配置
+- 複数選択可能（チェックボックス方式）
+- URLパラメータ `versions` にカンマ区切りで保持（例: `versions=202501,202601`）
+- 未選択時はパラメータを送信しない（全件表示）
+- 既存の `updateFilter` パターンではなく、チェックボックスの組み合わせを管理する独自ハンドラを使用
+
+```
+フィルターUI配置:
+[全て|入力済み|未入力] [全て|準備完了|未準備(admin)] [都道府県▼]
+[撮影日: ____〜____] [元気度▼(入力済時)] [開花状態▼]
+[☑2025年度 ☑2026年度] [推論モデル元気度▼(admin)]
+```
+
+#### model_vitalityフィルタ（Req 5.1-5.3, Admin限定）
+
+- Admin限定のドロップダウンフィルタ
+- EntireTree.vitalityの値（1-5）で絞り込み
+- 既存の `vitality_value` フィルタ（アノテーション結果）とは別
+- ラベル: 「推論モデル元気度」
+
+#### versionバッジ（カード表示）
+
+- 各カードの左下にバージョンバッジを表示
+- 2025年度: `bg-blue-100 text-blue-700`
+- 2026年度: `bg-emerald-100 text-emerald-700`
+
+### 詳細画面（AnnotationPage.tsx）設計
+
+#### 開花段階日表示（Req 3.1-3.2）
+
+撮影情報カードに `bloom_30_date`（3分咲き日）と `bloom_50_date`（5分咲き日）を追加する。
+
+- 開花日と満開開始日の間に配置
+- nullの場合は`-`を表示
+- `formatDateShort` を使って `M/D` 形式で表示
+- 全ロール共通で表示
+
+#### 診断値セクション（Req 4.1-4.3, Admin限定）
+
+撮影情報カードの下に新しいカードとして配置する。
+
+- タイトル: 「診断値（推論モデル）」
+- vitality系9項目をキー・バリュー形式で表示
+- nullの場合は`-`を表示
+- weight値は小数点2桁で表示
+- `isAdmin && detail.diagnostics` で条件レンダリング
+
+```
+┌─ 診断値（推論モデル）──────────┐
+│ 元気度              3          │
+│ 花なし元気度         4          │
+│ 花なし重み           0.80       │
+│ 開花元気度           2          │
+│ 開花重み             0.60       │
+│ 3分咲き元気度        3          │
+│ 3分咲き重み          0.50       │
+│ 5分咲き元気度        4          │
+│ 5分咲き重み          0.70       │
+└────────────────────────────────┘
+```
+
+#### デバッグ画像リンク（Req 6.1-6.4, Admin限定）
+
+診断値セクションの下に配置する。
+
+- タイトル: 「デバッグ画像」
+- `noleaf_url` / `bloom_url` が存在する場合はリンク（`target="_blank"`で別タブ表示）
+- 画像が存在しない場合は「画像なし」テキスト
+- `isAdmin && detail.debug_images` で条件レンダリング
+
+```
+┌─ デバッグ画像──────────────────┐
+│ 花なし: [画像を表示↗]          │
+│ 開花:   [画像を表示↗]          │
+└────────────────────────────────┘
+```
+
+### APIクライアント（client.ts）設計
+
+#### getTrees 拡張
+
+```typescript
+// 既存のフィルタ送信に追加
+if (filter.versions) params.append('versions', filter.versions);
+if (filter.model_vitality !== undefined && filter.model_vitality !== null) {
+  params.append('model_vitality', String(filter.model_vitality));
+}
+```
+
+#### getTreeDetail 拡張
+
+```typescript
+// ナビゲーション維持用にversions, model_vitalityを送信
+if (filter.versions) params.append('versions', filter.versions);
+if (filter.model_vitality !== undefined && filter.model_vitality !== null) {
+  params.append('model_vitality', String(filter.model_vitality));
+}
+```
+
+### URL状態管理
+
+一覧画面のフィルタ状態はURLパラメータで管理する（既存パターン踏襲）。
+
+| パラメータ | 型 | 例 | 用途 |
+|-----------|---|---|------|
+| `versions` | string (カンマ区切り) | `202501,202601` | 年度フィルタ |
+| `model_vitality` | string (数値) | `3` | 推論モデル元気度フィルタ（Admin） |
+
+詳細画面へのナビゲーション時にこれらのパラメータも引き継ぐ（`handleItemClick`, `navigateTo`, `getBackUrl` を拡張）。

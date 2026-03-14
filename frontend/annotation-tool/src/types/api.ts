@@ -28,6 +28,7 @@ export interface AnnotationListItem {
   vitality_value: number | null;
   is_ready: boolean;
   bloom_status: string | null;
+  version: number;
 }
 
 // DB保存用の英語キー
@@ -96,6 +97,23 @@ export interface AnnotationListResponse {
   per_page: number;
 }
 
+export interface Diagnostics {
+  vitality: number | null;
+  vitality_noleaf: number | null;
+  vitality_noleaf_weight: number | null;
+  vitality_bloom: number | null;
+  vitality_bloom_weight: number | null;
+  vitality_bloom_30: number | null;
+  vitality_bloom_30_weight: number | null;
+  vitality_bloom_50: number | null;
+  vitality_bloom_50_weight: number | null;
+}
+
+export interface DebugImages {
+  noleaf_url: string | null;
+  bloom_url: string | null;
+}
+
 export interface AnnotationDetail {
   entire_tree_id: number;
   tree_id: number;
@@ -113,6 +131,10 @@ export interface AnnotationDetail {
   next_id: number | null;
   is_ready: boolean;
   bloom_status: string | null;
+  bloom_30_date: string | null;
+  bloom_50_date: string | null;
+  diagnostics: Diagnostics | null;
+  debug_images: DebugImages | null;
 }
 
 export interface SaveAnnotationResponse {
@@ -145,6 +167,8 @@ export interface ListFilter {
   per_page: number;
   is_ready_filter: IsReadyFilter | null;
   bloom_status: string | null;
+  versions: string | null;
+  model_vitality: number | null;
 }
 
 // is_ready 更新用リクエスト/レスポンス型

@@ -93,6 +93,12 @@ export async function getTrees(
   if (filter.bloom_status) {
     params.append('bloom_status', filter.bloom_status);
   }
+  if (filter.versions) {
+    params.append('versions', filter.versions);
+  }
+  if (filter.model_vitality !== undefined && filter.model_vitality !== null) {
+    params.append('model_vitality', String(filter.model_vitality));
+  }
 
   const response = await fetch(`${API_BASE}/trees?${params}`, {
     headers: getAuthHeaders(),
@@ -118,6 +124,12 @@ export async function getTreeDetail(
   }
   if (filter.bloom_status) {
     params.append('bloom_status', filter.bloom_status);
+  }
+  if (filter.versions) {
+    params.append('versions', filter.versions);
+  }
+  if (filter.model_vitality !== undefined && filter.model_vitality !== null) {
+    params.append('model_vitality', String(filter.model_vitality));
   }
 
   const response = await fetch(`${API_BASE}/trees/${entireTreeId}?${params}`, {
