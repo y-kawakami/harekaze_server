@@ -61,6 +61,13 @@ class Tree(Base):
     contributor_censorship_status: Mapped[int] = mapped_column(
         Integer, default=CensorshipStatus.UNCENSORED, index=True)  # 検閲ステータス
     censorship_ng_reason: Mapped[Optional[str]] = mapped_column(Text)
+    version: Mapped[int] = mapped_column(
+        Integer,
+        default=202501,
+        server_default="202501",
+        nullable=False,
+        index=True,
+    )
     photo_date: Mapped[datetime] = mapped_column(
         # 撮影日時
         DateTime, default=lambda: datetime.now(timezone.utc), index=True)

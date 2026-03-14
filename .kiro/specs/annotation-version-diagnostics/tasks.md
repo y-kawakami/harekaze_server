@@ -1,14 +1,14 @@
 # Implementation Plan
 
-- [ ] 1. データベーススキーマ変更とモデル拡張
-- [ ] 1.1 Treeモデルにversionカラムを追加する
+- [x] 1. データベーススキーマ変更とモデル拡張
+- [x] 1.1 Treeモデルにversionカラムを追加する
   - treesテーブルにINTEGER型のversionカラムを追加するAlembicマイグレーションを作成する
   - 既存レコードには`202501`をデフォルト値として設定する
   - NOT NULL制約とインデックスを付与する
   - TreeモデルのSQLAlchemy定義にversionフィールドを追加する（デフォルト202501、server_default、index=True）
   - _Requirements: 1.1, 1.2_
 
-- [ ] 1.2 (P) 新規Tree作成時のversion設定を確認する
+- [x] 1.2 (P) 新規Tree作成時のversion設定を確認する
   - 新規Tree作成処理で`version=202601`が設定されるようにする
   - 既存のTree作成ロジックを調査し、適切な箇所でversion値を指定する
   - _Requirements: 1.3_

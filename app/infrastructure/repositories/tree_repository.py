@@ -77,6 +77,7 @@ class TreeRepository:
         bloom_50_date: date | None = None,
         full_bloom_date: date | None = None,
         full_bloom_end_date: date | None = None,
+        version: int = 202601,
     ) -> Tree:
         """
         新しい木を作成する
@@ -112,6 +113,7 @@ class TreeRepository:
             block=block,
             photo_date=photo_date,
             photo_time=photo_date.time() if photo_date else None,
+            version=version,
         )
         self.db.add(tree)
         self.db.flush()  # DBに反映してIDを取得
