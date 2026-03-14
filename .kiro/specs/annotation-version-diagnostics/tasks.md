@@ -32,21 +32,21 @@
   - 非Adminユーザーの場合はmodel_vitalityパラメータを無視する
   - _Requirements: 5.1, 5.2, 5.3_
 
-- [ ] 3. アノテーション詳細APIの拡張
-- [ ] 3.1 (P) 開花段階日をレスポンスに追加する
+- [x] 3. アノテーション詳細APIの拡張
+- [x] 3.1 (P) 開花段階日をレスポンスに追加する
   - 詳細レスポンススキーマにbloom_30_date（3分咲き日）とbloom_50_date（5分咲き日）フィールドを追加する（Optional[str]）
   - EntireTreeから直接bloom_30_dateとbloom_50_dateを取得してレスポンスに含める
   - 未記録の場合はnullとして返却する
   - _Requirements: 3.1, 3.2_
 
-- [ ] 3.2 Admin限定の診断値表示を実装する
+- [x] 3.2 Admin限定の診断値表示を実装する
   - 診断値レスポンス用のサブモデル（DiagnosticsResponse）を定義する
   - vitality、vitality_noleaf、vitality_noleaf_weight、vitality_bloom、vitality_bloom_weight、vitality_bloom_30、vitality_bloom_30_weight、vitality_bloom_50、vitality_bloom_50_weightの9項目を含める
   - 詳細取得処理にAnnotatorオブジェクトを渡し、ロール判定を行う
   - Adminの場合はEntireTreeから診断値を取得してレスポンスに含め、非Adminの場合はnullとする
   - _Requirements: 4.1, 4.2, 4.3_
 
-- [ ] 3.3 Admin限定のデバッグ画像URL表示を実装する
+- [x] 3.3 Admin限定のデバッグ画像URL表示を実装する
   - デバッグ画像レスポンス用のサブモデル（DebugImagesResponse）を定義する（noleaf_url、bloom_url）
   - EntireTreeのdebug_image_obj_keyとdebug_image_obj2_keyからImageServiceでURLを生成する
   - 画像キーがnullの場合は該当URLをnullとする

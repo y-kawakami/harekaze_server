@@ -66,6 +66,11 @@ def sample_entire_tree(sample_tree):
     entire_tree.photo_date = datetime(
         2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
     entire_tree.vitality_annotation = None
+    entire_tree.bloom_30_date = None
+    entire_tree.bloom_50_date = None
+    entire_tree.bloom_status = None
+    entire_tree.debug_image_obj_key = None
+    entire_tree.debug_image_obj2_key = None
     return entire_tree
 
 
@@ -79,9 +84,15 @@ def sample_annotated_entire_tree(sample_tree):
     entire_tree.thumb_obj_key = "test/thumb2.jpg"
     entire_tree.photo_date = datetime(
         2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.bloom_30_date = None
+    entire_tree.bloom_50_date = None
+    entire_tree.bloom_status = None
+    entire_tree.debug_image_obj_key = None
+    entire_tree.debug_image_obj2_key = None
 
     annotation = Mock()
     annotation.vitality_value = 3
+    annotation.is_ready = True
     annotation.annotator_id = 1
     annotation.annotated_at = datetime(
         2024, 4, 10, 12, 0, 0, tzinfo=timezone.utc)
@@ -417,6 +428,11 @@ class TestGetAnnotationDetail:
         first_item.image_obj_key = "test/image.jpg"
         first_item.photo_date = datetime(2024, 4, 1, tzinfo=timezone.utc)
         first_item.vitality_annotation = None
+        first_item.bloom_30_date = None
+        first_item.bloom_50_date = None
+        first_item.bloom_status = None
+        first_item.debug_image_obj_key = None
+        first_item.debug_image_obj2_key = None
 
         query_mock = MagicMock()
         mock_db.query.return_value = query_mock
@@ -475,6 +491,11 @@ class TestGetAnnotationDetail:
         last_item.image_obj_key = "test/image.jpg"
         last_item.photo_date = datetime(2024, 4, 1, tzinfo=timezone.utc)
         last_item.vitality_annotation = None
+        last_item.bloom_30_date = None
+        last_item.bloom_50_date = None
+        last_item.bloom_status = None
+        last_item.debug_image_obj_key = None
+        last_item.debug_image_obj2_key = None
 
         query_mock = MagicMock()
         mock_db.query.return_value = query_mock
@@ -518,6 +539,11 @@ def sample_ready_entire_tree(sample_tree):
     entire_tree.image_obj_key = "test/image_ready.jpg"
     entire_tree.thumb_obj_key = "test/thumb_ready.jpg"
     entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.bloom_30_date = None
+    entire_tree.bloom_50_date = None
+    entire_tree.bloom_status = None
+    entire_tree.debug_image_obj_key = None
+    entire_tree.debug_image_obj2_key = None
 
     annotation = Mock()
     annotation.vitality_value = 4
@@ -537,6 +563,11 @@ def sample_not_ready_entire_tree(sample_tree):
     entire_tree.image_obj_key = "test/image_not_ready.jpg"
     entire_tree.thumb_obj_key = "test/thumb_not_ready.jpg"
     entire_tree.photo_date = datetime(2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.bloom_30_date = None
+    entire_tree.bloom_50_date = None
+    entire_tree.bloom_status = None
+    entire_tree.debug_image_obj_key = None
+    entire_tree.debug_image_obj2_key = None
 
     annotation = Mock()
     annotation.vitality_value = 2
@@ -788,3 +819,370 @@ class TestGetAnnotationDetailWithRole:
         assert result is not None
         assert hasattr(result, 'is_ready')
         assert result.is_ready is True
+
+
+@pytest.fixture
+def sample_entire_tree_with_bloom_dates(sample_tree):
+    """bloom_30_date/bloom_50_dateを持つEntireTreeオブジェクト"""
+    entire_tree = Mock()
+    entire_tree.id = 300
+    entire_tree.tree_id = sample_tree.id
+    entire_tree.tree = sample_tree
+    entire_tree.image_obj_key = "test/image_bloom.jpg"
+    entire_tree.photo_date = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.bloom_30_date = date(2024, 3, 30)
+    entire_tree.bloom_50_date = date(2024, 4, 2)
+    entire_tree.bloom_status = "blooming"
+    entire_tree.vitality = 3
+    entire_tree.vitality_noleaf = 4
+    entire_tree.vitality_noleaf_weight = 0.8
+    entire_tree.vitality_bloom = 2
+    entire_tree.vitality_bloom_weight = 0.6
+    entire_tree.vitality_bloom_30 = 3
+    entire_tree.vitality_bloom_30_weight = 0.5
+    entire_tree.vitality_bloom_50 = 4
+    entire_tree.vitality_bloom_50_weight = 0.7
+    entire_tree.debug_image_obj_key = "debug/noleaf_abc.jpg"
+    entire_tree.debug_image_obj2_key = "debug/bloom_abc.jpg"
+
+    annotation = Mock()
+    annotation.vitality_value = 3
+    annotation.is_ready = True
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+@pytest.fixture
+def sample_entire_tree_no_bloom_dates(sample_tree):
+    """bloom日がnullのEntireTreeオブジェクト"""
+    entire_tree = Mock()
+    entire_tree.id = 301
+    entire_tree.tree_id = sample_tree.id
+    entire_tree.tree = sample_tree
+    entire_tree.image_obj_key = "test/image_nobloom.jpg"
+    entire_tree.photo_date = datetime(
+        2024, 4, 1, 10, 0, 0, tzinfo=timezone.utc)
+    entire_tree.bloom_30_date = None
+    entire_tree.bloom_50_date = None
+    entire_tree.bloom_status = None
+    entire_tree.vitality = None
+    entire_tree.vitality_noleaf = None
+    entire_tree.vitality_noleaf_weight = None
+    entire_tree.vitality_bloom = None
+    entire_tree.vitality_bloom_weight = None
+    entire_tree.vitality_bloom_30 = None
+    entire_tree.vitality_bloom_30_weight = None
+    entire_tree.vitality_bloom_50 = None
+    entire_tree.vitality_bloom_50_weight = None
+    entire_tree.debug_image_obj_key = None
+    entire_tree.debug_image_obj2_key = None
+
+    annotation = Mock()
+    annotation.vitality_value = None
+    annotation.is_ready = True
+    annotation.annotator_id = 1
+    entire_tree.vitality_annotation = annotation
+    return entire_tree
+
+
+def _setup_detail_query(mock_db, entire_tree):
+    """詳細取得用のクエリモックセットアップヘルパー"""
+    query_mock = MagicMock()
+    mock_db.query.return_value = query_mock
+    query_mock.join.return_value = query_mock
+    query_mock.outerjoin.return_value = query_mock
+    query_mock.options.return_value = query_mock
+    query_mock.filter.return_value = query_mock
+    query_mock.first.return_value = entire_tree
+    query_mock.count.return_value = 1
+    query_mock.order_by.return_value = query_mock
+    query_mock.all.return_value = [entire_tree]
+
+
+@pytest.mark.unit
+class TestAnnotationDetailBloomDates:
+    """Task 3.1: 開花段階日のレスポンス追加テスト"""
+
+    def test_bloom_dates_included_in_response(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """bloom_30_dateとbloom_50_dateがレスポンスに含まれる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.bloom_30_date == "2024-03-30"
+        assert result.bloom_50_date == "2024-04-02"
+
+    def test_bloom_dates_null_when_not_recorded(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_no_bloom_dates,
+    ):
+        """bloom日が未記録の場合はnullを返す"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_no_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=301,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.bloom_30_date is None
+        assert result.bloom_50_date is None
+
+    def test_bloom_dates_visible_to_annotator(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """annotatorロールでもbloom日は表示される"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="annotator",
+        )
+
+        assert result is not None
+        assert result.bloom_30_date == "2024-03-30"
+        assert result.bloom_50_date == "2024-04-02"
+
+
+@pytest.mark.unit
+class TestAnnotationDetailDiagnostics:
+    """Task 3.2: Admin限定の診断値表示テスト"""
+
+    def test_admin_sees_diagnostics(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """Adminロール時に診断値が含まれる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.diagnostics is not None
+        assert result.diagnostics.vitality == 3
+        assert result.diagnostics.vitality_noleaf == 4
+        assert result.diagnostics.vitality_noleaf_weight == 0.8
+        assert result.diagnostics.vitality_bloom == 2
+        assert result.diagnostics.vitality_bloom_weight == 0.6
+        assert result.diagnostics.vitality_bloom_30 == 3
+        assert result.diagnostics.vitality_bloom_30_weight == 0.5
+        assert result.diagnostics.vitality_bloom_50 == 4
+        assert result.diagnostics.vitality_bloom_50_weight == 0.7
+
+    def test_annotator_does_not_see_diagnostics(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """非Adminロール時に診断値はnull"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="annotator",
+        )
+
+        assert result is not None
+        assert result.diagnostics is None
+
+
+@pytest.mark.unit
+class TestAnnotationDetailDebugImages:
+    """Task 3.3: Admin限定のデバッグ画像URL表示テスト"""
+
+    def test_admin_sees_debug_images(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """Adminロール時にデバッグ画像URLが含まれる"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.debug_images is not None
+        assert result.debug_images.noleaf_url is not None
+        assert result.debug_images.bloom_url is not None
+
+    def test_annotator_does_not_see_debug_images(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_with_bloom_dates,
+    ):
+        """非Adminロール時にデバッグ画像はnull"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_with_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=300,
+            filter_params=filter_params,
+            annotator_role="annotator",
+        )
+
+        assert result is not None
+        assert result.debug_images is None
+
+    def test_admin_debug_images_null_when_keys_missing(
+        self,
+        mock_db,
+        mock_image_service,
+        mock_municipality_service,
+        mock_flowering_date_service,
+        sample_entire_tree_no_bloom_dates,
+    ):
+        """デバッグ画像キーがnullの場合はURLもnull"""
+        from app.application.annotation.annotation_detail import (
+            AnnotationListFilter,
+            get_annotation_detail,
+        )
+
+        _setup_detail_query(
+            mock_db, sample_entire_tree_no_bloom_dates)
+
+        filter_params = AnnotationListFilter(status="all")
+
+        result = get_annotation_detail(
+            db=mock_db,
+            image_service=mock_image_service,
+            flowering_date_service=mock_flowering_date_service,
+            municipality_service=mock_municipality_service,
+            entire_tree_id=301,
+            filter_params=filter_params,
+            annotator_role="admin",
+        )
+
+        assert result is not None
+        assert result.debug_images is not None
+        assert result.debug_images.noleaf_url is None
+        assert result.debug_images.bloom_url is None

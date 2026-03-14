@@ -36,6 +36,29 @@ class AnnotationListFilter:
 
 
 @dataclass
+class DiagnosticsData:
+    """診断値データ"""
+
+    vitality: int | None = None
+    vitality_noleaf: int | None = None
+    vitality_noleaf_weight: float | None = None
+    vitality_bloom: int | None = None
+    vitality_bloom_weight: float | None = None
+    vitality_bloom_30: int | None = None
+    vitality_bloom_30_weight: float | None = None
+    vitality_bloom_50: int | None = None
+    vitality_bloom_50_weight: float | None = None
+
+
+@dataclass
+class DebugImagesData:
+    """デバッグ画像URLデータ"""
+
+    noleaf_url: str | None = None
+    bloom_url: str | None = None
+
+
+@dataclass
 class AnnotationDetailResponse:
     """詳細レスポンス"""
 
@@ -56,6 +79,10 @@ class AnnotationDetailResponse:
     next_id: int | None
     is_ready: bool = False
     bloom_status: str | None = None
+    bloom_30_date: str | None = None
+    bloom_50_date: str | None = None
+    diagnostics: DiagnosticsData | None = None
+    debug_images: DebugImagesData | None = None
 
 
 def get_annotation_detail(
@@ -168,6 +195,44 @@ def get_annotation_detail(
     # 開花状態はDBに保存された値を使用
     bloom_status = entire_tree.bloom_status
 
+    # 開花段階日（全ロール共通）
+    bloom_30_date: str | None = None
+    bloom_50_date: str | None = None
+    if entire_tree.bloom_30_date:
+        bloom_30_date = entire_tree.bloom_30_date.isoformat()
+    if entire_tree.bloom_50_date:
+        bloom_50_date = entire_tree.bloom_50_date.isoformat()
+
+    # Admin限定: 診断値・デバッグ画像
+    diagnostics: DiagnosticsData | None = None
+    debug_images: DebugImagesData | None = None
+    if annotator_role == "admin":
+        diagnostics = DiagnosticsData(
+            vitality=entire_tree.vitality,
+            vitality_noleaf=entire_tree.vitality_noleaf,
+            vitality_noleaf_weight=entire_tree.vitality_noleaf_weight,
+            vitality_bloom=entire_tree.vitality_bloom,
+            vitality_bloom_weight=entire_tree.vitality_bloom_weight,
+            vitality_bloom_30=entire_tree.vitality_bloom_30,
+            vitality_bloom_30_weight=entire_tree.vitality_bloom_30_weight,
+            vitality_bloom_50=entire_tree.vitality_bloom_50,
+            vitality_bloom_50_weight=entire_tree.vitality_bloom_50_weight,
+        )
+        noleaf_url: str | None = None
+        bloom_url: str | None = None
+        if entire_tree.debug_image_obj_key:
+            noleaf_url = image_service.get_image_url(
+                entire_tree.debug_image_obj_key
+            )
+        if entire_tree.debug_image_obj2_key:
+            bloom_url = image_service.get_image_url(
+                entire_tree.debug_image_obj2_key
+            )
+        debug_images = DebugImagesData(
+            noleaf_url=noleaf_url,
+            bloom_url=bloom_url,
+        )
+
     return AnnotationDetailResponse(
         entire_tree_id=entire_tree.id,
         tree_id=entire_tree.tree_id,
@@ -186,6 +251,10 @@ def get_annotation_detail(
         next_id=next_id,
         is_ready=is_ready,
         bloom_status=bloom_status,
+        bloom_30_date=bloom_30_date,
+        bloom_50_date=bloom_50_date,
+        diagnostics=diagnostics,
+        debug_images=debug_images,
     )
 
 

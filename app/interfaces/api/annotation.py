@@ -44,6 +44,8 @@ from app.interfaces.schemas.annotation import (AnnotationDetailResponse,
                                                AnnotationRequest,
                                                AnnotationStatsResponse,
                                                BloomStatusStatsResponse,
+                                               DebugImagesResponse,
+                                               DiagnosticsResponse,
                                                PrefectureListResponse,
                                                PrefectureResponse,
                                                SaveAnnotationResponse,
@@ -264,6 +266,37 @@ async def get_tree_detail(
             detail="指定された画像が見つかりません",
         )
 
+    # 診断値マッピング（Admin限定）
+    diagnostics_response: DiagnosticsResponse | None = None
+    if result.diagnostics:
+        diagnostics_response = DiagnosticsResponse(
+            vitality=result.diagnostics.vitality,
+            vitality_noleaf=result.diagnostics.vitality_noleaf,
+            vitality_noleaf_weight=(
+                result.diagnostics.vitality_noleaf_weight
+            ),
+            vitality_bloom=result.diagnostics.vitality_bloom,
+            vitality_bloom_weight=(
+                result.diagnostics.vitality_bloom_weight
+            ),
+            vitality_bloom_30=result.diagnostics.vitality_bloom_30,
+            vitality_bloom_30_weight=(
+                result.diagnostics.vitality_bloom_30_weight
+            ),
+            vitality_bloom_50=result.diagnostics.vitality_bloom_50,
+            vitality_bloom_50_weight=(
+                result.diagnostics.vitality_bloom_50_weight
+            ),
+        )
+
+    # デバッグ画像マッピング（Admin限定）
+    debug_images_response: DebugImagesResponse | None = None
+    if result.debug_images:
+        debug_images_response = DebugImagesResponse(
+            noleaf_url=result.debug_images.noleaf_url,
+            bloom_url=result.debug_images.bloom_url,
+        )
+
     return AnnotationDetailResponse(
         entire_tree_id=result.entire_tree_id,
         tree_id=result.tree_id,
@@ -282,6 +315,10 @@ async def get_tree_detail(
         next_id=result.next_id,
         is_ready=result.is_ready,
         bloom_status=result.bloom_status,
+        bloom_30_date=result.bloom_30_date,
+        bloom_50_date=result.bloom_50_date,
+        diagnostics=diagnostics_response,
+        debug_images=debug_images_response,
     )
 
 

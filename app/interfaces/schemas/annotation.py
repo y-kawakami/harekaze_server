@@ -92,6 +92,35 @@ class AnnotationListResponse(BaseModel):
     per_page: int = Field(..., description="1ページあたりの件数")
 
 
+class DiagnosticsResponse(BaseModel):
+    """Admin向け診断値レスポンス"""
+    vitality: Optional[int] = Field(None, description="元気度")
+    vitality_noleaf: Optional[int] = Field(
+        None, description="花なし元気度")
+    vitality_noleaf_weight: Optional[float] = Field(
+        None, description="花なし元気度重み")
+    vitality_bloom: Optional[int] = Field(
+        None, description="開花元気度")
+    vitality_bloom_weight: Optional[float] = Field(
+        None, description="開花元気度重み")
+    vitality_bloom_30: Optional[int] = Field(
+        None, description="3分咲き元気度")
+    vitality_bloom_30_weight: Optional[float] = Field(
+        None, description="3分咲き元気度重み")
+    vitality_bloom_50: Optional[int] = Field(
+        None, description="5分咲き元気度")
+    vitality_bloom_50_weight: Optional[float] = Field(
+        None, description="5分咲き元気度重み")
+
+
+class DebugImagesResponse(BaseModel):
+    """Admin向けデバッグ画像URLレスポンス"""
+    noleaf_url: Optional[str] = Field(
+        None, description="花なしデバッグ画像URL")
+    bloom_url: Optional[str] = Field(
+        None, description="開花デバッグ画像URL")
+
+
 class AnnotationDetailResponse(BaseModel):
     """詳細レスポンス"""
     entire_tree_id: int = Field(..., description="EntireTree ID")
@@ -114,6 +143,14 @@ class AnnotationDetailResponse(BaseModel):
     next_id: Optional[int] = Field(None, description="次の画像ID")
     is_ready: bool = Field(False, description="評価準備完了フラグ")
     bloom_status: Optional[str] = Field(None, description="開花状態")
+    bloom_30_date: Optional[str] = Field(
+        None, description="3分咲き日")
+    bloom_50_date: Optional[str] = Field(
+        None, description="5分咲き日")
+    diagnostics: Optional[DiagnosticsResponse] = Field(
+        None, description="診断値（Admin限定）")
+    debug_images: Optional[DebugImagesResponse] = Field(
+        None, description="デバッグ画像URL（Admin限定）")
 
 
 class SaveAnnotationResponse(BaseModel):
