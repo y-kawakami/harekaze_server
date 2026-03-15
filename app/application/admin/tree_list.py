@@ -90,16 +90,16 @@ def get_tree_list(
             )
         )
 
-        # Stemの検閲ステータス（最新レコードのみ）
-        latest_stem_ids = (
-            db.query(func.max(Stem.id))
+        # Stemの検閲ステータス（実際に使用されるレコードのみ）
+        active_stem_ids = (
+            db.query(func.min(Stem.id))
             .group_by(Stem.tree_id)
             .scalar_subquery()
         )
         detail_conditions.append(
             Tree.id.in_(
                 db.query(Stem.tree_id)
-                .filter(Stem.id.in_(latest_stem_ids))
+                .filter(Stem.id.in_(active_stem_ids))
                 .filter(
                     Stem.censorship_status.in_(
                         detail_censorship_status
